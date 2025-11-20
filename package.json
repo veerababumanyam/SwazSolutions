@@ -1,7 +1,7 @@
 {
   "name": "swaz-solutions",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.0.2",
   "scripts": {
     "dev:frontend": "vite",
     "dev:backend": "nodemon backend/server.js",
@@ -12,24 +12,28 @@
     "deploy": "npm run build && npm start"
   },
   "dependencies": {
+    "@google/genai": "^1.30.0",
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "howler": "^2.2.4",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.554.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "lucide-react": "^0.554.0",
     "react-router-dom": "^7.9.6",
-    "@google/genai": "^1.30.0",
-    "express": "^4.18.2",
-    "sql.js": "^1.10.3",
-    "bcrypt": "^5.1.1",
-    "jsonwebtoken": "^9.0.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "sql.js": "^1.10.3"
   },
   "devDependencies": {
+    "@types/howler": "^2.2.12",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0",
+    "concurrently": "^8.2.2",
     "nodemon": "^3.0.2",
-    "concurrently": "^8.2.2"
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
   }
 }

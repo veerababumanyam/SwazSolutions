@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
     Library, Heart, Disc, ListMusic, Plus, Folder,
-    MoreVertical, Edit2, Trash2, ChevronDown, Music, X, RefreshCw, HardDrive
+    MoreVertical, Edit2, Trash2, ChevronDown, Music, X, RefreshCw, HardDrive, Mic2
 } from 'lucide-react';
 import { useMusic } from '../contexts/MusicContext';
 
@@ -12,7 +12,8 @@ export type ViewType =
     | { type: 'albums' }
     | { type: 'album-detail', id: string }
     | { type: 'playlist', id: string }
-    | { type: 'now-playing' };
+    | { type: 'now-playing' }
+    | { type: 'lyrics' };
 
 interface MusicSidebarProps {
     isOpen: boolean;
@@ -178,6 +179,7 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                             <h3 className="px-3 text-xs font-bold text-secondary uppercase tracking-wider mb-2">Collection</h3>
                             <NavItem view={{ type: 'all' }} icon={Music} label="All Songs" />
                             <NavItem view={{ type: 'favorites' }} icon={Heart} label="Liked Songs" />
+                            <NavItem view={{ type: 'lyrics' }} icon={Mic2} label="Lyrics" />
                         </div>
 
                         {/* Albums (Folders) */}

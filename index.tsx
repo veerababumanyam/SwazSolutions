@@ -8,13 +8,16 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-// Unregister any existing service workers to avoid stale cache issues
+// Register Service Worker for Offline Playback
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    for (const registration of registrations) {
-      console.log('Unregistering service worker:', registration);
-      registration.unregister();
-    }
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then((registration) => {
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+      })
+      .catch((err) => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
   });
 }
 

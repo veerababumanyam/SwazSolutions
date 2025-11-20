@@ -12,8 +12,53 @@ const createAuthRoutes = require('./routes/auth');
 const createSongRoutes = require('./routes/songs');
 const createPlaylistRoutes = require('./routes/playlists');
 
+const http = require('http');
+const { Server } = require('socket.io');
+
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
+
 const PORT = process.env.PORT || 3000;
+
+// Socket.io Logic
+io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
+
+    socket.on('join_room', (room) => {
+        socket.join(room);
+        console.log(`User ${socket.id} joined room: ${room}`);
+    });
+
+    socket.on('play', (data) => {
+        socket.to(data.room).emit('play', data);
+    });
+
+    socket.on('pause', (data) => {
+        socket.to(data.room).emit('pause', data);
+    });
+
+    socket.on('seek', (data) => {
+        socket.to(data.room).emit('seek', data);
+    });
+
+    socket.on('change_song', (data) => {
+        socket.to(data.room).emit('change_song', data);
+    });
+
+    socket.on('sync_state', (data) => {
+        socket.to(data.room).emit('sync_state', data);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+    });
+});
 
 // Middleware
 app.use(cors());
@@ -108,7 +153,7 @@ function getLocalIP() {
 }
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
     const localIP = getLocalIP();
 
     console.log(`

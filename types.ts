@@ -70,6 +70,25 @@ export interface Song {
     src: string;
     duration: number; // in seconds
     liked?: boolean;
+    lyrics?: string; // Path to .lrc file or raw text
+    equalizer?: EqualizerSettings;
+}
+
+export interface EqualizerSettings {
+    bass: number;
+    mid: number;
+    treble: number;
+    preamp: number;
+}
+
+export interface LyricsLine {
+    time: number;
+    text: string;
+}
+
+export interface LyricsData {
+    lines: LyricsLine[];
+    source: 'lrc' | 'text' | 'none';
 }
 
 export interface Album {

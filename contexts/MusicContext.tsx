@@ -1,6 +1,8 @@
 
 import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
-import { Song, RepeatMode, Playlist, Album } from '../agents/types';
+import { io, Socket } from 'socket.io-client';
+import { Howl, Howler } from 'howler';
+import { Song, RepeatMode, Playlist, Album, EqualizerSettings } from '../types'; // Fixed import path
 import { api } from '../src/services/api';
 
 interface MusicContextType {
@@ -16,6 +18,11 @@ interface MusicContextType {
     repeatMode: RepeatMode;
     error: string | null;
     likedSongs: Set<string>;
+
+    // Advanced Audio
+    analyser: AnalyserNode | null;
+    equalizer: EqualizerSettings;
+    setEqualizer: (settings: EqualizerSettings) => void;
 
     // Library & Playlists
     library: Song[];
@@ -56,8 +63,17 @@ interface MusicContextType {
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
+const DEFAULT_EQ: EqualizerSettings = { bass: 0, mid: 0, treble: 0, preamp: 0 };
+
 export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const soundRef = useRef<Howl | null>(null);
+    const soundIdRef = useRef<number | null>(null);
+    const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
+    const eqNodesRef = useRef<{ bass: BiquadFilterNode, mid: BiquadFilterNode, treble: BiquadFilterNode } | null>(null);
+
+    // Socket State
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const isRemoteUpdate = useRef(false);
 
     // State
     const [currentSong, setCurrentSong] = useState<Song | null>(null);
@@ -70,51 +86,91 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [isShuffling, setIsShuffling] = useState(false);
     const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
     const [error, setError] = useState<string | null>(null);
+    const [equalizer, setEqualizerState] = useState<EqualizerSettings>(DEFAULT_EQ);
 
     const [library, setLibrary] = useState<Song[]>([]);
     const [albums, setAlbums] = useState<Album[]>([]);
     const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
     const [isScanning, setIsScanning] = useState(true);
-    const [lastScanTime, setLastScanTime] = useState<number>(0);
 
-    // --- Safe Playback ---
-    const safePlay = async () => {
-        if (!audioRef.current) return;
+    const [lastScanTime, setLastScanTime] = useState<number>(0);
+    const [history, setHistory] = useState<string[]>([]); // Track played song IDs
+
+    // --- Audio Node Setup (EQ & Analyser) ---
+    const setupAudioNodes = () => {
+        if (!Howler.ctx) return;
+
+        // Resume context if suspended (browser policy)
+        if (Howler.ctx.state === 'suspended') {
+            Howler.ctx.resume();
+        }
+
+        if (eqNodesRef.current) return;
+
+        const ctx = Howler.ctx;
+        const masterGain = Howler.masterGain;
+
+        // Create Analyser
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 256; // 128 data points
+        setAnalyserNode(analyser);
+
+        // Create EQ Nodes
+        const bass = ctx.createBiquadFilter();
+        bass.type = 'lowshelf';
+        bass.frequency.value = 320;
+
+        const mid = ctx.createBiquadFilter();
+        mid.type = 'peaking';
+        mid.frequency.value = 1000;
+        mid.Q.value = 0.5;
+
+        const treble = ctx.createBiquadFilter();
+        treble.type = 'highshelf';
+        treble.frequency.value = 3200;
+
         try {
-            await audioRef.current.play();
-            setIsPlaying(true);
-            setError(null);
-        } catch (e: any) {
-            // AbortError happens when pause() is called while play() is pending. We can ignore it.
-            if (e.name === 'AbortError') {
-                return;
-            }
-            if (e.name === 'NotAllowedError') {
-                setError("Autoplay blocked. Please interact with the page.");
-            } else {
-                console.error("Playback failed", e);
-                setError("Playback error: " + e.message);
-            }
-            setIsPlaying(false);
+            // Re-route: Master -> Bass -> Mid -> Treble -> Analyser -> Destination
+            masterGain.disconnect();
+            masterGain.connect(bass);
+            bass.connect(mid);
+            mid.connect(treble);
+            treble.connect(analyser);
+            analyser.connect(ctx.destination);
+
+            eqNodesRef.current = { bass, mid, treble };
+            applyEqualizer(equalizer); // Apply current settings, not default
+            console.log("Audio nodes setup successfully");
+        } catch (e) {
+            console.error("Error setting up audio nodes:", e);
         }
     };
 
+    const applyEqualizer = (settings: EqualizerSettings) => {
+        if (!eqNodesRef.current) return;
+        const { bass, mid, treble } = eqNodesRef.current;
+        bass.gain.value = settings.bass;
+        mid.gain.value = settings.mid;
+        treble.gain.value = settings.treble;
+        // Preamp could be handled by master volume or a separate gain node
+    };
+
+    const setEqualizer = (settings: EqualizerSettings) => {
+        setEqualizerState(settings);
+        applyEqualizer(settings);
+    };
+
+    // --- Library Management ---
     const refreshLibrary = async () => {
         setIsScanning(true);
-        console.log('🔄 Refreshing library from backend...');
         try {
             // Trigger backend scan first
-            console.log('📡 Scanning backend for music files...');
             await api.songs.scan();
 
             // Then fetch songs from API
-            console.log('📡 Fetching songs from backend API...');
             const { songs } = await api.songs.list({ limit: 1000 });
-            console.log(`✅ Received ${songs.length} songs from backend:`, songs);
-
             const albumsData = await api.songs.getAlbums();
-            console.log(`✅ Received ${albumsData.length} albums from backend:`, albumsData);
 
             // Convert API response to Song format
             const formattedSongs: Song[] = songs.map((s: any) => ({
@@ -123,14 +179,13 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 artist: s.artist || 'Unknown Artist',
                 album: s.album || 'Unknown Album',
                 duration: s.duration || 0,
-                cover: '/placeholder-album.jpg', // You can add album art later
-                src: `http://localhost:3000${s.file_path}`, // Fixed: was 'url', should be 'src'
+                cover: '/placeholder-album.jpg',
+                src: `http://localhost:3000${s.file_path}`,
                 genre: s.genre,
             }));
 
             // Convert albums and link songs
             const formattedAlbums: Album[] = albumsData.map((a: any) => {
-                // Get all songs for this album
                 const albumSongIds = a.song_ids?.split(',').map((id: string) => id.trim()) || [];
                 const albumTracks = formattedSongs.filter(song =>
                     albumSongIds.includes(song.id)
@@ -145,48 +200,83 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 };
             });
 
-            console.log(`✅ Formatted ${formattedSongs.length} songs and ${formattedAlbums.length} albums`);
-            console.log('Album details:', formattedAlbums.map(a => ({
-                title: a.title,
-                trackCount: a.trackCount,
-                trackIds: a.tracks.map(t => t.id)
-            })));
             setLibrary(formattedSongs);
             setAlbums(formattedAlbums);
             setLastScanTime(Date.now());
-            console.log('✅ Library updated successfully!');
         } catch (e) {
-            console.error("❌ Failed to load library from backend:", e);
-            console.error("Error details:", e);
-            setError("Failed to connect to backend server: " + (e as Error).message);
+            console.error("Failed to load library:", e);
+            setError("Failed to connect to backend server.");
         } finally {
             setIsScanning(false);
         }
     };
 
     const connectLocalLibrary = async () => {
-        // Not needed for backend approach - just refresh from server
         await refreshLibrary();
     };
 
     // --- Initialization ---
     useEffect(() => {
         refreshLibrary();
-
         const storedPlaylists = localStorage.getItem('swaz_playlists');
         if (storedPlaylists) setPlaylists(JSON.parse(storedPlaylists));
-
         const storedLikes = localStorage.getItem('swaz_liked_songs');
         if (storedLikes) setLikedSongs(new Set(JSON.parse(storedLikes)));
 
-        // Poll backend for changes every 60 seconds
-        const pollInterval = setInterval(() => {
-            refreshLibrary();
-        }, 60000);
+        // Setup Audio Nodes on first user interaction or load
+        // Howler initializes ctx automatically, but we need to hook into it.
+        // We'll try to setup immediately, but might need to wait for unlock.
+        setupAudioNodes();
 
-        // Cleanup on unmount
+        const pollInterval = setInterval(refreshLibrary, 60000);
+        return () => clearInterval(pollInterval);
+    }, []);
+
+    // --- Socket.io Connection ---
+    useEffect(() => {
+        const newSocket = io(); // Connects to origin by default
+        setSocket(newSocket);
+
+        newSocket.on('connect', () => {
+            console.log('Socket connected');
+            newSocket.emit('join_room', 'global');
+        });
+
+        newSocket.on('play', () => {
+            if (soundRef.current && !soundRef.current.playing()) {
+                isRemoteUpdate.current = true;
+                soundRef.current.play();
+                setIsPlaying(true);
+                isRemoteUpdate.current = false;
+            }
+        });
+
+        newSocket.on('pause', () => {
+            if (soundRef.current && soundRef.current.playing()) {
+                isRemoteUpdate.current = true;
+                soundRef.current.pause();
+                setIsPlaying(false);
+                isRemoteUpdate.current = false;
+            }
+        });
+
+        newSocket.on('seek', (data: { time: number }) => {
+            if (soundRef.current) {
+                isRemoteUpdate.current = true;
+                soundRef.current.seek(data.time);
+                setProgress(data.time);
+                isRemoteUpdate.current = false;
+            }
+        });
+
+        newSocket.on('change_song', (data: { song: Song }) => {
+            isRemoteUpdate.current = true;
+            playTrack(data.song);
+            isRemoteUpdate.current = false;
+        });
+
         return () => {
-            clearInterval(pollInterval);
+            newSocket.disconnect();
         };
     }, []);
 
@@ -198,39 +288,98 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         localStorage.setItem('swaz_liked_songs', JSON.stringify(Array.from(likedSongs)));
     }, [likedSongs]);
 
-    // --- Audio Engine Setup ---
+    // --- Playback Logic ---
+
+    // Timer for progress update
     useEffect(() => {
-        if (!audioRef.current) {
-            audioRef.current = new Audio();
+        let rafId: number;
+        const updateProgress = () => {
+            if (soundRef.current && isPlaying) {
+                const seek = soundRef.current.seek();
+                if (typeof seek === 'number') {
+                    setProgress(seek);
+                }
+                rafId = requestAnimationFrame(updateProgress);
+            }
+        };
+        if (isPlaying) {
+            rafId = requestAnimationFrame(updateProgress);
         }
-        const audio = audioRef.current;
+        return () => cancelAnimationFrame(rafId);
+    }, [isPlaying]);
 
-        const handleTimeUpdate = () => setProgress(audio.currentTime);
-        const handleLoadedMetadata = () => setDuration(audio.duration);
-        const handleEnded = () => handleTrackEnd();
-        const handleError = () => {
-            if (audio.src) setError("Error playing file. It may be missing.");
-            setIsPlaying(false);
-        };
-        const handlePause = () => setIsPlaying(false);
-        const handlePlay = () => setIsPlaying(true);
+    const playTrackByIndex = (index: number, list: Song[]) => {
+        if (!list[index]) return;
 
-        audio.addEventListener('timeupdate', handleTimeUpdate);
-        audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-        audio.addEventListener('ended', handleEnded);
-        audio.addEventListener('error', handleError);
-        audio.addEventListener('pause', handlePause);
-        audio.addEventListener('play', handlePlay);
+        // Stop previous sound
+        if (soundRef.current) {
+            // Crossfade out?
+            soundRef.current.fade(volume, 0, 500); // 500ms fade out
+            // Stop after fade
+            const oldSound = soundRef.current;
+            setTimeout(() => oldSound.unload(), 500);
+        }
 
-        return () => {
-            audio.removeEventListener('timeupdate', handleTimeUpdate);
-            audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-            audio.removeEventListener('ended', handleEnded);
-            audio.removeEventListener('error', handleError);
-            audio.removeEventListener('pause', handlePause);
-            audio.removeEventListener('play', handlePlay);
-        };
-    }, []);
+        const song = list[index];
+        setCurrentIndex(index);
+        setCurrentSong(song);
+
+        if (!isRemoteUpdate.current && socket) {
+            socket.emit('change_song', { room: 'global', song });
+        }
+
+        setError(null);
+        setProgress(0);
+
+        setDuration(song.duration);
+
+        // Add to history
+        setHistory(prev => {
+            const newHistory = [...prev, song.id];
+            if (newHistory.length > 50) newHistory.shift();
+            return newHistory;
+        });
+
+        const sound = new Howl({
+            src: [song.src],
+            html5: true, // Force HTML5 Audio for large files/streaming
+            volume: 0, // Start at 0 for fade in
+            onplay: () => {
+                setIsPlaying(true);
+                setDuration(sound.duration());
+                sound.fade(0, volume, 500); // Fade in
+
+                // Ensure AudioContext is running and nodes are connected
+                if (Howler.ctx && Howler.ctx.state === 'suspended') {
+                    Howler.ctx.resume();
+                }
+                setupAudioNodes();
+            },
+            onend: () => {
+                handleTrackEnd();
+            },
+            onpause: () => {
+                setIsPlaying(false);
+            },
+            onstop: () => {
+                setIsPlaying(false);
+                setProgress(0);
+            },
+            onloaderror: (_id, err) => {
+                console.error("Load Error:", err);
+                setError("Error loading track.");
+                setIsPlaying(false);
+            },
+            onplayerror: (_id, err) => {
+                console.error("Play Error:", err);
+                setError("Error playing track.");
+                setIsPlaying(false);
+            }
+        });
+
+        soundRef.current = sound;
+        soundIdRef.current = sound.play();
+    };
 
     // Keep refs updated for 'ended' event callback closure
     const queueRef = useRef(queue);
@@ -243,7 +392,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         indexRef.current = currentIndex;
         repeatRef.current = repeatMode;
         shuffleRef.current = isShuffling;
-    }, [queue, currentIndex, repeatMode, isShuffling]);
+
+    }, [queue, currentIndex, repeatMode, isShuffling, history]);
 
     const handleTrackEnd = () => {
         const q = queueRef.current;
@@ -254,16 +404,36 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (q.length === 0) return;
 
         if (repeat === 'one') {
-            if (audioRef.current) {
-                audioRef.current.currentTime = 0;
-                safePlay();
-            }
+            playTrackByIndex(idx, q);
             return;
         }
 
         let nextIndex;
+
         if (shuffle) {
-            nextIndex = Math.floor(Math.random() * q.length);
+            // Smart Shuffle Logic
+            const currentSong = q[idx];
+            // Candidates: not current, not in recent history (last 10)
+            const recentHistory = history.slice(-10);
+            const candidates = q.map((s, i) => ({ s, i })).filter(item => item.i !== idx && !recentHistory.includes(item.s.id));
+
+            if (candidates.length > 0) {
+                // Score candidates
+                const scored = candidates.map(item => {
+                    let score = Math.random(); // Base randomness
+                    if (item.s.artist === currentSong.artist) score += 0.3;
+                    if (item.s.genre === currentSong.genre) score += 0.2;
+                    if (likedSongs.has(item.s.id)) score += 0.2;
+                    return { ...item, score };
+                });
+                scored.sort((a, b) => b.score - a.score);
+                // Pick top 3 weighted random to avoid repetition loop
+                const top3 = scored.slice(0, 3);
+                nextIndex = top3[Math.floor(Math.random() * top3.length)].i;
+            } else {
+                // Fallback to pure random if all played recently
+                nextIndex = Math.floor(Math.random() * q.length);
+            }
         } else {
             nextIndex = idx + 1;
         }
@@ -272,36 +442,37 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             if (repeat === 'all') {
                 playTrackByIndex(0, q);
             } else {
-                setIsPlaying(false); // Stop
+                setIsPlaying(false);
+                setProgress(0);
             }
         } else {
             playTrackByIndex(nextIndex, q);
         }
     };
 
-    const playTrackByIndex = (index: number, list: Song[]) => {
-        if (!audioRef.current || !list[index]) return;
-
-        const song = list[index];
-        setCurrentIndex(index);
-        setCurrentSong(song);
-        setError(null);
-
-        audioRef.current.src = song.src;
-        audioRef.current.load();
-        safePlay();
+    // --- Public Actions ---
+    const play = () => {
+        if (soundRef.current) {
+            if (!isRemoteUpdate.current && socket) socket.emit('play', { room: 'global' });
+            if (Howler.ctx && Howler.ctx.state === 'suspended') {
+                Howler.ctx.resume();
+            }
+            soundRef.current.play();
+        } else if (queue.length > 0 && currentIndex >= 0) {
+            playTrackByIndex(currentIndex, queue);
+        }
     };
 
-    // --- Public Actions ---
-    const play = () => safePlay();
-    const pause = () => audioRef.current?.pause();
+    const pause = () => {
+        if (!isRemoteUpdate.current && socket) socket.emit('pause', { room: 'global' });
+        soundRef.current?.pause();
+    };
 
     const next = () => handleTrackEnd();
 
     const prev = () => {
-        if (!audioRef.current) return;
-        if (audioRef.current.currentTime > 3) {
-            audioRef.current.currentTime = 0;
+        if (soundRef.current && soundRef.current.seek() > 3) {
+            soundRef.current.seek(0);
             return;
         }
         let prevIndex = isShuffling
@@ -313,15 +484,16 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const seek = (time: number) => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = time;
+        if (soundRef.current) {
+            if (!isRemoteUpdate.current && socket) socket.emit('seek', { room: 'global', time });
+            soundRef.current.seek(time);
             setProgress(time);
         }
     };
 
     const setVolume = (vol: number) => {
         setVolumeState(vol);
-        if (audioRef.current) audioRef.current.volume = vol;
+        Howler.volume(vol); // Global volume
     };
 
     const toggleShuffle = () => setIsShuffling(!isShuffling);
@@ -332,7 +504,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
 
     const playTrack = (song: Song) => {
-        const newQueue = [song]; // Simple play for now, or smarter context
+        const newQueue = [song];
         setQueue(newQueue);
         playTrackByIndex(0, newQueue);
     };
@@ -403,6 +575,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         <MusicContext.Provider value={{
             currentSong, isPlaying, queue, currentIndex, volume, progress, duration, isShuffling, repeatMode, error, likedSongs,
             library, albums, playlists, isScanning, lastScanTime,
+            analyser: analyserNode, equalizer, setEqualizer,
             play, pause, next, prev, seek, setVolume, toggleShuffle, toggleRepeat, playTrack, playPlaylist, playAlbum,
             toggleLike, addToQueue, clearError, refreshLibrary, connectLocalLibrary,
             createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById

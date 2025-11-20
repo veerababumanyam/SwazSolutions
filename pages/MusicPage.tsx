@@ -2,11 +2,12 @@
 import React, { useState, useMemo } from 'react';
 import { MusicSidebar, ViewType } from '../components/MusicSidebar';
 import { MusicPlayer } from '../components/MusicPlayer';
+import { LyricsDisplay } from '../components/LyricsDisplay';
 import { useMusic } from '../contexts/MusicContext';
-import { 
-    Menu, Music, Play, Pause, Heart, MoreHorizontal, 
+import {
+    Menu, Music, Play, Pause, Heart, MoreHorizontal,
     PlusCircle, Radio, Disc, ChevronDown, ChevronUp, Trash2,
-    Folder, ListMusic, RefreshCw, Library, Clock
+    Folder, ListMusic, RefreshCw, Library, Clock, Mic2
 } from 'lucide-react';
 import { Song } from '../types';
 
@@ -22,15 +23,15 @@ export const MusicPage: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [currentView, setCurrentView] = useState<ViewType>({ type: 'all' });
     const [searchQuery, setSearchQuery] = useState('');
-    
-    const { 
+
+    const {
         currentSong, isPlaying, playTrack, playPlaylist, playAlbum,
         likedSongs, toggleLike, playlists, library, albums, isScanning,
         addToQueue, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist
     } = useMusic();
 
     // Context Menu State for Songs
-    const [songMenu, setSongMenu] = useState<{id: string, x: number, y: number} | null>(null);
+    const [songMenu, setSongMenu] = useState<{ id: string, x: number, y: number } | null>(null);
     const [addToPlaylistMode, setAddToPlaylistMode] = useState<string | null>(null); // Song ID being added
 
     // --- Data Filtering ---
@@ -39,26 +40,26 @@ export const MusicPage: React.FC = () => {
             return { title: 'All Songs', subtitle: 'Library', icon: Music, songs: library };
         }
         if (currentView.type === 'favorites') {
-            return { 
-                title: 'Liked Songs', 
+            return {
+                title: 'Liked Songs',
                 subtitle: 'Your Collection',
-                icon: Heart, 
-                songs: library.filter(s => likedSongs.has(s.id)) 
+                icon: Heart,
+                songs: library.filter(s => likedSongs.has(s.id))
             };
         }
         if (currentView.type === 'playlist') {
             const playlist = playlists.find(p => p.id === currentView.id);
             if (!playlist) return { title: 'Playlist Not Found', icon: Disc, songs: [] };
-            
+
             // Resolve IDs to Songs using getSongById equivalent logic
             const songs = playlist.trackIds
                 .map(id => library.find(s => s.id === id))
                 .filter((s): s is Song => !!s);
-                
-            return { 
-                title: playlist.name, 
+
+            return {
+                title: playlist.name,
                 subtitle: 'Playlist',
-                icon: Disc, 
+                icon: Disc,
                 songs,
                 isPlaylist: true,
                 playlistId: playlist.id
@@ -78,7 +79,10 @@ export const MusicPage: React.FC = () => {
             };
         }
         if (currentView.type === 'albums') {
-             return { title: 'Albums', subtitle: 'Library', icon: Disc, songs: [] };
+            return { title: 'Albums', subtitle: 'Library', icon: Disc, songs: [] };
+        }
+        if (currentView.type === 'lyrics') {
+            return { title: 'Lyrics', subtitle: 'Now Playing', icon: Mic2, songs: [] };
         }
         return { title: 'Now Playing', icon: Radio, songs: [] };
     };
@@ -88,7 +92,7 @@ export const MusicPage: React.FC = () => {
     // Filter by Search
     const displayedSongs = useMemo(() => {
         if (!viewData.songs) return [];
-        return viewData.songs.filter(s => 
+        return viewData.songs.filter(s =>
             s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.album.toLowerCase().includes(searchQuery.toLowerCase())
@@ -101,15 +105,15 @@ export const MusicPage: React.FC = () => {
         const isLiked = likedSongs.has(song.id);
 
         return (
-            <div 
-                key={`${song.id}-${index}`} 
+            <div
+                key={`${song.id}-${index}`}
                 className={`group flex items-center gap-3 p-2 rounded-xl transition-all border border-transparent ${isCurrent ? 'bg-accent/5 border-accent/10' : 'hover:bg-surface border-b-border/50 hover:border-transparent'}`}
             >
                 {/* Number / Play Btn */}
                 <div className="w-8 text-center text-xs font-bold text-muted group-hover:hidden">
                     {index + 1}
                 </div>
-                <button 
+                <button
                     onClick={() => {
                         if (playlistId) playPlaylist(playlistId, index);
                         else if ((viewData as any).isAlbum) playAlbum((viewData as any).albumId, index);
@@ -154,19 +158,19 @@ export const MusicPage: React.FC = () => {
                     <button onClick={() => toggleLike(song.id)} className={`p-2 rounded-full hover:bg-background ${isLiked ? 'text-accent' : 'text-secondary'}`}>
                         <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
                     </button>
-                    
+
                     {/* Playlist Specific Actions */}
                     {playlistId && (
                         <>
                             <div className="flex flex-col">
-                                <button 
+                                <button
                                     disabled={index === 0}
                                     onClick={() => moveSongInPlaylist(playlistId, index, 'up')}
                                     className="p-1 hover:text-accent disabled:opacity-30"
                                 >
                                     <ChevronUp className="w-3 h-3" />
                                 </button>
-                                <button 
+                                <button
                                     disabled={index === displayedSongs.length - 1}
                                     onClick={() => moveSongInPlaylist(playlistId, index, 'down')}
                                     className="p-1 hover:text-accent disabled:opacity-30"
@@ -174,17 +178,17 @@ export const MusicPage: React.FC = () => {
                                     <ChevronDown className="w-3 h-3" />
                                 </button>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => removeSongFromPlaylist(playlistId, song.id)}
-                                className="p-2 hover:text-red-500 hover:bg-red-50 rounded-full" 
+                                className="p-2 hover:text-red-500 hover:bg-red-50 rounded-full"
                                 title="Remove from Playlist"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>
                         </>
                     )}
-                    
-                    <button 
+
+                    <button
                         onClick={(e) => {
                             e.stopPropagation();
                             const rect = e.currentTarget.getBoundingClientRect();
@@ -202,19 +206,19 @@ export const MusicPage: React.FC = () => {
 
     return (
         <div className="h-[calc(100vh-80px)] bg-background flex flex-col lg:flex-row relative overflow-hidden">
-            
-            <MusicSidebar 
-                isOpen={isSidebarOpen} 
-                setIsOpen={setIsSidebarOpen} 
-                currentView={currentView} 
-                onNavigate={(v) => { setCurrentView(v); setSearchQuery(''); }} 
+
+            <MusicSidebar
+                isOpen={isSidebarOpen}
+                setIsOpen={setIsSidebarOpen}
+                currentView={currentView}
+                onNavigate={(v) => { setCurrentView(v); setSearchQuery(''); }}
             />
 
             <main className="flex-1 flex flex-col relative pb-24 overflow-hidden">
-                
+
                 {/* Mobile Toggle FAB */}
                 {!isSidebarOpen && (
-                    <button 
+                    <button
                         onClick={() => setIsSidebarOpen(true)}
                         className="lg:hidden fixed bottom-24 right-6 z-30 p-4 bg-accent text-white rounded-full shadow-xl hover:scale-110 transition-transform shadow-accent/30 flex items-center justify-center"
                         aria-label="Open Library"
@@ -238,7 +242,7 @@ export const MusicPage: React.FC = () => {
                                     <viewData.icon className="w-8 h-8 md:w-12 md:h-12" />
                                 )}
                             </div>
-                            
+
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <h4 className="font-bold text-accent uppercase text-xs tracking-wider mb-1">
@@ -262,10 +266,10 @@ export const MusicPage: React.FC = () => {
                         {/* Controls */}
                         <div className="flex flex-wrap items-center gap-3">
                             {displayedSongs.length > 0 && currentView.type !== 'albums' && (
-                                <button 
+                                <button
                                     onClick={() => {
-                                        if(currentView.type === 'playlist') playPlaylist(currentView.id);
-                                        else if(currentView.type === 'album-detail') playAlbum(currentView.id);
+                                        if (currentView.type === 'playlist') playPlaylist(currentView.id);
+                                        else if (currentView.type === 'album-detail') playAlbum(currentView.id);
                                         else playTrack(displayedSongs[0]);
                                     }}
                                     className="btn btn-primary px-8 py-3 rounded-full shadow-lg shadow-accent/30 hover:scale-105 transition-transform flex items-center gap-2"
@@ -279,7 +283,7 @@ export const MusicPage: React.FC = () => {
                     {/* Search Bar (Hidden in Album Detail for cleaner look, or keep it) */}
                     {currentView.type !== 'album-detail' && (
                         <div className="relative max-w-md">
-                            <input 
+                            <input
                                 type="text"
                                 placeholder={`Search in ${viewData.title}...`}
                                 value={searchQuery}
@@ -293,39 +297,39 @@ export const MusicPage: React.FC = () => {
 
                 {/* Content Area */}
                 <div className="flex-1 overflow-y-auto px-6 md:px-10 pb-20 scrollbar-thin">
-                    
+
                     {currentView.type === 'albums' ? (
                         // Album Grid View
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                             {albums
                                 .filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase()))
                                 .map((album) => (
-                                <div 
-                                    key={album.id} 
-                                    onClick={() => setCurrentView({ type: 'album-detail', id: album.id })}
-                                    className="group cursor-pointer"
-                                >
-                                    <div className="relative aspect-square mb-3 overflow-hidden rounded-2xl shadow-md border border-border bg-surface">
-                                        {album.cover ? (
-                                            <img src={album.cover} alt={album.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                                        ) : (
-                                            <div className="w-full h-full bg-gradient-to-br from-accent/10 to-accent-orange/10 flex items-center justify-center">
-                                                <Disc className="w-12 h-12 text-accent opacity-50" />
+                                    <div
+                                        key={album.id}
+                                        onClick={() => setCurrentView({ type: 'album-detail', id: album.id })}
+                                        className="group cursor-pointer"
+                                    >
+                                        <div className="relative aspect-square mb-3 overflow-hidden rounded-2xl shadow-md border border-border bg-surface">
+                                            {album.cover ? (
+                                                <img src={album.cover} alt={album.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                            ) : (
+                                                <div className="w-full h-full bg-gradient-to-br from-accent/10 to-accent-orange/10 flex items-center justify-center">
+                                                    <Disc className="w-12 h-12 text-accent opacity-50" />
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); playAlbum(album.id); }}
+                                                    className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-xl hover:scale-105 transition-transform"
+                                                >
+                                                    <Play className="w-6 h-6 fill-current ml-1" />
+                                                </button>
                                             </div>
-                                        )}
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <button 
-                                                onClick={(e) => { e.stopPropagation(); playAlbum(album.id); }}
-                                                className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center shadow-xl hover:scale-105 transition-transform"
-                                            >
-                                                <Play className="w-6 h-6 fill-current ml-1" />
-                                            </button>
                                         </div>
+                                        <h3 className="font-bold text-primary truncate">{album.title}</h3>
+                                        <p className="text-xs text-secondary">{album.trackCount} Tracks</p>
                                     </div>
-                                    <h3 className="font-bold text-primary truncate">{album.title}</h3>
-                                    <p className="text-xs text-secondary">{album.trackCount} Tracks</p>
-                                </div>
-                            ))}
+                                ))}
                             {albums.length === 0 && (
                                 <div className="col-span-full text-center py-20 opacity-50">
                                     <Folder className="w-12 h-12 mx-auto mb-4 text-muted" />
@@ -333,6 +337,8 @@ export const MusicPage: React.FC = () => {
                                 </div>
                             )}
                         </div>
+                    ) : currentView.type === 'lyrics' ? (
+                        <LyricsDisplay />
                     ) : (
                         // List View
                         <div className="space-y-1">
@@ -357,65 +363,67 @@ export const MusicPage: React.FC = () => {
                         </div>
                     )}
                 </div>
-            </main>
+            </main >
 
             {/* Song Context Menu */}
-            {songMenu && (
-                <>
-                    <div className="fixed inset-0 z-50" onClick={() => setSongMenu(null)} />
-                    <div 
-                        className="fixed z-[60] bg-surface border border-border shadow-xl rounded-xl p-1 min-w-[180px] animate-scale-in"
-                        style={{ top: songMenu.y, left: songMenu.x }}
-                    >
-                        {addToPlaylistMode ? (
-                            <>
-                                <div className="px-3 py-2 text-xs font-bold text-secondary uppercase border-b border-border mb-1">
-                                    Add to...
-                                </div>
-                                {playlists.map(p => (
-                                    <button 
-                                        key={p.id}
+            {
+                songMenu && (
+                    <>
+                        <div className="fixed inset-0 z-50" onClick={() => setSongMenu(null)} />
+                        <div
+                            className="fixed z-[60] bg-surface border border-border shadow-xl rounded-xl p-1 min-w-[180px] animate-scale-in"
+                            style={{ top: songMenu.y, left: songMenu.x }}
+                        >
+                            {addToPlaylistMode ? (
+                                <>
+                                    <div className="px-3 py-2 text-xs font-bold text-secondary uppercase border-b border-border mb-1">
+                                        Add to...
+                                    </div>
+                                    {playlists.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => {
+                                                addSongToPlaylist(p.id, addToPlaylistMode);
+                                                setSongMenu(null);
+                                            }}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg text-left"
+                                        >
+                                            <Folder className="w-4 h-4 text-accent" /> {p.name}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => setAddToPlaylistMode(null)}
+                                        className="w-full text-left px-3 py-2 text-xs text-secondary hover:text-primary mt-1"
+                                    >
+                                        ← Back
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button
                                         onClick={() => {
-                                            addSongToPlaylist(p.id, addToPlaylistMode);
+                                            const song = library.find(s => s.id === songMenu.id);
+                                            if (song) addToQueue(song);
                                             setSongMenu(null);
                                         }}
                                         className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg text-left"
                                     >
-                                        <Folder className="w-4 h-4 text-accent" /> {p.name}
+                                        <ListMusic className="w-4 h-4" /> Add to Queue
                                     </button>
-                                ))}
-                                <button 
-                                    onClick={() => setAddToPlaylistMode(null)}
-                                    className="w-full text-left px-3 py-2 text-xs text-secondary hover:text-primary mt-1"
-                                >
-                                    ← Back
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button 
-                                    onClick={() => {
-                                        const song = library.find(s => s.id === songMenu.id);
-                                        if (song) addToQueue(song);
-                                        setSongMenu(null);
-                                    }}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg text-left"
-                                >
-                                    <ListMusic className="w-4 h-4" /> Add to Queue
-                                </button>
-                                <button 
-                                    onClick={() => setAddToPlaylistMode(songMenu.id)}
-                                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg text-left"
-                                >
-                                    <PlusCircle className="w-4 h-4" /> Add to Playlist
-                                </button>
-                            </>
-                        )}
-                    </div>
-                </>
-            )}
+                                    <button
+                                        onClick={() => setAddToPlaylistMode(songMenu.id)}
+                                        className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-background rounded-lg text-left"
+                                    >
+                                        <PlusCircle className="w-4 h-4" /> Add to Playlist
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </>
+                )
+            }
 
             <MusicPlayer />
-        </div>
+        </div >
     );
 };

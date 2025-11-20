@@ -1,9 +1,9 @@
-
-import React, { useEffect, useRef } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Volume2, VolumeX, Heart, AlertCircle, ListMusic } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Volume2, VolumeX, Heart, AlertCircle, Sliders } from 'lucide-react';
 import { useMusic } from '../contexts/MusicContext';
+import { Equalizer } from './Equalizer';
 
-const Visualizer: React.FC<{ isPlaying: boolean }> = ({ isPlaying }) => {
+const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }> = ({ analyser, isPlaying }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -13,53 +13,59 @@ const Visualizer: React.FC<{ isPlaying: boolean }> = ({ isPlaying }) => {
         if (!ctx) return;
 
         let animationFrameId: number;
-        // Initialize bars with some variation
-        let bars = Array(32).fill(0).map((_, i) => Math.sin(i * 0.5) * 5 + 5);
+        const bufferLength = analyser ? analyser.frequencyBinCount : 32;
+        const dataArray = new Uint8Array(bufferLength);
 
-        const render = (time: number) => {
+        const render = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const width = canvas.width;
             const height = canvas.height;
-            const barWidth = (width / bars.length) - 2;
-            const color = getComputedStyle(document.documentElement).getPropertyValue('--color-accent-main').trim().replace('rgb(', '').replace(')', '');
 
-            bars = bars.map((h, i) => {
-                if (!isPlaying) return Math.max(2, h * 0.95); // Smooth decay when paused
+            if (analyser && isPlaying) {
+                analyser.getByteFrequencyData(dataArray);
+            } else {
+                // Smooth decay
+                for (let i = 0; i < dataArray.length; i++) {
+                    dataArray[i] = Math.max(0, dataArray[i] - 2);
+                }
+            }
 
-                // Simulate frequency data: combines sine waves with noise
-                // Use time to create moving wave patterns
-                const wave = Math.sin(time * 0.005 + i * 0.2) * 0.3 + 0.5;
-                const noise = Math.random() * 0.5;
-                const targetHeight = (wave + noise) * height * 0.8;
+            const bars = 40; // Render first 40 bins (bass/mids)
+            const barWidth = (width / bars) - 2;
+            let x = 0;
 
-                // Smooth transition to target
-                return h + (targetHeight - h) * 0.2;
-            });
+            // Get accent color from CSS variable or fallback
+            const style = getComputedStyle(document.documentElement);
+            const accentColor = style.getPropertyValue('--color-accent-main').trim() || '#ff4b4b';
 
-            bars.forEach((h, i) => {
-                const x = i * (barWidth + 2);
-                const y = (height - h) / 2; // Center vertically
+            for (let i = 0; i < bars; i++) {
+                const value = dataArray[i]; // Focus on lower frequencies
+                const barHeight = (value / 255) * height;
 
-                // Gradient fill
-                const gradient = ctx.createLinearGradient(0, y, 0, y + h);
-                // Convert space-separated RGB to comma-separated for rgba()
-                const rgbaColor = color.replace(/ /g, ', ');
-                gradient.addColorStop(0, `rgba(${rgbaColor}, 0.8)`);
-                gradient.addColorStop(1, `rgba(${rgbaColor}, 0.2)`);
+                if (barHeight > 0) {
+                    const gradient = ctx.createLinearGradient(0, height - barHeight, 0, height);
+                    gradient.addColorStop(0, accentColor);
+                    gradient.addColorStop(1, `${accentColor}33`); // 20% opacity
 
-                ctx.fillStyle = gradient;
-                // Rounded bars
-                ctx.beginPath();
-                ctx.roundRect(x, y, barWidth, h, 2);
-                ctx.fill();
-            });
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(x, height - barHeight, barWidth, barHeight, [2, 2, 0, 0]);
+                    } else {
+                        ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+                    }
+                    ctx.fill();
+                }
+
+                x += barWidth + 2;
+            }
 
             animationFrameId = requestAnimationFrame(render);
         };
 
-        animationFrameId = requestAnimationFrame(render);
+        render();
         return () => cancelAnimationFrame(animationFrameId);
-    }, [isPlaying]);
+    }, [analyser, isPlaying]);
 
     return <canvas ref={canvasRef} width={240} height={40} className="opacity-80" />;
 };
@@ -84,8 +90,11 @@ export const MusicPlayer: React.FC = () => {
         error,
         clearError,
         toggleLike,
-        likedSongs
+        likedSongs,
+        analyser
     } = useMusic();
+
+    const [isEqOpen, setIsEqOpen] = useState(false);
 
     const formatTime = (time: number) => {
         if (isNaN(time)) return "0:00";
@@ -106,19 +115,7 @@ export const MusicPlayer: React.FC = () => {
                 </div>
             )}
 
-            {/* Progress Bar */}
-            <div className="absolute -top-1 left-0 right-0 h-1 bg-background group cursor-pointer" onClick={(e) => {
-                const rect = e.currentTarget.getBoundingClientRect();
-                const percent = (e.clientX - rect.left) / rect.width;
-                seek(percent * duration);
-            }}>
-                <div
-                    className="h-full bg-accent transition-all duration-100 relative"
-                    style={{ width: `${(progress / duration) * 100}%` }}
-                >
-                    <div className="absolute right-0 -top-1.5 w-3 h-3 bg-accent rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-            </div>
+
 
             <div className="container mx-auto px-4 py-2 md:py-3">
                 <div className="flex items-center justify-between gap-4">
@@ -145,7 +142,7 @@ export const MusicPlayer: React.FC = () => {
                     </div>
 
                     {/* 2. Controls (Center) */}
-                    <div className="flex flex-col items-center gap-1 flex-[2]">
+                    <div className="flex flex-col items-center gap-2 flex-[2] max-w-md w-full">
                         <div className="flex items-center gap-4 md:gap-6">
                             <button
                                 onClick={toggleShuffle}
@@ -160,12 +157,12 @@ export const MusicPlayer: React.FC = () => {
 
                             <button
                                 onClick={isPlaying ? pause : play}
-                                className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-brand-gradient text-white flex items-center justify-center shadow-lg shadow-accent/20 hover:scale-105 transition-transform"
+                                className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-gradient text-white flex items-center justify-center shadow-lg shadow-accent/20 hover:scale-105 transition-transform"
                             >
                                 {isPlaying ? (
-                                    <Pause className="w-4 h-4 fill-current" />
+                                    <Pause className="w-5 h-5 fill-current" />
                                 ) : (
-                                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                                    <Play className="w-5 h-5 fill-current ml-0.5" />
                                 )}
                             </button>
 
@@ -182,20 +179,45 @@ export const MusicPlayer: React.FC = () => {
                             </button>
                         </div>
 
-                        {/* Desktop Progress Time */}
-                        <div className="hidden md:flex items-center justify-between w-full max-w-xs text-[10px] text-secondary font-medium">
-                            <span>{formatTime(progress)}</span>
-                            <span className="mx-2 opacity-50">/</span>
-                            <span>{formatTime(duration)}</span>
+                        {/* Scrubber Bar */}
+                        <div className="w-full flex items-center gap-3 px-4 md:px-0">
+                            <span className="text-[10px] font-medium text-secondary w-8 text-right">{formatTime(progress)}</span>
+                            <div
+                                className="flex-1 h-1.5 bg-secondary/20 rounded-full cursor-pointer relative group"
+                                onClick={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const percent = (e.clientX - rect.left) / rect.width;
+                                    seek(percent * duration);
+                                }}
+                            >
+                                <div
+                                    className="absolute top-0 left-0 h-full bg-accent rounded-full transition-all duration-100"
+                                    style={{ width: `${(progress / duration) * 100}%` }}
+                                />
+                                <div
+                                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ left: `${(progress / duration) * 100}%`, transform: 'translate(-50%, -50%)' }}
+                                />
+                            </div>
+                            <span className="text-[10px] font-medium text-secondary w-8">{formatTime(duration)}</span>
                         </div>
                     </div>
 
                     {/* 3. Volume & Visualizer (Right) */}
-                    <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
+                    <div className="flex items-center justify-end gap-2 flex-1 min-w-0 relative">
 
                         <div className="hidden lg:block mr-4">
-                            <Visualizer isPlaying={isPlaying} />
+                            <Visualizer analyser={analyser} isPlaying={isPlaying} />
                         </div>
+
+                        {/* EQ Toggle */}
+                        <button
+                            onClick={() => setIsEqOpen(!isEqOpen)}
+                            className={`p-2 rounded-full transition-all ${isEqOpen ? 'text-accent bg-accent/10' : 'text-secondary hover:text-primary'}`}
+                        >
+                            <Sliders className="w-4 h-4" />
+                        </button>
+                        <Equalizer isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
 
                         <div className="hidden md:flex items-center gap-2 group">
                             <button onClick={() => setVolume(volume > 0 ? 0 : 0.8)} className="text-secondary">
