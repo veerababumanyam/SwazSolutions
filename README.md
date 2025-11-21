@@ -34,14 +34,26 @@ An advanced multi-agent AI system for lyric generation with integrated music str
 - **Album Art** - AI-generated cover art using Imagen 4.0
 - **Export Ready** - Suno.com formatted output with style prompts
 
-### 🎵 Music Player
+### 🎵 Music Player (Enhanced)
+- **Smart Shuffle** - Context-aware shuffling based on artist, genre, and listening history
+- **Audio Visualization** - Real-time frequency visualizer with smooth animations
+- **Advanced Equalizer** - 3-band EQ (Bass, Mid, Treble) with preamp control
+- **Mini Player** - Compact floating player for uninterrupted browsing
+- **Keyboard Shortcuts** - Full keyboard control support (Space, Arrows, M, L, etc.)
+- **Remote Control** - Socket.io based remote control for multi-device playback
+- **Recently Played** - History tracking with quick access to last 50 songs
 - **Multi-User Support** - User registration and authentication  
 - **Music Streaming** - Stream from local files (100-10,000+ users)
 - **Playlists** - Create and manage personal playlists  
 - **Search** - Find songs, albums, and artists  
-- **Play Tracking** - Track play counts and favorites  
 - **Auto-Discovery** - Automatic music folder scanning  
-- **Self-Contained** - No external dependencies  
+
+### 🎨 UI/UX Experience
+- **Glassmorphism Design** - Premium "Red & White" aesthetic with frosted glass effects
+- **Theme System** - Light/Dark mode with persistent user preferences
+- **Responsive Layout** - Mobile-first design adapting to all screen sizes
+- **Feedback System** - Integrated user feedback collection
+- **Toast Notifications** - Non-intrusive status updates
 
 ## Quick Start
 
@@ -442,7 +454,7 @@ Contributions are welcome! Please:
 ## Credits
 
 ### Technologies:
-- **Frontend:** React 18, TypeScript, Vite, TailwindCSS
+- **Frontend:** React 18, TypeScript, Vite, TailwindCSS + Custom Design System
 - **Backend:** Node.js, Express, SQLite
 - **AI:** Google Gemini API (Flash & Pro), Imagen 4.0
 - **Icons:** Lucide React
