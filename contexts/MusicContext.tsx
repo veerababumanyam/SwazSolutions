@@ -38,8 +38,17 @@ interface MusicContextType {
     prev: () => void;
     seek: (time: number) => void;
     setVolume: (vol: number) => void;
-    toggleShuffle: () => void;
-    toggleRepeat: () => void;
+    // Theme
+    theme: 'light' | 'dark';
+    toggleTheme: () => void;
+
+    // Recently Played
+    recentlyPlayed: Array<{ songId: string; playedAt: number }>;
+
+    // Search History  
+    searchHistory: string[];
+    addSearchQuery: (query: string) => void;
+    clearSearchHistory: () => void;
     playTrack: (song: Song) => void;
     playPlaylist: (playlistId: string, startIndex?: number) => void;
     playAlbum: (albumId: string, startIndex?: number) => void;
@@ -66,8 +75,12 @@ const MusicContext = createContext<MusicContextType | undefined>(undefined);
 const DEFAULT_EQ: EqualizerSettings = { bass: 0, mid: 0, treble: 0, preamp: 0 };
 
 export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    // Refs
     const soundRef = useRef<Howl | null>(null);
     const soundIdRef = useRef<number | null>(null);
+    const socketRef = useRef<Socket | null>(null);
+    const isSocketAction = useRef(false);
+    const sessionRestored = useRef(false); // Prevent double-restore
     const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
     const eqNodesRef = useRef<{ bass: BiquadFilterNode, mid: BiquadFilterNode, treble: BiquadFilterNode } | null>(null);
 
@@ -80,22 +93,71 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const [isPlaying, setIsPlaying] = useState(false);
     const [queue, setQueue] = useState<Song[]>([]);
     const [currentIndex, setCurrentIndex] = useState(-1);
-    const [volume, setVolumeState] = useState(0.8);
+    const [volume, setVolumeState] = useState(() => {
+        const saved = localStorage.getItem('swaz_volume');
+        return saved ? parseFloat(saved) : 0.8;
+    });
     const [progress, setProgress] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [isShuffling, setIsShuffling] = useState(false);
-    const [repeatMode, setRepeatMode] = useState<RepeatMode>('off');
+    const [isShuffling, setIsShuffling] = useState(() => {
+        const saved = localStorage.getItem('swaz_shuffle');
+        return saved === 'true';
+    });
+    const [repeatMode, setRepeatMode] = useState<RepeatMode>(() => {
+        const saved = localStorage.getItem('swaz_repeat');
+        return (saved as RepeatMode) || 'off';
+    });
     const [error, setError] = useState<string | null>(null);
     const [equalizer, setEqualizerState] = useState<EqualizerSettings>(DEFAULT_EQ);
 
     const [library, setLibrary] = useState<Song[]>([]);
     const [albums, setAlbums] = useState<Album[]>([]);
-    const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
-    const [playlists, setPlaylists] = useState<Playlist[]>([]);
+    const [likedSongs, setLikedSongs] = useState<Set<string>>(() => {
+        const saved = localStorage.getItem('swaz_liked_songs');
+        try {
+            return saved ? new Set(JSON.parse(saved)) : new Set();
+        } catch {
+            return new Set();
+        }
+    });
+    const [playlists, setPlaylists] = useState<Playlist[]>(() => {
+        const saved = localStorage.getItem('swaz_playlists');
+        try {
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
     const [isScanning, setIsScanning] = useState(true);
 
     const [lastScanTime, setLastScanTime] = useState<number>(0);
     const [history, setHistory] = useState<string[]>([]); // Track played song IDs
+
+    // Theme
+    const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+        const saved = localStorage.getItem('swaz_theme');
+        return (saved as 'light' | 'dark') || 'light';
+    });
+
+    // Recently Played
+    const [recentlyPlayed, setRecentlyPlayed] = useState<Array<{ songId: string; playedAt: number }>>(() => {
+        const saved = localStorage.getItem('swaz_recently_played');
+        try {
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    // Search History
+    const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+        const saved = localStorage.getItem('swaz_search_history');
+        try {
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
+    });
 
     // --- Audio Node Setup (EQ & Analyser) ---
     const setupAudioNodes = () => {
@@ -193,8 +255,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 album: s.album || 'Unknown Album',
                 duration: s.duration || 0,
                 // Use backend-provided cover_path with fallback to placeholder
-                cover: s.cover_path ? `${baseUrl}${s.cover_path}` : '/placeholder-album.png',
-                src: `${baseUrl}${s.file_path}`,
+                cover: s.cover_path ? `${baseUrl}${s.cover_path} ` : '/placeholder-album.png',
+                src: `${baseUrl}${s.file_path} `,
                 genre: s.genre,
             }));
 
@@ -234,20 +296,90 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // --- Initialization ---
     useEffect(() => {
-        refreshLibrary();
-        const storedPlaylists = localStorage.getItem('swaz_playlists');
-        if (storedPlaylists) setPlaylists(JSON.parse(storedPlaylists));
-        const storedLikes = localStorage.getItem('swaz_liked_songs');
-        if (storedLikes) setLikedSongs(new Set(JSON.parse(storedLikes)));
+        const initialize = async () => {
+            await refreshLibrary();
+            // Setup Audio Nodes
+            setupAudioNodes();
+            // Session restore now happens in separate useEffect when library loads
+        };
 
-        // Setup Audio Nodes on first user interaction or load
-        // Howler initializes ctx automatically, but we need to hook into it.
-        // We'll try to setup immediately, but might need to wait for unlock.
-        setupAudioNodes();
+        initialize();
 
         const pollInterval = setInterval(refreshLibrary, 60000);
         return () => clearInterval(pollInterval);
     }, []);
+
+    // Event-based session restore - triggers when library loads
+    useEffect(() => {
+        if (library.length > 0 && !sessionRestored.current) {
+            console.log('Library loaded, restoring session...');
+            restoreSession();
+            sessionRestored.current = true;
+        }
+    }, [library]);
+
+    // --- Session Restoration ---
+    const restoreSession = () => {
+        try {
+            const sessionData = localStorage.getItem('swaz_music_session');
+            if (!sessionData) return;
+
+            const session = JSON.parse(sessionData);
+
+            // Restore queue from IDs
+            if (session.queueIds && session.queueIds.length > 0) {
+                const restoredQueue = session.queueIds
+                    .map((id: string) => library.find(s => s.id === id))
+                    .filter((s): s is Song => !!s);
+
+                if (restoredQueue.length > 0) {
+                    setQueue(restoredQueue);
+
+                    // Restore current song and position
+                    const validIndex = Math.min(session.currentIndex || 0, restoredQueue.length - 1);
+                    setCurrentIndex(validIndex);
+                    setCurrentSong(restoredQueue[validIndex]);
+
+                    // Create the sound but don't auto-play
+                    const song = restoredQueue[validIndex];
+                    const sound = new Howl({
+                        src: [song.src],
+                        html5: true,
+                        volume: session.volume || 0.8,
+                        onload: () => {
+                            // Seek to saved position once loaded
+                            if (session.progress && session.progress > 0) {
+                                sound.seek(session.progress);
+                                setProgress(session.progress);
+                            }
+                            setDuration(sound.duration());
+                        },
+                        onloaderror: (_id, err) => {
+                            console.error('Session restore load error:', err);
+                        }
+                    });
+
+                    soundRef.current = sound;
+
+                    console.log('✅ Session restored:', {
+                        song: song.title,
+                        position: session.progress,
+                        queueLength: restoredQueue.length
+                    });
+                }
+            }
+
+            // Restore playback settings
+            if (session.volume !== undefined) setVolumeState(session.volume);
+            if (session.isShuffling !== undefined) setIsShuffling(session.isShuffling);
+            if (session.repeatMode !== undefined) setRepeatMode(session.repeatMode);
+
+        } catch (error) {
+            console.error('Failed to restore session:', error);
+            // Clear corrupted session data
+            localStorage.removeItem('swaz_music_session');
+        }
+    };
 
     // --- Socket.io Connection ---
     useEffect(() => {
@@ -304,6 +436,80 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     useEffect(() => {
         localStorage.setItem('swaz_liked_songs', JSON.stringify(Array.from(likedSongs)));
     }, [likedSongs]);
+
+    // --- Session Persistence: Save state on every change ---
+    useEffect(() => {
+        if (!currentSong) return; // Don't save empty session
+
+        const session = {
+            currentSongId: currentSong.id,
+            progress: progress,
+            queueIds: queue.map(s => s.id),
+            currentIndex,
+            volume,
+            isShuffling,
+            repeatMode,
+            // Don't save isPlaying - user must manually resume
+        };
+        localStorage.setItem('swaz_music_session', JSON.stringify(session));
+    }, [currentSong, progress, queue, currentIndex, volume, isShuffling, repeatMode]);
+
+    // --- Persist Individual Settings ---
+    useEffect(() => {
+        localStorage.setItem('swaz_volume', volume.toString());
+    }, [volume]);
+
+    useEffect(() => {
+        localStorage.setItem('swaz_shuffle', isShuffling.toString());
+    }, [isShuffling]);
+
+    useEffect(() => {
+        localStorage.setItem('swaz_repeat', repeatMode);
+    }, [repeatMode]);
+
+    // Theme persistence
+    useEffect(() => {
+        localStorage.setItem('swaz_theme', theme);
+        document.documentElement.setAttribute('data-theme', theme);
+    }, [theme]);
+
+    const toggleTheme = () => {
+        setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    };
+
+    // Persist recently played
+    useEffect(() => {
+        localStorage.setItem('swaz_recently_played', JSON.stringify(recentlyPlayed));
+    }, [recentlyPlayed]);
+
+    // Persist search history
+    useEffect(() => {
+        localStorage.setItem('swaz_search_history', JSON.stringify(searchHistory));
+    }, [searchHistory]);
+
+    // Track song when it starts playing
+    useEffect(() => {
+        if (currentSong && isPlaying) {
+            const entry = { songId: currentSong.id, playedAt: Date.now() };
+            setRecentlyPlayed(prev => {
+                // Remove duplicates and keep last 50
+                const filtered = prev.filter(item => item.songId !== currentSong.id);
+                return [entry, ...filtered].slice(0, 50);
+            });
+        }
+    }, [currentSong?.id, isPlaying]);
+
+    const addSearchQuery = (query: string) => {
+        if (!query.trim()) return;
+        setSearchHistory(prev => {
+            const filtered = prev.filter(q => q !== query);
+            return [query, ...filtered].slice(0, 10); // Keep last 10
+        });
+    };
+
+    const clearSearchHistory = () => {
+        setSearchHistory([]);
+    };
 
     // --- Playback Logic ---
 
@@ -593,6 +799,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             currentSong, isPlaying, queue, currentIndex, volume, progress, duration, isShuffling, repeatMode, error, likedSongs,
             library, albums, playlists, isScanning, lastScanTime,
             analyser: analyserNode, equalizer, setEqualizer,
+            theme, toggleTheme,
+            recentlyPlayed, searchHistory, addSearchQuery, clearSearchHistory,
             play, pause, next, prev, seek, setVolume, toggleShuffle, toggleRepeat, playTrack, playPlaylist, playAlbum,
             toggleLike, addToQueue, clearError, refreshLibrary, connectLocalLibrary,
             createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById,

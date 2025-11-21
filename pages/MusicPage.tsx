@@ -1,13 +1,17 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { MusicSidebar, ViewType } from '../components/MusicSidebar';
 import { MusicPlayer } from '../components/MusicPlayer';
 import { LyricsDisplay } from '../components/LyricsDisplay';
+import { RecentlyPlayedView } from '../components/RecentlyPlayedView';
+import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
+import { SearchHistoryDropdown } from '../components/SearchHistoryDropdown';
 import { useMusic } from '../contexts/MusicContext';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import {
     Menu, Music, Play, Pause, Heart, MoreHorizontal,
     PlusCircle, Radio, Disc, ChevronDown, ChevronUp, Trash2,
-    Folder, ListMusic, RefreshCw, Library, Clock, Mic2
+    Folder, ListMusic, RefreshCw, Library, Clock, Mic2, Search
 } from 'lucide-react';
 import { Song } from '../types';
 
@@ -47,6 +51,15 @@ export const MusicPage: React.FC = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [currentView, setCurrentView] = useState<ViewType>({ type: 'all' });
     const [searchQuery, setSearchQuery] = useState('');
+    const [showSearchHistory, setShowSearchHistory] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
+
+    // Listen for help toggle
+    useEffect(() => {
+        const handleToggleHelp = () => setShowHelp(prev => !prev);
+        window.addEventListener('toggle-help', handleToggleHelp);
+        return () => window.removeEventListener('toggle-help', handleToggleHelp);
+    }, []);
 
     const {
         currentSong, isPlaying, playTrack, playPlaylist, playAlbum,
@@ -59,10 +72,22 @@ export const MusicPage: React.FC = () => {
     const [songMenu, setSongMenu] = useState<{ id: string, x: number, y: number } | null>(null);
     const [addToPlaylistMode, setAddToPlaylistMode] = useState<string | null>(null); // Song ID being added
 
+    // Enable keyboard shortcuts
+    useKeyboardShortcuts();
+
     // --- Data Filtering ---
     const getViewData = (): ViewData => {
         if (currentView.type === 'all') {
             return { type: 'generic', title: 'All Songs', subtitle: 'Library', icon: Music, songs: library };
+        }
+        if (currentView.type === 'recently-played') {
+            return {
+                type: 'generic',
+                title: 'Recently Played',
+                subtitle: 'History',
+                icon: Clock,
+                songs: [] // Handled by component
+            };
         }
         if (currentView.type === 'favorites') {
             return {
@@ -325,15 +350,24 @@ export const MusicPage: React.FC = () => {
 
                     {/* Search Bar (Hidden in Album Detail for cleaner look, or keep it) */}
                     {currentView.type !== 'album-detail' && (
-                        <div className="relative max-w-md">
+                        <div className="relative w-full max-w-md">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-secondary" />
                             <input
                                 type="text"
-                                placeholder={`Search in ${viewData.title}...`}
+                                placeholder="Search songs, artists, albums..."
+                                className="w-full pl-10 pr-4 py-2 bg-background/50 border border-border rounded-full focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-surface border border-border rounded-xl pl-10 pr-4 py-2.5 focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+                                onFocus={() => setShowSearchHistory(true)}
+                                // Delay blur to allow clicking on dropdown items
+                                onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
                             />
-                            <viewData.icon className="absolute left-3 top-3 w-4 h-4 text-muted" />
+                            {showSearchHistory && !searchQuery && (
+                                <SearchHistoryDropdown
+                                    onSelect={(query) => setSearchQuery(query)}
+                                    onClose={() => setShowSearchHistory(false)}
+                                />
+                            )}
                         </div>
                     )}
                 </div>
@@ -387,6 +421,10 @@ export const MusicPage: React.FC = () => {
                         </div>
                     ) : currentView.type === 'lyrics' ? (
                         <LyricsDisplay />
+                    ) : currentView.type === 'recently-played' ? (
+                        <div className="p-6">
+                            <RecentlyPlayedView />
+                        </div>
                     ) : (
                         // List View
                         <div className="space-y-1">
@@ -472,6 +510,9 @@ export const MusicPage: React.FC = () => {
             }
 
             <MusicPlayer />
+
+            {/* Keyboard Shortcuts Help */}
+            <KeyboardShortcutsModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
         </div >
     );
 };

@@ -1,7 +1,33 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Sliders, X } from 'lucide-react';
 import { useMusic } from '../contexts/MusicContext';
+import { EqualizerSettings } from '../types';
+
+// Professional EQ Presets
+const EQ_PRESETS: Record<string, EqualizerSettings> = {
+    flat: { bass: 0, mid: 0, treble: 0, preamp: 0 },
+    rock: { bass: 4, mid: -2, treble: 3, preamp: 2 },
+    pop: { bass: -1, mid: 2, treble: 3, preamp: 1 },
+    jazz: { bass: 3, mid: 2, treble: 2, preamp: 0 },
+    classical: { bass: -2, mid: -1, treble: 3, preamp: 0 },
+    electronic: { bass: 5, mid: -1, treble: 4, preamp: 1 },
+    bassBoost: { bass: 8, mid: 0, treble: 2, preamp: 0 },
+    vocal: { bass: -2, mid: 4, treble: 2, preamp: 1 },
+    acoustic: { bass: 1, mid: 2, treble: 1, preamp: 0 }
+};
+
+const PRESET_LABELS: Record<string, string> = {
+    flat: 'Flat',
+    rock: 'Rock',
+    pop: 'Pop',
+    jazz: 'Jazz',
+    classical: 'Classical',
+    electronic: 'Electronic',
+    bassBoost: 'Bass Boost',
+    vocal: 'Vocal',
+    acoustic: 'Acoustic'
+};
 
 interface EqualizerProps {
     isOpen: boolean;
@@ -10,11 +36,18 @@ interface EqualizerProps {
 
 export const Equalizer: React.FC<EqualizerProps> = ({ isOpen, onClose }) => {
     const { equalizer, setEqualizer } = useMusic();
+    const [activePreset, setActivePreset] = useState<string>('flat');
 
     if (!isOpen) return null;
 
     const handleChange = (key: keyof typeof equalizer, value: number) => {
         setEqualizer({ ...equalizer, [key]: value });
+        setActivePreset('custom'); // User made manual change
+    };
+
+    const applyPreset = (presetKey: string) => {
+        setEqualizer(EQ_PRESETS[presetKey]);
+        setActivePreset(presetKey);
     };
 
     return (
@@ -27,6 +60,21 @@ export const Equalizer: React.FC<EqualizerProps> = ({ isOpen, onClose }) => {
                 <button onClick={onClose} className="p-1 hover:bg-background rounded-full text-secondary hover:text-primary">
                     <X className="w-4 h-4" />
                 </button>
+            </div>
+
+            {/* Preset Selector */}
+            <div className="mb-4">
+                <label className="text-xs font-medium text-secondary mb-2 block">Preset</label>
+                <select
+                    value={activePreset}
+                    onChange={(e) => applyPreset(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-primary font-medium focus:border-accent focus:ring-1 focus:ring-accent outline-none cursor-pointer hover:border-accent/50 transition-colors"
+                >
+                    {Object.entries(PRESET_LABELS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                    ))}
+                    <option value="custom">Custom</option>
+                </select>
             </div>
 
             <div className="space-y-6">

@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Volume2, VolumeX, Heart, AlertCircle, Sliders } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, Shuffle, Volume2, VolumeX, Heart, AlertCircle, Sliders, List, Minimize2, Maximize2 } from 'lucide-react';
 import { useMusic } from '../contexts/MusicContext';
-import { Equalizer } from './Equalizer';
+import { AdvancedEqualizer } from './AdvancedEqualizer';
+import { QueuePanel } from './QueuePanel';
+import { ThemeToggle } from './ThemeToggle';
+import { MiniPlayer } from './MiniPlayer';
 
 const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }> = ({ analyser, isPlaying }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -109,6 +112,15 @@ export const MusicPlayer: React.FC = () => {
     } = useMusic();
 
     const [isEqOpen, setIsEqOpen] = useState(false);
+    const [isQueueOpen, setIsQueueOpen] = useState(false);
+    const [showMiniPlayer, setShowMiniPlayer] = useState(false);
+
+    // Listen for keyboard shortcut events
+    useEffect(() => {
+        const handleToggleQueue = () => setIsQueueOpen(prev => !prev);
+        window.addEventListener('toggle-queue', handleToggleQueue);
+        return () => window.removeEventListener('toggle-queue', handleToggleQueue);
+    }, []);
 
     const formatTime = (time: number) => {
         if (isNaN(time)) return "0:00";
@@ -296,7 +308,6 @@ export const MusicPlayer: React.FC = () => {
                         >
                             <Sliders className="w-4 h-4" />
                         </button>
-                        <Equalizer isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
 
                         <div className="hidden md:flex items-center gap-2 group">
                             <button
@@ -321,9 +332,39 @@ export const MusicPlayer: React.FC = () => {
                                 aria-valuetext={`${Math.round(volume * 100)} percent`}
                             />
                         </div>
+
+                        {/* Theme Toggle */}
+                        <ThemeToggle />
+
+                        {/* Mini Player Toggle */}
+                        <button
+                            onClick={() => setShowMiniPlayer(true)}
+                            className="px-3 py-1.5 bg-background hover:bg-border rounded-lg text-sm text-primary hover:text-accent transition-colors flex items-center gap-2"
+                            title="Mini Player"
+                        >
+                            <Minimize2 className="w-4 h-4" />
+                        </button>
+
+                        {/* Queue Button */}
+                        <button
+                            onClick={() => setIsQueueOpen(true)}
+                            className="px-3 py-1.5 bg-background hover:bg-border rounded-lg text-sm text-primary hover:text-accent transition-colors flex items-center gap-2"
+                            title="Queue"
+                        >
+                            <List className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
             </div>
+
+            {/* Advanced Equalizer Panel */}
+            <AdvancedEqualizer isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
+
+            {/* Mini Player */}
+            <MiniPlayer isOpen={showMiniPlayer} onClose={() => setShowMiniPlayer(false)} />
+
+            {/* Queue Panel */}
+            <QueuePanel isOpen={isQueueOpen} onClose={() => setIsQueueOpen(false)} />
         </div>
     );
 };

@@ -13,7 +13,10 @@ export type ViewType =
     | { type: 'album-detail', id: string }
     | { type: 'playlist', id: string }
     | { type: 'now-playing' }
-    | { type: 'lyrics' };
+    | { type: 'playlist', id: string }
+    | { type: 'now-playing' }
+    | { type: 'lyrics' }
+    | { type: 'recently-played' };
 
 interface MusicSidebarProps {
     isOpen: boolean;
@@ -71,28 +74,18 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
     `;
 
-    const NavItem = ({ view, icon: Icon, label, count, depth = 0 }: { view: ViewType, icon: any, label: string, count?: number, depth?: number, key?: any }) => {
-        const isActive = currentView.type === view.type &&
+    const handleNavigate = (view: ViewType) => {
+        onNavigate(view);
+        if (window.innerWidth < 1024) setIsOpen(false);
+    };
+
+    const isViewActive = (view: ViewType) => {
+        return currentView.type === view.type &&
             (
                 (view.type === 'playlist' && currentView.type === 'playlist' && view.id === currentView.id) ||
                 (view.type === 'album-detail' && currentView.type === 'album-detail' && view.id === currentView.id) ||
                 (view.type !== 'playlist' && view.type !== 'album-detail')
             );
-
-        return (
-            <button
-                onClick={() => {
-                    onNavigate(view);
-                    if (window.innerWidth < 1024) setIsOpen(false);
-                }}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${isActive ? 'bg-accent/10 text-accent font-bold' : 'text-secondary hover:bg-background hover:text-primary'}`}
-                style={{ paddingLeft: `${depth * 1 + 0.75}rem` }}
-            >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'fill-current' : ''}`} />
-                <span className="flex-1 text-left truncate">{label}</span>
-                {count !== undefined && <span className="text-xs font-medium opacity-60">{count}</span>}
-            </button>
-        );
     };
 
     return (
@@ -180,9 +173,35 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                         {/* Main Library */}
                         <div className="space-y-1">
                             <h3 className="px-3 text-xs font-bold text-secondary uppercase tracking-wider mb-2">Collection</h3>
-                            <NavItem view={{ type: 'all' }} icon={Music} label="All Songs" />
-                            <NavItem view={{ type: 'favorites' }} icon={Heart} label="Liked Songs" />
-                            <NavItem view={{ type: 'lyrics' }} icon={Mic2} label="Lyrics" />
+                            <NavItem
+                                view={{ type: 'all' }}
+                                icon={Library}
+                                label="Library"
+                                isActive={isViewActive({ type: 'all' })}
+                                onClick={() => handleNavigate({ type: 'all' })}
+                            />
+                            <NavItem
+                                view={{ type: 'favorites' }}
+                                icon={Heart}
+                                label="Liked Songs"
+                                count={library.filter(s => s.liked).length}
+                                isActive={isViewActive({ type: 'favorites' })}
+                                onClick={() => handleNavigate({ type: 'favorites' })}
+                            />
+                            <NavItem
+                                view={{ type: 'recently-played' }}
+                                icon={Music}
+                                label="Recently Played"
+                                isActive={isViewActive({ type: 'recently-played' })}
+                                onClick={() => handleNavigate({ type: 'recently-played' })}
+                            />
+                            <NavItem
+                                view={{ type: 'lyrics' }}
+                                icon={Mic2}
+                                label="Lyrics"
+                                isActive={isViewActive({ type: 'lyrics' })}
+                                onClick={() => handleNavigate({ type: 'lyrics' })}
+                            />
                         </div>
 
                         {/* Albums (Folders) */}
@@ -195,7 +214,13 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                             </div>
 
                             <div className={`space-y-1 overflow-hidden transition-all duration-300 ${isAlbumsExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                <NavItem view={{ type: 'albums' }} icon={Disc} label="All Albums" />
+                                <NavItem
+                                    view={{ type: 'albums' }}
+                                    icon={Disc}
+                                    label="All Albums"
+                                    isActive={isViewActive({ type: 'albums' })}
+                                    onClick={() => handleNavigate({ type: 'albums' })}
+                                />
                                 {albums.length > 0 ? albums.map(album => (
                                     <NavItem
                                         key={album.id}
@@ -203,6 +228,8 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                                         icon={Folder}
                                         label={album.title}
                                         depth={1}
+                                        isActive={isViewActive({ type: 'album-detail', id: album.id })}
+                                        onClick={() => handleNavigate({ type: 'album-detail', id: album.id })}
                                     />
                                 )) : (
                                     <div className="px-6 py-2 text-xs text-muted italic">
@@ -255,6 +282,8 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                                                     icon={ListMusic}
                                                     label={playlist.name}
                                                     count={playlist.trackIds.length}
+                                                    isActive={isViewActive({ type: 'playlist', id: playlist.id })}
+                                                    onClick={() => handleNavigate({ type: 'playlist', id: playlist.id })}
                                                 />
                                                 <button
                                                     onClick={(e) => {
@@ -342,5 +371,29 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                 </div>
             )}
         </>
+    );
+};
+
+interface NavItemProps {
+    view: ViewType;
+    icon: any;
+    label: string;
+    count?: number;
+    depth?: number;
+    isActive: boolean;
+    onClick: () => void;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ view, icon: Icon, label, count, depth = 0, isActive, onClick }) => {
+    return (
+        <button
+            onClick={onClick}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 group ${isActive ? 'bg-accent/10 text-accent font-bold' : 'text-secondary hover:bg-background hover:text-primary'}`}
+            style={{ paddingLeft: `${depth * 1 + 0.75}rem` }}
+        >
+            <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'fill-current' : ''}`} />
+            <span className="flex-1 text-left truncate">{label}</span>
+            {count !== undefined && <span className="text-xs font-medium opacity-60">{count}</span>}
+        </button>
     );
 };
