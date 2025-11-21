@@ -92,7 +92,7 @@ export const AdvancedEqualizer: React.FC<AdvancedEqualizerProps> = ({ isOpen, on
         const treble = (eqSettings.band6k + eqSettings.band12k + eqSettings.band14k + eqSettings.band16k) / 4;
 
         setEqualizer({ bass, mid, treble, preamp: eqSettings.preamp });
-    }, [eqSettings, setEqualizer]);
+    }, [eqSettings]);
 
     if (!isOpen) return null;
 

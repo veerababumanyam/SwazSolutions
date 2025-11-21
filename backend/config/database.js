@@ -40,12 +40,31 @@ async function initializeDatabase() {
       artist TEXT,
       album TEXT,
       file_path TEXT UNIQUE NOT NULL,
+      cover_path TEXT,
       duration INTEGER,
       genre TEXT,
       play_count INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE INDEX IF NOT EXISTS idx_play_count ON songs(play_count DESC);
+  `);
+
+  // Migration: Add cover_path if it doesn't exist
+  try {
+    // Check if column exists
+    const result = db.exec("SELECT cover_path FROM songs LIMIT 1");
+  } catch (e) {
+    // Column doesn't exist, add it
+    try {
+      db.run("ALTER TABLE songs ADD COLUMN cover_path TEXT");
+      console.log('✅ Added cover_path column to songs table');
+    } catch (alterError) {
+      console.error('❌ Failed to add cover_path column:', alterError);
+    }
+  }
+  // Playlists and other tables
+  db.run(`
     -- Playlists table
     CREATE TABLE IF NOT EXISTS playlists (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

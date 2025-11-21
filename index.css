@@ -1,5 +1,7 @@
 /* CENTRAL STYLE GUIDE - ENHANCED */
-/* Using Tailwind via CDN - no need for @tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   /* Brand Palette - Red & Orange */

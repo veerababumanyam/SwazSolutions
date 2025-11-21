@@ -104,7 +104,9 @@ function createSongRoutes(db) {
                 // Example: /music/Album Name/song.mp3 -> Album Name
                 const filePath = song.file_path.replace('/music/', '');
                 const albumPath = path.join(musicDir, path.dirname(filePath));
-                const coverPath = findCoverImage(albumPath, musicDir);
+
+                // Use DB cover_path if available, otherwise try to find in folder
+                const coverPath = song.cover_path || findCoverImage(albumPath, musicDir);
 
                 return {
                     ...song,
@@ -169,59 +171,13 @@ function createSongRoutes(db) {
     router.post('/scan', async (req, res) => {
         try {
             const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
+            const { scanMusicDirectory } = require('../services/musicScanner');
 
-            if (!fs.existsSync(musicDir)) {
-                return res.status(404).json({ error: 'Music directory not found' });
-            }
-
-            let scannedCount = 0;
-            const errors = [];
-
-            function scanDirectory(dir, album = '') {
-                const items = fs.readdirSync(dir, { withFileTypes: true });
-
-                for (const item of items) {
-                    const fullPath = path.join(dir, item.name);
-
-                    if (item.isDirectory()) {
-                        // Treat subdirectories as albums
-                        scanDirectory(fullPath, item.name);
-                    } else if (item.isFile()) {
-                        const ext = path.extname(item.name).toLowerCase();
-                        if (['.mp3', '.wav', '.ogg', '.m4a', '.flac'].includes(ext)) {
-                            try {
-                                const relativePath = path.relative(musicDir, fullPath);
-                                const urlPath = '/music/' + relativePath.replace(/\\/g, '/');
-                                const title = path.basename(item.name, ext);
-
-                                // Insert or update song
-                                const stmt = db.prepare(`
-                  INSERT INTO songs (title, album, file_path, duration)
-                  VALUES (?, ?, ?, ?)
-                  ON CONFLICT(file_path) DO UPDATE SET
-                    title = excluded.title,
-                    album = excluded.album
-                `);
-
-                                stmt.run(title, album || 'Unknown Album', urlPath, 0);
-                                scannedCount++;
-                            } catch (error) {
-                                errors.push({ file: item.name, error: error.message });
-                            }
-                        }
-                    }
-                }
-            }
-
-            scanDirectory(musicDir);
-
-            const totalSongs = db.prepare('SELECT COUNT(*) as count FROM songs').get().count;
+            const result = await scanMusicDirectory(db, musicDir);
 
             res.json({
                 message: 'Scan complete',
-                scannedCount,
-                totalSongs,
-                errors: errors.length > 0 ? errors : undefined
+                ...result
             });
         } catch (error) {
             console.error('Scan error:', error);

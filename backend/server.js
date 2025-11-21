@@ -80,6 +80,14 @@ if (fs.existsSync(musicDir)) {
     console.warn(`⚠️  Music directory not found: ${musicDir}`);
 }
 
+// Serve cover art
+const coversDir = path.join(__dirname, '../data/covers');
+if (!fs.existsSync(coversDir)) {
+    fs.mkdirSync(coversDir, { recursive: true });
+}
+app.use('/covers', express.static(coversDir));
+console.log(`🖼️  Serving covers from: ${coversDir}`);
+
 // API Routes
 app.use('/api/auth', createAuthRoutes(db));
 app.use('/api/songs', createSongRoutes(db));
@@ -180,6 +188,54 @@ server.listen(PORT, '0.0.0.0', () => {
 
     console.log('🎯 Ready to serve music!');
     console.log('');
+
+    // Schedule music scan (every 12 hours) with safety boundaries and retry logic
+    const SCAN_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 5000; // 5 seconds between retries
+    const { scanMusicDirectory } = require('./services/musicScanner');
+
+    async function runSafeScan(retryCount = 0) {
+        console.log(`🔄 Starting scheduled music scan (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})...`);
+
+        try {
+            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../data/MusicFiles');
+
+            // Run the scan
+            const result = await scanMusicDirectory(db, musicDir);
+            console.log('✅ Scheduled scan complete:', result);
+
+        } catch (error) {
+            console.error(`❌ Scheduled scan failed (Attempt ${retryCount + 1}):`, error.message);
+
+            // Retry logic
+            if (retryCount < MAX_RETRIES) {
+                console.log(`⏳ Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
+                setTimeout(() => {
+                    // Use a separate try-catch for the retry execution to ensure it doesn't crash the main loop
+                    try {
+                        runSafeScan(retryCount + 1);
+                    } catch (retryError) {
+                        console.error('❌ Critical error during retry dispatch:', retryError);
+                    }
+                }, RETRY_DELAY_MS);
+            } else {
+                console.error('❌ Max retries reached. Giving up until next schedule.');
+            }
+        }
+    }
+
+    console.log('⏰ Scheduling music scan (Every 12 hours)...');
+
+    // Start the interval
+    setInterval(() => {
+        // Wrap in top-level try-catch to guarantee server stability
+        try {
+            runSafeScan();
+        } catch (criticalError) {
+            console.error('❌ Critical error initiating scheduled scan:', criticalError);
+        }
+    }, SCAN_INTERVAL_MS);
 });
 
 // Graceful shutdown

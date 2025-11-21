@@ -45,11 +45,13 @@ self.addEventListener('fetch', (event) => {
                     if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
                         return networkResponse;
                     }
+                    // Clone the response before using it
                     const responseToCache = networkResponse.clone();
+                    const responseToReturn = networkResponse.clone();
                     caches.open(CACHE_NAME).then((cache) => {
                         cache.put(event.request, responseToCache);
                     });
-                    return networkResponse;
+                    return responseToReturn;
                 });
             })
         );
@@ -66,10 +68,18 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
         caches.match(event.request).then((cachedResponse) => {
             const fetchPromise = fetch(event.request).then((networkResponse) => {
-                caches.open(CACHE_NAME).then((cache) => {
-                    cache.put(event.request, networkResponse.clone());
-                });
+                // Only cache valid responses
+                if (networkResponse && networkResponse.status === 200) {
+                    // Clone before caching
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseToCache);
+                    });
+                }
                 return networkResponse;
+            }).catch(() => {
+                // Return cached response if fetch fails
+                return cachedResponse;
             });
             return cachedResponse || fetchPromise;
         })

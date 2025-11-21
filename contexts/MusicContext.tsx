@@ -342,10 +342,28 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                     // Create the sound but don't auto-play
                     const song = restoredQueue[validIndex];
+                    
+                    // Validate the audio source
+                    if (!song.src || typeof song.src !== 'string') {
+                        console.warn('Invalid audio source in session, clearing session');
+                        localStorage.removeItem('swaz_music_session');
+                        return;
+                    }
+                    
+                    // Pre-check if the audio file is accessible (for local files)
+                    if (song.src.startsWith('http://localhost') || song.src.startsWith('/music/')) {
+                        // Test if the file is accessible before creating Howl
+                        fetch(song.src, { method: 'HEAD' }).catch(() => {
+                            console.warn('Session audio file not accessible, skipping restore');
+                            localStorage.removeItem('swaz_music_session');
+                        });
+                    }
+                    
                     const sound = new Howl({
                         src: [song.src],
                         html5: true,
-                        volume: session.volume || 0.8,
+                        volume: 0, // Start muted to prevent autoplay
+                        format: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'],
                         onload: () => {
                             // Seek to saved position once loaded
                             if (session.progress && session.progress > 0) {
@@ -353,9 +371,16 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                                 setProgress(session.progress);
                             }
                             setDuration(sound.duration());
+                            // Restore volume after successful load
+                            sound.volume(session.volume || 0.8);
                         },
                         onloaderror: (_id, err) => {
-                            console.error('Session restore load error:', err);
+                            console.warn('Session restore skipped - audio unavailable');
+                            // Clear invalid session to prevent repeated errors
+                            localStorage.removeItem('swaz_music_session');
+                            // Unload the failed sound
+                            sound.unload();
+                            soundRef.current = null;
                         }
                     });
 
