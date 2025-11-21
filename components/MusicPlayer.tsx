@@ -13,7 +13,8 @@ const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }
         if (!ctx) return;
 
         let animationFrameId: number;
-        const bufferLength = analyser ? analyser.frequencyBinCount : 32;
+        // Use a safe default if analyser is missing to prevent crashes, though it won't animate
+        const bufferLength = analyser ? analyser.frequencyBinCount : 128;
         const dataArray = new Uint8Array(bufferLength);
 
         const render = () => {
@@ -24,14 +25,15 @@ const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }
             if (analyser && isPlaying) {
                 analyser.getByteFrequencyData(dataArray);
             } else {
-                // Smooth decay
+                // Smooth decay to zero
                 for (let i = 0; i < dataArray.length; i++) {
-                    dataArray[i] = Math.max(0, dataArray[i] - 2);
+                    dataArray[i] = Math.max(0, dataArray[i] - 5);
                 }
             }
 
-            const bars = 40; // Render first 40 bins (bass/mids)
-            const barWidth = (width / bars) - 2;
+            // Render more bars for better detail
+            const bars = 60;
+            const barWidth = (width / bars) - 1;
             let x = 0;
 
             // Get accent color from CSS variable or fallback
@@ -39,7 +41,10 @@ const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }
             const accentColor = style.getPropertyValue('--color-accent-main').trim() || '#ff4b4b';
 
             for (let i = 0; i < bars; i++) {
-                const value = dataArray[i]; // Focus on lower frequencies
+                // Map bars to frequency range (focus on bass/mids)
+                const index = Math.floor(i * (bufferLength / (bars * 2)));
+                const value = dataArray[index] || 0;
+
                 const barHeight = (value / 255) * height;
 
                 if (barHeight > 0) {
@@ -57,7 +62,7 @@ const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }
                     ctx.fill();
                 }
 
-                x += barWidth + 2;
+                x += barWidth + 1;
             }
 
             animationFrameId = requestAnimationFrame(render);
@@ -67,7 +72,16 @@ const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }
         return () => cancelAnimationFrame(animationFrameId);
     }, [analyser, isPlaying]);
 
-    return <canvas ref={canvasRef} width={240} height={40} className="opacity-80" />;
+    return (
+        <canvas
+            ref={canvasRef}
+            width={300}
+            height={40}
+            className="opacity-90"
+            role="img"
+            aria-label="Audio visualizer showing frequency spectrum"
+        />
+    );
 };
 
 export const MusicPlayer: React.FC = () => {
@@ -103,19 +117,45 @@ export const MusicPlayer: React.FC = () => {
         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
     };
 
+    const handleProgressKeyDown = (e: React.KeyboardEvent) => {
+        switch (e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                seek(Math.max(0, progress - 5));
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                seek(Math.min(duration, progress + 5));
+                break;
+            case 'Home':
+                e.preventDefault();
+                seek(0);
+                break;
+            case 'End':
+                e.preventDefault();
+                seek(duration);
+                break;
+        }
+    };
+
     if (!currentSong) return null;
+
+    const remainingTime = duration - progress;
 
     return (
         <div className="fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-xl border-t border-border z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-all duration-300">
             {/* Error Notification */}
             {error && (
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-slide-up cursor-pointer" onClick={clearError}>
+                <div
+                    className="absolute -top-12 left-1/2 -translate-x-1/2 bg-red-500 text-white px-4 py-2 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-slide-up cursor-pointer"
+                    onClick={clearError}
+                    role="alert"
+                    aria-live="assertive"
+                >
                     <AlertCircle className="w-3 h-3" />
                     {error}
                 </div>
             )}
-
-
 
             <div className="container mx-auto px-4 py-2 md:py-3">
                 <div className="flex items-center justify-between gap-4">
@@ -124,8 +164,12 @@ export const MusicPlayer: React.FC = () => {
                     <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
                         <div className="relative group flex-shrink-0">
                             <img
-                                src={currentSong.cover || "https://via.placeholder.com/150"}
-                                alt={currentSong.title}
+                                src={currentSong.cover || "/placeholder-album.png"}
+                                onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = "/placeholder-album.png";
+                                }}
+                                alt={`Album cover for ${currentSong.title}`}
                                 className={`w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover shadow-sm border border-border ${isPlaying ? 'animate-pulse' : ''}`}
                             />
                         </div>
@@ -136,6 +180,8 @@ export const MusicPlayer: React.FC = () => {
                         <button
                             onClick={() => toggleLike(currentSong.id)}
                             className={`p-2 rounded-full hover:bg-background transition-colors ${likedSongs.has(currentSong.id) ? 'text-accent' : 'text-muted'}`}
+                            aria-label={likedSongs.has(currentSong.id) ? `Unlike ${currentSong.title}` : `Like ${currentSong.title}`}
+                            aria-pressed={likedSongs.has(currentSong.id)}
                         >
                             <Heart className={`w-4 h-4 ${likedSongs.has(currentSong.id) ? 'fill-current' : ''}`} />
                         </button>
@@ -147,17 +193,24 @@ export const MusicPlayer: React.FC = () => {
                             <button
                                 onClick={toggleShuffle}
                                 className={`hidden md:block p-2 rounded-full transition-all ${isShuffling ? 'text-accent bg-accent/10' : 'text-secondary hover:text-primary hover:bg-background'}`}
+                                aria-label={isShuffling ? "Disable shuffle" : "Enable shuffle"}
+                                aria-pressed={isShuffling}
                             >
                                 <Shuffle className="w-4 h-4" />
                             </button>
 
-                            <button onClick={prev} className="p-2 text-primary hover:text-accent transition-colors">
+                            <button
+                                onClick={prev}
+                                className="p-2 text-primary hover:text-accent transition-colors"
+                                aria-label="Previous track"
+                            >
                                 <SkipBack className="w-5 h-5 fill-current" />
                             </button>
 
                             <button
                                 onClick={isPlaying ? pause : play}
                                 className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-brand-gradient text-white flex items-center justify-center shadow-lg shadow-accent/20 hover:scale-105 transition-transform"
+                                aria-label={isPlaying ? "Pause" : "Play"}
                             >
                                 {isPlaying ? (
                                     <Pause className="w-5 h-5 fill-current" />
@@ -166,13 +219,19 @@ export const MusicPlayer: React.FC = () => {
                                 )}
                             </button>
 
-                            <button onClick={next} className="p-2 text-primary hover:text-accent transition-colors">
+                            <button
+                                onClick={next}
+                                className="p-2 text-primary hover:text-accent transition-colors"
+                                aria-label="Next track"
+                            >
                                 <SkipForward className="w-5 h-5 fill-current" />
                             </button>
 
                             <button
                                 onClick={toggleRepeat}
                                 className={`hidden md:block p-2 rounded-full transition-all relative ${repeatMode !== 'off' ? 'text-accent bg-accent/10' : 'text-secondary hover:text-primary hover:bg-background'}`}
+                                aria-label={`Repeat mode: ${repeatMode === 'off' ? 'off' : repeatMode === 'all' ? 'all songs' : 'one song'}`}
+                                aria-pressed={repeatMode !== 'off'}
                             >
                                 <Repeat className="w-4 h-4" />
                                 {repeatMode === 'one' && <span className="absolute top-1 right-1 text-[8px] font-bold leading-none">1</span>}
@@ -181,25 +240,43 @@ export const MusicPlayer: React.FC = () => {
 
                         {/* Scrubber Bar */}
                         <div className="w-full flex items-center gap-3 px-4 md:px-0">
-                            <span className="text-[10px] font-medium text-secondary w-8 text-right">{formatTime(progress)}</span>
+                            <span
+                                className="text-xs font-semibold text-primary w-10 text-right tabular-nums"
+                                aria-label={`Current time: ${formatTime(progress)}`}
+                            >
+                                {formatTime(progress)}
+                            </span>
                             <div
-                                className="flex-1 h-1.5 bg-secondary/20 rounded-full cursor-pointer relative group"
+                                role="slider"
+                                aria-label="Seek position"
+                                aria-valuemin={0}
+                                aria-valuemax={Math.floor(duration)}
+                                aria-valuenow={Math.floor(progress)}
+                                aria-valuetext={`${formatTime(progress)} of ${formatTime(duration)}`}
+                                tabIndex={0}
+                                className="flex-1 h-1.5 bg-secondary/30 rounded-full cursor-pointer relative group focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
                                 onClick={(e) => {
                                     const rect = e.currentTarget.getBoundingClientRect();
                                     const percent = (e.clientX - rect.left) / rect.width;
                                     seek(percent * duration);
                                 }}
+                                onKeyDown={handleProgressKeyDown}
                             >
                                 <div
                                     className="absolute top-0 left-0 h-full bg-accent rounded-full transition-all duration-100"
                                     style={{ width: `${(progress / duration) * 100}%` }}
                                 />
                                 <div
-                                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                                    className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity"
                                     style={{ left: `${(progress / duration) * 100}%`, transform: 'translate(-50%, -50%)' }}
                                 />
                             </div>
-                            <span className="text-[10px] font-medium text-secondary w-8">{formatTime(duration)}</span>
+                            <span
+                                className="text-xs font-semibold text-primary w-12 tabular-nums"
+                                aria-label={`Time remaining: ${formatTime(remainingTime)}`}
+                            >
+                                -{formatTime(remainingTime)}
+                            </span>
                         </div>
                     </div>
 
@@ -214,19 +291,34 @@ export const MusicPlayer: React.FC = () => {
                         <button
                             onClick={() => setIsEqOpen(!isEqOpen)}
                             className={`p-2 rounded-full transition-all ${isEqOpen ? 'text-accent bg-accent/10' : 'text-secondary hover:text-primary'}`}
+                            aria-label={isEqOpen ? "Close equalizer" : "Open equalizer"}
+                            aria-pressed={isEqOpen}
                         >
                             <Sliders className="w-4 h-4" />
                         </button>
                         <Equalizer isOpen={isEqOpen} onClose={() => setIsEqOpen(false)} />
 
                         <div className="hidden md:flex items-center gap-2 group">
-                            <button onClick={() => setVolume(volume > 0 ? 0 : 0.8)} className="text-secondary">
+                            <button
+                                onClick={() => setVolume(volume > 0 ? 0 : 0.8)}
+                                className="text-secondary"
+                                aria-label={volume === 0 ? "Unmute" : "Mute"}
+                            >
                                 {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                             </button>
                             <input
-                                type="range" min="0" max="1" step="0.01" value={volume}
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.01"
+                                value={volume}
                                 onChange={(e) => setVolume(parseFloat(e.target.value))}
                                 className="w-16 h-1 bg-border rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2 [&::-webkit-slider-thumb]:h-2 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-secondary"
+                                aria-label="Volume"
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                                aria-valuenow={Math.round(volume * 100)}
+                                aria-valuetext={`${Math.round(volume * 100)} percent`}
                             />
                         </div>
                     </div>

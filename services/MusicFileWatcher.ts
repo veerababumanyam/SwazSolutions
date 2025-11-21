@@ -26,6 +26,44 @@ export class MusicFileWatcher {
     private static onUpdateCallback: ((result: ScanResult) => void) | null = null;
 
     /**
+     * Helper: Find cover image in a list of files or URLs
+     */
+    private static findCover(folderPath: string, coverFiles: Record<string, string>): string {
+        // Priority: cover.* > folder.* > album.* > first image in folder
+        const priorityNames = ['cover', 'folder', 'album'];
+
+        for (const name of priorityNames) {
+            for (const [path, url] of Object.entries(coverFiles)) {
+                if (path.includes(folderPath) && path.toLowerCase().includes(name)) {
+                    return url;
+                }
+            }
+        }
+
+        // Fallback: any image in the same folder
+        for (const [path, url] of Object.entries(coverFiles)) {
+            if (path.includes(folderPath)) return url;
+        }
+
+        return '';
+    }
+
+    /**
+     * Helper: Parse song metadata from filename
+     */
+    private static parseSongMetadata(fileName: string, folderPath: string): { title: string; album: string } {
+        const parts = folderPath.split('/');
+        const album = parts.length > 0 ? parts[parts.length - 1] : 'Singles';
+
+        const title = fileName
+            .replace(/\.(mp3|wav|ogg|m4a)$/i, '')
+            .replace(/^[\d\s\-_.]+/, '') // Remove track numbers
+            .trim();
+
+        return { title: title || fileName, album };
+    }
+
+    /**
      * Scan using Vite's import.meta.glob (build-time discovery)
      */
     static async viteGlobScan(): Promise<ScanResult> {
@@ -58,46 +96,27 @@ export class MusicFileWatcher {
         }
 
         if (hasAutoDiscovered && Object.keys(audioFiles).length > 0) {
-            // Helper to find cover image for a specific folder path
-            const findCover = (folderPath: string): string => {
-                // Priority: cover.* > folder.* > album.* > first image in folder
-                const priorityNames = ['cover', 'folder', 'album'];
-
-                for (const name of priorityNames) {
-                    for (const [path, url] of Object.entries(coverFiles)) {
-                        if (path.includes(folderPath) && path.toLowerCase().includes(name)) {
-                            return url as string;
-                        }
-                    }
-                }
-
-                // Fallback: any image in the same folder
-                for (const [path, url] of Object.entries(coverFiles)) {
-                    if (path.includes(folderPath)) return url as string;
-                }
-
-                return '';
-            };
-
             for (const [path, url] of Object.entries(audioFiles)) {
                 const parts = path.split('/');
-                let albumTitle = 'Singles';
-                let fileName = parts[parts.length - 1];
+                const fileName = parts.pop() || '';
+                const folderPath = parts.join('/');
 
-                // Assuming structure: /data/MusicFiles/AlbumName/Song.mp3
-                if (parts.length >= 4) {
-                    albumTitle = parts[parts.length - 2];
-                }
+                // Use helper to parse metadata
+                // Note: logic slightly adjusted to match previous behavior where album was parts[parts.length - 2]
+                // In previous code: path was full path. parts = path.split('/'). 
+                // albumTitle = parts[parts.length - 2].
+                // Here folderPath is parts.join('/'). So folderPath.split('/').pop() is the album.
 
-                // Clean title: remove extension and leading numbers/dashes
+                const albumTitle = parts.length >= 3 ? parts[parts.length - 1] : 'Singles';
+                // Wait, /data/MusicFiles/Album/Song.mp3 -> parts: [, data, MusicFiles, Album, Song.mp3]
+                // folderPath: /data/MusicFiles/Album
+
                 const title = fileName
                     .replace(/\.(mp3|wav|ogg|m4a)$/i, '')
-                    .replace(/^[\d\s\-_.]+/, '') // Remove track numbers
+                    .replace(/^[\d\s\-_.]+/, '')
                     .trim();
 
-                // Reconstruct folder path to find matching cover
-                const folderPath = parts.slice(0, parts.length - 1).join('/');
-                const cover = findCover(folderPath);
+                const cover = this.findCover(folderPath, coverFiles);
 
                 const song: Song = {
                     id: path,

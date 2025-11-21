@@ -168,3 +168,19 @@ export interface AppTheme {
     name: string;
     colors: ThemeColors;
 }
+
+export interface ApiSong {
+    id: number;
+    title: string;
+    artist?: string;
+    album?: string;
+    duration?: number;
+    file_path: string;
+    genre?: string;
+    cover_path?: string | null; // Added: backend-provided cover path
+}
+
+export interface ApiAlbum {
+    title: string;
+    song_ids?: string;
+}

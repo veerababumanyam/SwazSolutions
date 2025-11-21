@@ -8,27 +8,30 @@ import { LyricStudio } from './pages/LyricStudio';
 import { MusicPage } from './pages/MusicPage';
 import { AboutPage } from './pages/AboutPage';
 import { MusicProvider } from './contexts/MusicContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 const App: React.FC = () => {
   return (
     <HashRouter>
-      <MusicProvider>
-        <div className="flex flex-col min-h-screen bg-background text-primary font-sans antialiased selection:bg-accent selection:text-white">
-          <Header />
-          <Routes>
+      <ToastProvider>
+        <MusicProvider>
+          <div className="flex flex-col min-h-screen bg-background text-primary font-sans antialiased selection:bg-accent selection:text-white">
+            <Header />
+            <Routes>
               <Route path="/" element={<>
-                  <LandingPage />
-                  <Footer />
+                <LandingPage />
+                <Footer />
               </>} />
               <Route path="/about" element={<>
-                  <AboutPage />
-                  <Footer />
+                <AboutPage />
+                <Footer />
               </>} />
               <Route path="/studio" element={<LyricStudio />} />
               <Route path="/music" element={<MusicPage />} />
-          </Routes>
-        </div>
-      </MusicProvider>
+            </Routes>
+          </div>
+        </MusicProvider>
+      </ToastProvider>
     </HashRouter>
   );
 };

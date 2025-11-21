@@ -71,10 +71,13 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
     `;
 
-    const NavItem = ({ view, icon: Icon, label, count, depth = 0 }: { view: ViewType, icon: any, label: string, count?: number, depth?: number }) => {
+    const NavItem = ({ view, icon: Icon, label, count, depth = 0 }: { view: ViewType, icon: any, label: string, count?: number, depth?: number, key?: any }) => {
         const isActive = currentView.type === view.type &&
-            ((view.type === 'playlist' && view.id === (currentView as any).id) ||
-                (view.type === 'album-detail' && view.id === (currentView as any).id));
+            (
+                (view.type === 'playlist' && currentView.type === 'playlist' && view.id === currentView.id) ||
+                (view.type === 'album-detail' && currentView.type === 'album-detail' && view.id === currentView.id) ||
+                (view.type !== 'playlist' && view.type !== 'album-detail')
+            );
 
         return (
             <button

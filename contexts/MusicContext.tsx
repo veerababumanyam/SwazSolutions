@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Howl, Howler } from 'howler';
-import { Song, RepeatMode, Playlist, Album, EqualizerSettings } from '../types'; // Fixed import path
+import { Song, RepeatMode, Playlist, Album, EqualizerSettings, ApiSong, ApiAlbum } from '../types'; // Fixed import path
 import { api } from '../src/services/api';
 
 interface MusicContextType {
@@ -111,6 +111,11 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         const ctx = Howler.ctx;
         const masterGain = Howler.masterGain;
 
+        if (!masterGain) {
+            console.warn("Howler masterGain not available");
+            return;
+        }
+
         // Create Analyser
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 256; // 128 data points
@@ -132,7 +137,13 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         try {
             // Re-route: Master -> Bass -> Mid -> Treble -> Analyser -> Destination
-            masterGain.disconnect();
+            // disconnect() can throw if not connected, so we wrap in try/catch
+            try {
+                masterGain.disconnect();
+            } catch (e) {
+                // Ignore if already disconnected or not connected
+            }
+
             masterGain.connect(bass);
             bass.connect(mid);
             mid.connect(treble);
@@ -172,29 +183,35 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const { songs } = await api.songs.list({ limit: 1000 });
             const albumsData = await api.songs.getAlbums();
 
+            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
             // Convert API response to Song format
-            const formattedSongs: Song[] = songs.map((s: any) => ({
+            const formattedSongs: Song[] = songs.map((s: ApiSong) => ({
                 id: s.id.toString(),
                 title: s.title,
                 artist: s.artist || 'Unknown Artist',
                 album: s.album || 'Unknown Album',
                 duration: s.duration || 0,
-                cover: '/placeholder-album.jpg',
-                src: `http://localhost:3000${s.file_path}`,
+                // Use backend-provided cover_path with fallback to placeholder
+                cover: s.cover_path ? `${baseUrl}${s.cover_path}` : '/placeholder-album.png',
+                src: `${baseUrl}${s.file_path}`,
                 genre: s.genre,
             }));
 
             // Convert albums and link songs
-            const formattedAlbums: Album[] = albumsData.map((a: any) => {
+            const formattedAlbums: Album[] = albumsData.map((a: ApiAlbum) => {
                 const albumSongIds = a.song_ids?.split(',').map((id: string) => id.trim()) || [];
                 const albumTracks = formattedSongs.filter(song =>
                     albumSongIds.includes(song.id)
                 );
 
+                // Use the cover of the first track as album cover
+                const albumCover = albumTracks.length > 0 ? albumTracks[0].cover : '/placeholder-album.png';
+
                 return {
                     id: a.title,
                     title: a.title,
-                    cover: '/placeholder-album.jpg',
+                    cover: albumCover,
                     trackCount: albumTracks.length,
                     tracks: albumTracks,
                 };
@@ -578,7 +595,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             analyser: analyserNode, equalizer, setEqualizer,
             play, pause, next, prev, seek, setVolume, toggleShuffle, toggleRepeat, playTrack, playPlaylist, playAlbum,
             toggleLike, addToQueue, clearError, refreshLibrary, connectLocalLibrary,
-            createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById
+            createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById,
+            setQueue, playTrackByIndex
         }}>
             {children}
         </MusicContext.Provider>

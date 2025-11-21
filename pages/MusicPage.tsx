@@ -11,6 +11,30 @@ import {
 } from 'lucide-react';
 import { Song } from '../types';
 
+interface BaseViewData {
+    title: string;
+    subtitle?: string;
+    icon: React.ElementType;
+    songs: Song[];
+}
+
+interface PlaylistViewData extends BaseViewData {
+    type: 'playlist';
+    playlistId: string;
+}
+
+interface AlbumViewData extends BaseViewData {
+    type: 'album-detail';
+    albumId: string;
+    cover?: string;
+}
+
+interface GenericViewData extends BaseViewData {
+    type: 'generic';
+}
+
+type ViewData = PlaylistViewData | AlbumViewData | GenericViewData;
+
 // Helper to format seconds to MM:SS
 const formatDuration = (seconds?: number) => {
     if (!seconds) return '--:--';
@@ -27,7 +51,8 @@ export const MusicPage: React.FC = () => {
     const {
         currentSong, isPlaying, playTrack, playPlaylist, playAlbum,
         likedSongs, toggleLike, playlists, library, albums, isScanning,
-        addToQueue, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist
+        addToQueue, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist,
+        setQueue, playTrackByIndex
     } = useMusic();
 
     // Context Menu State for Songs
@@ -35,12 +60,13 @@ export const MusicPage: React.FC = () => {
     const [addToPlaylistMode, setAddToPlaylistMode] = useState<string | null>(null); // Song ID being added
 
     // --- Data Filtering ---
-    const getViewData = () => {
+    const getViewData = (): ViewData => {
         if (currentView.type === 'all') {
-            return { title: 'All Songs', subtitle: 'Library', icon: Music, songs: library };
+            return { type: 'generic', title: 'All Songs', subtitle: 'Library', icon: Music, songs: library };
         }
         if (currentView.type === 'favorites') {
             return {
+                type: 'generic',
                 title: 'Liked Songs',
                 subtitle: 'Your Collection',
                 icon: Heart,
@@ -49,7 +75,7 @@ export const MusicPage: React.FC = () => {
         }
         if (currentView.type === 'playlist') {
             const playlist = playlists.find(p => p.id === currentView.id);
-            if (!playlist) return { title: 'Playlist Not Found', icon: Disc, songs: [] };
+            if (!playlist) return { type: 'generic', title: 'Playlist Not Found', icon: Disc, songs: [] };
 
             // Resolve IDs to Songs using getSongById equivalent logic
             const songs = playlist.trackIds
@@ -57,34 +83,34 @@ export const MusicPage: React.FC = () => {
                 .filter((s): s is Song => !!s);
 
             return {
+                type: 'playlist',
                 title: playlist.name,
                 subtitle: 'Playlist',
                 icon: Disc,
                 songs,
-                isPlaylist: true,
                 playlistId: playlist.id
             };
         }
         if (currentView.type === 'album-detail') {
             const album = albums.find(a => a.id === currentView.id);
-            if (!album) return { title: 'Album Not Found', icon: Disc, songs: [] };
+            if (!album) return { type: 'generic', title: 'Album Not Found', icon: Disc, songs: [] };
             return {
+                type: 'album-detail',
                 title: album.title,
                 subtitle: 'Album',
                 icon: Disc,
                 songs: album.tracks,
-                isAlbum: true,
                 albumId: album.id,
                 cover: album.cover
             };
         }
         if (currentView.type === 'albums') {
-            return { title: 'Albums', subtitle: 'Library', icon: Disc, songs: [] };
+            return { type: 'generic', title: 'Albums', subtitle: 'Library', icon: Disc, songs: [] };
         }
         if (currentView.type === 'lyrics') {
-            return { title: 'Lyrics', subtitle: 'Now Playing', icon: Mic2, songs: [] };
+            return { type: 'generic', title: 'Lyrics', subtitle: 'Now Playing', icon: Mic2, songs: [] };
         }
-        return { title: 'Now Playing', icon: Radio, songs: [] };
+        return { type: 'generic', title: 'Now Playing', icon: Radio, songs: [] };
     };
 
     const viewData = getViewData();
@@ -115,9 +141,16 @@ export const MusicPage: React.FC = () => {
                 </div>
                 <button
                     onClick={() => {
-                        if (playlistId) playPlaylist(playlistId, index);
-                        else if ((viewData as any).isAlbum) playAlbum((viewData as any).albumId, index);
-                        else playTrack(song);
+                        // Queue all displayed songs and play from clicked index for auto-play support
+                        if (playlistId) {
+                            playPlaylist(playlistId, index);
+                        } else if (viewData.type === 'album-detail') {
+                            playAlbum(viewData.albumId, index);
+                        } else {
+                            // For song list views, set queue to all displayed songs
+                            setQueue(displayedSongs);
+                            playTrackByIndex(index, displayedSongs);
+                        }
                     }}
                     className="w-8 h-8 hidden group-hover:flex items-center justify-center bg-accent text-white rounded-full shadow-md hover:scale-105 transition-transform"
                 >
@@ -125,10 +158,15 @@ export const MusicPage: React.FC = () => {
                 </button>
 
                 {/* Cover (Hide in Album View since it's redundant) */}
-                {!(viewData as any).isAlbum && (
+                {viewData.type !== 'album-detail' && (
                     <div className="w-10 h-10 rounded-lg overflow-hidden shadow-sm bg-surface">
                         {song.cover ? (
-                            <img src={song.cover} alt={song.album} className="w-full h-full object-cover" />
+                            <img
+                                src={song.cover || '/placeholder-album.png'}
+                                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-album.png'; }}
+                                alt={song.album}
+                                className="w-full h-full object-cover"
+                            />
                         ) : (
                             <div className="w-full h-full bg-gradient-to-br from-accent/20 to-accent-orange/20 flex items-center justify-center">
                                 <Music className="w-4 h-4 text-accent" />
@@ -144,7 +182,7 @@ export const MusicPage: React.FC = () => {
                 </div>
 
                 {/* Album (Desktop) - Hide in Album View */}
-                {!(viewData as any).isAlbum && (
+                {viewData.type !== 'album-detail' && (
                     <div className="hidden md:block w-1/3 text-xs text-secondary truncate opacity-70">{song.album}</div>
                 )}
 
@@ -233,11 +271,16 @@ export const MusicPage: React.FC = () => {
                         <div className="flex items-center gap-6">
                             {/* Header Image / Icon */}
                             <div className={`
-                                ${(viewData as any).cover ? 'w-32 h-32 md:w-48 md:h-48 shadow-2xl' : 'w-16 h-16 md:w-24 md:h-24 shadow-lg'} 
+                                ${viewData.type === 'album-detail' && viewData.cover ? 'w-32 h-32 md:w-48 md:h-48 shadow-2xl' : 'w-16 h-16 md:w-24 md:h-24 shadow-lg'} 
                                 rounded-2xl bg-brand-gradient flex items-center justify-center text-white shadow-accent/20 flex-shrink-0 overflow-hidden transition-all duration-300
                             `}>
-                                {(viewData as any).cover ? (
-                                    <img src={(viewData as any).cover} alt={viewData.title} className="w-full h-full object-cover" />
+                                {viewData.type === 'album-detail' && viewData.cover ? (
+                                    <img
+                                        src={viewData.cover || '/placeholder-album.png'}
+                                        onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-album.png'; }}
+                                        alt={viewData.title}
+                                        className="w-full h-full object-cover"
+                                    />
                                 ) : (
                                     <viewData.icon className="w-8 h-8 md:w-12 md:h-12" />
                                 )}
@@ -246,14 +289,14 @@ export const MusicPage: React.FC = () => {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                     <h4 className="font-bold text-accent uppercase text-xs tracking-wider mb-1">
-                                        {(viewData as any).subtitle || 'Library'}
+                                        {viewData.subtitle || 'Library'}
                                     </h4>
                                     {isScanning && <RefreshCw className="w-3 h-3 text-accent animate-spin" />}
                                 </div>
                                 <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-primary line-clamp-2">{viewData.title}</h1>
                                 <p className="text-secondary text-sm font-medium mt-1 flex items-center gap-2">
                                     <span>{currentView.type === 'albums' ? albums.length : displayedSongs.length} items</span>
-                                    {(viewData as any).isAlbum && displayedSongs.length > 0 && (
+                                    {viewData.type === 'album-detail' && displayedSongs.length > 0 && (
                                         <>
                                             <span>•</span>
                                             <span>{displayedSongs[0].artist}</span>
@@ -311,7 +354,12 @@ export const MusicPage: React.FC = () => {
                                     >
                                         <div className="relative aspect-square mb-3 overflow-hidden rounded-2xl shadow-md border border-border bg-surface">
                                             {album.cover ? (
-                                                <img src={album.cover} alt={album.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                                <img
+                                                    src={album.cover || '/placeholder-album.png'}
+                                                    onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-album.png'; }}
+                                                    alt={album.title}
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                                />
                                             ) : (
                                                 <div className="w-full h-full bg-gradient-to-br from-accent/10 to-accent-orange/10 flex items-center justify-center">
                                                     <Disc className="w-12 h-12 text-accent opacity-50" />
@@ -343,7 +391,7 @@ export const MusicPage: React.FC = () => {
                         // List View
                         <div className="space-y-1">
                             {/* List Header (Only for Album View to mimic standard player columns) */}
-                            {(viewData as any).isAlbum && displayedSongs.length > 0 && (
+                            {viewData.type === 'album-detail' && displayedSongs.length > 0 && (
                                 <div className="flex items-center gap-3 px-2 py-2 text-xs font-bold text-secondary uppercase tracking-wider border-b border-border mb-2">
                                     <div className="w-8 text-center">#</div>
                                     <div className="flex-1">Title</div>
@@ -353,7 +401,7 @@ export const MusicPage: React.FC = () => {
                             )}
 
                             {displayedSongs.length > 0 ? (
-                                displayedSongs.map((song, idx) => renderSongRow(song, idx, (viewData as any).playlistId))
+                                displayedSongs.map((song, idx) => renderSongRow(song, idx, viewData.type === 'playlist' ? viewData.playlistId : undefined))
                             ) : (
                                 <div className="text-center py-20 opacity-50">
                                     <Music className="w-12 h-12 mx-auto mb-4 text-muted" />

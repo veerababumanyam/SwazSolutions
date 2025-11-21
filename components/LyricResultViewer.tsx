@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-    Wand2, Image as ImageIcon, Save, Copy, Download, Printer, Share2, 
-    Play, Pause, Edit3, Code, Eye, RefreshCw, Music, 
+import { useToast } from '../contexts/ToastContext';
+import {
+    Wand2, Image as ImageIcon, Save, Copy, Download, Printer, Share2,
+    Play, Pause, Edit3, Code, Eye, RefreshCw, Music,
     Clock, ListMusic, Mic2, User, Users, Baby, ShieldCheck, AlertTriangle, X
 } from 'lucide-react';
 import { GeneratedLyrics, SavedSong, ComplianceReport } from '../agents/types';
@@ -21,20 +22,21 @@ interface LyricResultViewerProps {
 
 type ViewMode = 'VISUAL' | 'STUDIO' | 'SUNO';
 
-export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({ 
-    lyricsData: initialLyrics, 
-    stylePrompt: initialStyle, 
+export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
+    lyricsData: initialLyrics,
+    stylePrompt: initialStyle,
     complianceData,
-    apiKey, 
-    onSaveToLibrary 
+    apiKey,
+    onSaveToLibrary
 }) => {
+    const { showToast } = useToast();
     // State
     const [lyrics, setLyrics] = useState<GeneratedLyrics>(initialLyrics);
     const [stylePrompt, setStylePrompt] = useState(initialStyle);
     const [coverArt, setCoverArt] = useState<string | null>(initialLyrics.coverArt || null);
     const [viewMode, setViewMode] = useState<ViewMode>('VISUAL');
     const [showComplianceModal, setShowComplianceModal] = useState(false);
-    
+
     // Editing State
     const [studioText, setStudioText] = useState('');
 
@@ -42,7 +44,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
     const [isGeneratingArt, setIsGeneratingArt] = useState(false);
     const [isFixingRhymes, setIsFixingRhymes] = useState(false);
     const [isEnhancingStyle, setIsEnhancingStyle] = useState(false);
-    
+
     // Playback State
     const [playingSection, setPlayingSection] = useState<number | null>(null);
     const synth = window.speechSynthesis;
@@ -69,7 +71,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
             setPlayingSection(null);
             return;
         }
-        
+
         synth.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
         // Simple heuristic for lang
@@ -77,10 +79,10 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
         else if (lyrics.language.toLowerCase().includes('tamil')) utterance.lang = 'ta-IN';
         else if (lyrics.language.toLowerCase().includes('telugu')) utterance.lang = 'te-IN';
         else utterance.lang = 'en-US';
-        
+
         utterance.rate = 0.9;
         utterance.onend = () => setPlayingSection(null);
-        
+
         utteranceRef.current = utterance;
         setPlayingSection(index);
         synth.speak(utterance);
@@ -109,21 +111,21 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
     // --- Actions ---
 
     const handleMagicRhymes = async () => {
-        if (!apiKey) return alert("API Key Required");
+        if (!apiKey) return showToast("API Key Required", "error");
         setIsFixingRhymes(true);
         try {
             const fixedSections = await runMagicRhymesAgent(lyrics.sections, lyrics.language, apiKey);
             setLyrics(prev => ({ ...prev, sections: fixedSections }));
         } catch (e) {
             console.error(e);
-            alert("Failed to fix rhymes.");
+            showToast("Failed to fix rhymes.", "error");
         } finally {
             setIsFixingRhymes(false);
         }
     };
 
     const handleAlbumArt = async () => {
-        if (!apiKey) return alert("API Key Required");
+        if (!apiKey) return showToast("API Key Required", "error");
         setIsGeneratingArt(true);
         try {
             const lyricSnippet = lyrics.sections[0]?.lines.join(" ") || "";
@@ -131,7 +133,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
             if (artUrl) setCoverArt(artUrl);
         } catch (e) {
             console.error(e);
-            alert("Failed to generate art.");
+            showToast("Failed to generate art.", "error");
         } finally {
             setIsGeneratingArt(false);
         }
@@ -141,7 +143,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
         const songData: SavedSong = {
             id: Date.now().toString(),
             title: lyrics.title,
-            content: studioText, 
+            content: studioText,
             language: lyrics.language,
             coverArt: coverArt || undefined,
             stylePrompt: stylePrompt,
@@ -149,22 +151,22 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
             timestamp: Date.now()
         };
         onSaveToLibrary(songData);
-        alert("Song saved to library!");
+        showToast("Song saved to library!", "success");
     };
 
     const handleCopy = (text: string) => {
         navigator.clipboard.writeText(text);
-        alert("Copied to clipboard!");
+        showToast("Copied to clipboard!", "success");
     };
 
     // --- Renders ---
 
     return (
         <div className="flex flex-col h-full max-h-full overflow-hidden bg-background/50 rounded-3xl shadow-2xl border border-border animate-fade-in relative">
-            
+
             {/* Header Toolbar */}
             <div className="flex flex-wrap items-center justify-between p-3 border-b border-border bg-surface/80 backdrop-blur-md gap-3 z-20">
-                
+
                 {/* View Tabs */}
                 <div className="flex p-1 bg-background border border-border rounded-xl overflow-x-auto no-scrollbar">
                     {[
@@ -175,11 +177,10 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                         <button
                             key={mode.id}
                             onClick={() => setViewMode(mode.id as ViewMode)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                                viewMode === mode.id 
-                                ? 'bg-accent text-white shadow-sm' 
-                                : 'text-secondary hover:text-primary hover:bg-surface'
-                            }`}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === mode.id
+                                    ? 'bg-accent text-white shadow-sm'
+                                    : 'text-secondary hover:text-primary hover:bg-surface'
+                                }`}
                         >
                             <mode.icon className="w-3.5 h-3.5" />
                             <span>{mode.label}</span>
@@ -189,7 +190,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
 
                 {/* AI Actions */}
                 <div className="flex items-center gap-2">
-                    <button 
+                    <button
                         onClick={handleMagicRhymes}
                         disabled={isFixingRhymes || !apiKey}
                         className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors disabled:opacity-50"
@@ -197,8 +198,8 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                     >
                         <Wand2 className={`w-4 h-4 ${isFixingRhymes ? 'animate-spin' : ''}`} />
                     </button>
-                    
-                    <button 
+
+                    <button
                         onClick={handleAlbumArt}
                         disabled={isGeneratingArt || !apiKey}
                         className="p-2 text-purple-600 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl transition-colors disabled:opacity-50"
@@ -207,7 +208,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                         <ImageIcon className={`w-4 h-4 ${isGeneratingArt ? 'animate-pulse' : ''}`} />
                     </button>
 
-                    <button 
+                    <button
                         onClick={handleSave}
                         className="p-2 text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-border rounded-xl transition-colors"
                         title="Save"
@@ -219,9 +220,9 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin relative print:p-0 print:overflow-visible">
-                
+
                 <div className="max-w-3xl mx-auto relative z-10 space-y-6">
-                    
+
                     {/* Metadata & Art Header */}
                     <div className="flex flex-col sm:flex-row gap-6 items-start">
                         {/* Album Art */}
@@ -230,7 +231,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                                 <>
                                     <img src={coverArt} alt="Cover" className="w-full h-full object-cover" />
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                        <button onClick={() => { const a = document.createElement('a'); a.href=coverArt; a.download='cover.jpg'; a.click(); }} className="p-2 bg-white rounded-full hover:scale-110 transition-transform"><Download className="w-4 h-4 text-black" /></button>
+                                        <button onClick={() => { const a = document.createElement('a'); a.href = coverArt; a.download = 'cover.jpg'; a.click(); }} className="p-2 bg-white rounded-full hover:scale-110 transition-transform"><Download className="w-4 h-4 text-black" /></button>
                                     </div>
                                 </>
                             ) : (
@@ -245,7 +246,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                         <div className="flex-1 space-y-3 min-w-0">
                             <div>
                                 <h1 className="text-2xl md:text-3xl font-black text-primary tracking-tight leading-tight truncate">{lyrics.title}</h1>
-                                
+
                                 {/* Tags */}
                                 <div className="flex flex-wrap gap-2 mt-2">
                                     <span className="px-2 py-0.5 rounded bg-surface border border-border text-[10px] font-bold text-secondary flex items-center gap-1">
@@ -260,13 +261,12 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
 
                                 {/* Compliance Badge */}
                                 {complianceData && (
-                                    <button 
+                                    <button
                                         onClick={() => setShowComplianceModal(true)}
-                                        className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-transform hover:scale-105 cursor-pointer ${
-                                            complianceData.originalityScore > 80 
-                                            ? 'bg-green-50 border-green-200 text-green-700' 
-                                            : 'bg-yellow-50 border-yellow-200 text-yellow-700'
-                                        }`}
+                                        className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-transform hover:scale-105 cursor-pointer ${complianceData.originalityScore > 80
+                                                ? 'bg-green-50 border-green-200 text-green-700'
+                                                : 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                                            }`}
                                     >
                                         {complianceData.originalityScore > 80 ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
                                         <div className="flex flex-col leading-none items-start">
@@ -287,13 +287,13 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
 
                     {/* MODE CONTENT */}
                     <div className="min-h-[300px]">
-                        
+
                         {/* VISUAL MODE */}
                         {viewMode === 'VISUAL' && (
                             <div className="space-y-4">
                                 {lyrics.sections.map((section, idx) => (
-                                    <div 
-                                        key={idx} 
+                                    <div
+                                        key={idx}
                                         className={`p-5 rounded-2xl border transition-all hover:shadow-sm group relative ${getSectionColor(section.sectionName)}`}
                                     >
                                         <div className="flex justify-between items-center mb-3 border-b border-black/5 pb-2">
@@ -301,7 +301,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                                                 {getTagIcon(section.sectionName)}
                                                 {section.sectionName.replace(/[\[\]]/g, '')}
                                             </span>
-                                            <button 
+                                            <button
                                                 onClick={() => handlePlaySection(section.lines.join('. '), idx)}
                                                 className="w-6 h-6 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-current opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
@@ -377,7 +377,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                                 </div>
                                 <div className="text-xs font-bold uppercase tracking-wider text-secondary">Originality Score</div>
                             </div>
-                            
+
                             <div>
                                 <h4 className="text-xs font-bold text-secondary uppercase mb-2">Verdict</h4>
                                 <div className="p-3 bg-surface border border-border rounded-lg text-sm font-medium">

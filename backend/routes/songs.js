@@ -3,6 +3,59 @@ const fs = require('fs');
 const path = require('path');
 const { optionalAuth } = require('../middleware/auth');
 
+/**
+ * Find cover image in album directory
+ * Supports: jpg, jpeg, png, webp
+ * Priority: cover > folder > album > any image
+ */
+function findCoverImage(albumPath, musicDir) {
+    if (!fs.existsSync(albumPath)) {
+        return null;
+    }
+
+    const coverNames = ['cover', 'folder', 'album'];
+    const formats = ['jpg', 'jpeg', 'png', 'webp'];
+
+    // Try priority names first
+    for (const name of coverNames) {
+        for (const fmt of formats) {
+            const coverPath = path.join(albumPath, `${name}.${fmt}`);
+            if (fs.existsSync(coverPath)) {
+                const relativePath = path.relative(musicDir, coverPath);
+                return '/music/' + relativePath.replace(/\\/g, '/');
+            }
+        }
+    }
+
+    // Fallback: any image file in the directory
+    try {
+        const files = fs.readdirSync(albumPath);
+        for (const file of files) {
+            const ext = path.extname(file).toLowerCase();
+            if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
+                const coverPath = path.join(albumPath, file);
+                const relativePath = path.relative(musicDir, coverPath);
+                return '/music/' + relativePath.replace(/\\/g, '/');
+            }
+        }
+    } catch (error) {
+        console.warn('Error reading album directory:', error);
+    }
+
+    // Final fallback: check for default cover in MusicFiles root
+    const defaultCover = path.join(musicDir, 'cover.jpg');
+    if (fs.existsSync(defaultCover)) {
+        return '/music/cover.jpg';
+    }
+
+    const defaultCoverPng = path.join(musicDir, 'cover.png');
+    if (fs.existsSync(defaultCoverPng)) {
+        return '/music/cover.png';
+    }
+
+    return null;
+}
+
 function createSongRoutes(db) {
     const router = express.Router();
 
@@ -44,8 +97,23 @@ function createSongRoutes(db) {
             const songs = db.prepare(query).all(...params);
             const { total } = db.prepare(countQuery).get(...params.slice(0, -2));
 
+            // Enhance songs with cover_path
+            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
+            const enhancedSongs = songs.map(song => {
+                // Extract album path from file_path
+                // Example: /music/Album Name/song.mp3 -> Album Name
+                const filePath = song.file_path.replace('/music/', '');
+                const albumPath = path.join(musicDir, path.dirname(filePath));
+                const coverPath = findCoverImage(albumPath, musicDir);
+
+                return {
+                    ...song,
+                    cover_path: coverPath
+                };
+            });
+
             res.json({
-                songs,
+                songs: enhancedSongs,
                 pagination: {
                     page: parseInt(page),
                     limit: parseInt(limit),
