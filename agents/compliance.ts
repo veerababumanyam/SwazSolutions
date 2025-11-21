@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { MODEL_NAME, SYSTEM_INSTRUCTION_COMPLIANCE, getModelToUse } from "./config";
+import { MODEL_NAME, SYSTEM_INSTRUCTION_COMPLIANCE, getModelToUse, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { ComplianceReport, GeneratedLyrics } from "./types";
 import { cleanAndParseJSON } from "../utils";
 
@@ -39,7 +39,10 @@ export const runComplianceAgent = async (lyrics: GeneratedLyrics | string, apiKe
         systemInstruction: SYSTEM_INSTRUCTION_COMPLIANCE,
         responseMimeType: "application/json",
         responseSchema: complianceSchema,
-        temperature: 0.2, // Low temp for strict analysis
+        temperature: AGENT_TEMPERATURES.COMPLIANCE,
+        // maxOutputTokens removed to allow dynamic length
+        topP: AGENT_TOP_P.COMPLIANCE,
+        topK: 40
       }
     });
 

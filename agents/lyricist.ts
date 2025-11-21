@@ -1,22 +1,51 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { SYSTEM_INSTRUCTION_LYRICIST } from "./config";
+import { SYSTEM_INSTRUCTION_LYRICIST, AGENT_TEMPERATURES, AGENT_TOP_P, SAFETY_SETTINGS } from "./config";
 import { GeneratedLyrics, LanguageProfile, EmotionAnalysis, GenerationSettings } from "./types";
 import { cleanAndParseJSON, formatLyricsForDisplay, wrapGenAIError, retryWithBackoff } from "../utils";
 import { SCENARIO_KNOWLEDGE_BASE, INDIAN_LANGUAGES } from "./constants";
 
 const getRhymeDescription = (scheme: string): string => {
-  if (scheme.startsWith("AABB")) return "Couplets. Line 1 rhymes with 2. Line 3 rhymes with 4. (e.g., aa-ta, paa-ta)";
-  if (scheme.startsWith("ABAB")) return "Alternate rhyme. Line 1 rhymes with 3. Line 2 rhymes with 4.";
-  if (scheme.startsWith("ABCB")) return "Ballad style. Line 2 rhymes with 4. Lines 1 and 3 do not need to rhyme.";
-  if (scheme.startsWith("AABA")) return "Rubaiyat style. Lines 1, 2, and 4 must rhyme. Line 3 is unrhymed.";
-  if (scheme.startsWith("ABBA")) return "Enclosed rhyme. Line 1 rhymes with 4. Line 2 rhymes with 3.";
-  if (scheme.startsWith("AAAA")) return "Monorhyme. Every single line in the stanza must end with the same sound/rhyme.";
-  if (scheme.startsWith("AABCCB")) return "Sestet. Line 1 rhymes with 2. Line 4 rhymes with 5. Line 3 rhymes with 6.";
-  if (scheme.startsWith("Terza")) return "Chained rhyme (ABA BCB CDC). Line 2 of stanza 1 rhymes with Lines 1 & 3 of stanza 2.";
-  if (scheme.startsWith("Limerick")) return "AABBA. Lines 1, 2, and 5 rhyme (usually longer). Lines 3 and 4 rhyme (usually shorter).";
-  if (scheme === "Free Verse") return "No strict rhyme required. Focus entirely on rhythm, flow, and emotional expression.";
-  
+  // Basic Patterns
+  if (scheme.includes("AABB") || scheme.includes("Couplet")) return "Couplets (AABB). Line 1 rhymes with 2. Line 3 rhymes with 4. Perfect for catchy hooks. (e.g., aa-ta, paa-ta)";
+  if (scheme.includes("ABAB") || scheme.includes("Alternate")) return "Alternate rhyme (ABAB). Line 1 rhymes with 3. Line 2 rhymes with 4. Creates musical flow.";
+  if (scheme.includes("ABCB") || scheme.includes("Ballad")) return "Ballad style (ABCB). Only Line 2 and 4 rhyme. Lines 1 and 3 are free. Good for storytelling.";
+  if (scheme.includes("ABBA") || scheme.includes("Enclosed")) return "Enclosed rhyme (ABBA). Line 1 rhymes with 4. Line 2 rhymes with 3. Creates symmetry.";
+  if (scheme.includes("AAAA") || scheme.includes("Monorhyme")) return "Monorhyme (AAAA). Every single line must end with the same sound/rhyme. Hypnotic effect.";
+
+  // Complex Western
+  if (scheme.includes("AABA") || scheme.includes("Rubaiyat")) return "Rubaiyat style (AABA). Lines 1, 2, and 4 must rhyme. Line 3 is unrhymed. Persian origin.";
+  if (scheme.includes("AABCCB") || scheme.includes("Sestet")) return "Sestet (AABCCB). Line 1-2 rhyme, 4-5 rhyme, 3-6 rhyme. Six-line stanza.";
+  if (scheme.includes("ABABCC") || scheme.includes("Shakespearean Tail")) return "Shakespearean tail (ABABCC). Alternate rhyme + couplet ending. Strong closure.";
+  if (scheme.includes("ABABBCC") || scheme.includes("Rhyme Royal")) return "Rhyme Royal (ABABBCC). Seven-line stanza with concluding couplet. Regal feel.";
+  if (scheme.includes("ABABCDCD") || scheme.includes("Ottava Rima")) return "Ottava Rima style (ABABCDCD). Eight-line stanza, two quatrains. Epic narrative.";
+  if (scheme.includes("Terza")) return "Terza Rima (ABA BCB CDC). Chained rhyme linking stanzas. Line 2 of stanza 1 rhymes with Lines 1 & 3 of stanza 2.";
+  if (scheme.includes("Limerick")) return "Limerick (AABBA). Lines 1, 2, 5 rhyme (long). Lines 3, 4 rhyme (short). Humorous rhythm.";
+  if (scheme.includes("Villanelle")) return "Villanelle. Complex repeating pattern with two refrains. 19 lines, ABA rhyme scheme with repeating lines.";
+  if (scheme.includes("Sonnet")) return "Sonnet (14 lines). Three quatrains + couplet: ABAB CDCD EFEF GG. Shakespearean structure with volta.";
+
+  // Indian Classical
+  if (scheme.includes("Sanskrit") || scheme.includes("Sloka") || scheme.includes("Anushtubh")) return "Sanskrit Slokas (Anushtubh). 8 syllables per quarter verse. Traditional Vedic meter for devotional content. Maintain chandas (prosody).";
+  if (scheme.includes("Doha")) return "Doha (Hindi Couplet). Two-line stanza with internal caesura. 13+11 matra pattern. Sant tradition.";
+  if (scheme.includes("Chaupai")) return "Chaupai (AABB Quatrain). Four-line verse with couplet rhyme. Used in Ramcharitmanas. 16 matra per line.";
+  if (scheme.includes("Kavita") || scheme.includes("Muktaka")) return "Muktaka (Free-standing verse). Each stanza is complete thought. No mandatory rhyme linking stanzas.";
+  if (scheme.includes("Ghazal")) return "Ghazal (AA BA CA DA...). First couplet rhymes both lines (AA). Then only second line rhymes (BA, CA). Radif and qaafiya.";
+  if (scheme.includes("Bhajan")) return "Bhajan pattern. Devotional repeat structure. Simple AABB with chorus refrain. Call-response format.";
+
+  // Song Structures
+  if (scheme.includes("Verse-Chorus")) return "Verse-Chorus structure. Verses (AABB) alternate with chorus (CCDD). Chorus repeats identically.";
+  if (scheme.includes("Call-Response")) return "Call-Response (ABAB). First line is 'call', second is 'response'. Interactive singing pattern.";
+  if (scheme.includes("Pallavi") || scheme.includes("Charanam")) return "Pallavi-Charanam (Carnatic). Pallavi = refrain/chorus. Charanam = verses. Pallavi repeats after each charanam.";
+  if (scheme.includes("Sthayi") || scheme.includes("Antara")) return "Sthayi-Antara (Hindustani). Sthayi = lower octave refrain. Antara = higher octave verse. Classical structure.";
+  if (scheme.includes("Hip-Hop Flow")) return "Hip-Hop internal rhymes. Multiple rhymes within single line, not just end rhymes. Focus on flow and rhythm.";
+  if (scheme.includes("Rap Multi")) return "Rap Multisyllabic rhymes. Multiple syllable rhymes: 'education / revelation'. Complex wordplay and internal rhyming.";
+
+  // Modern
+  if (scheme.includes("Free Verse") || scheme.includes("No Rhyme")) return "Free Verse. No strict rhyme scheme required. Focus entirely on rhythm, flow, imagery, and emotional expression.";
+  if (scheme.includes("Blank Verse")) return "Blank Verse. Unrhymed but maintains iambic pentameter. Dignified, speech-like quality.";
+  if (scheme.includes("Slant Rhyme")) return "Slant/Near rhymes. Words sound similar but don't perfectly rhyme (road/load vs road/rude). Modern, subtle.";
+  if (scheme.includes("Internal Rhyme")) return "Internal rhymes. Rhymes occur within lines, not just at ends. Creates dense sonic texture.";
+  if (scheme.includes("Chain Rhyme")) return "Chain rhyme linking stanzas. Last word of one stanza rhymes with first of next. Continuity.";
+
   return "Ensure consistent end rhymes (Anthya Prasa) for all couplets.";
 };
 
@@ -30,6 +59,18 @@ export const runLyricistAgent = async (
   selectedModel: string
 ): Promise<string> => {
   if (!apiKey) throw new Error("API Key is missing");
+
+  // Log received settings to verify data flow
+  console.log('🎵 Lyricist Agent - Received Settings:', {
+    ceremony: generationSettings.ceremony,
+    category: generationSettings.category,
+    mood: generationSettings.mood,
+    style: generationSettings.style,
+    theme: generationSettings.theme,
+    rhymeScheme: generationSettings.rhymeScheme,
+    singerConfig: generationSettings.singerConfig,
+    complexity: generationSettings.complexity
+  });
 
   const ai = new GoogleGenAI({ apiKey: apiKey });
 
@@ -216,7 +257,10 @@ export const runLyricistAgent = async (
             systemInstruction: SYSTEM_INSTRUCTION_LYRICIST,
             responseMimeType: "application/json",
             responseSchema: lyricsSchema,
-            temperature: 0.85,
+            temperature: AGENT_TEMPERATURES.LYRICIST,
+            topP: AGENT_TOP_P.LYRICIST,
+            topK: 40,
+            safetySettings: SAFETY_SETTINGS as any
           }
         });
 

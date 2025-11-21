@@ -1,41 +1,50 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { LyricSidebar } from '../components/LyricSidebar';
 import { AgentStatus, LanguageProfile, GenerationSettings, SavedSong, GeneratedLyrics, ComplianceReport } from '../agents/types';
-import { Menu, Send, Sliders, Loader, ChevronLeft, Bot, Sparkles, Terminal, Play } from 'lucide-react';
+import { Menu, Send, Sliders, Loader, ChevronLeft, Bot, Sparkles, Terminal, Play, Trash2 } from 'lucide-react';
 import { runLyricGenerationWorkflow } from '../agents/orchestrator';
 import { AUTO_OPTION } from '../agents/constants';
+import { API_KEY as ENV_API_KEY } from '../agents/config';
 import { LyricResultViewer } from '../components/LyricResultViewer';
+import { loadApiKey, loadChatHistory, saveChatHistory, clearChatHistory, type ChatMessage } from '../utils/storage';
+import { validateApiKey } from '../utils/validation';
 
-interface ChatMessage {
-    role: 'user' | 'ai' | 'log';
-    content: string;
-    timestamp: number;
-}
+const INITIAL_MESSAGE: ChatMessage = {
+    role: 'ai',
+    content: 'Namaste! I am your Swaz Lyric Assistant. Describe your song idea (e.g., "Wedding song in Telugu", "Love failure song in Hindi"), and I will orchestrate the perfect lyrics.',
+    timestamp: Date.now()
+};
 
 export const LyricStudio: React.FC = () => {
     // Responsive State
-    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1536); // Open by default on 2XL screens
-    
-    // View State
-    const [generatedResult, setGeneratedResult] = useState<{lyrics: GeneratedLyrics, stylePrompt: string, compliance?: ComplianceReport} | null>(null);
-    const [showResultOnMobile, setShowResultOnMobile] = useState(false); // Mobile only toggle
+    const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1536);
 
-    // Chat State
-    const [messages, setMessages] = useState<ChatMessage[]>([
-        { role: 'ai', content: 'Namaste! I am your Swaz Lyric Assistant. Describe your song idea (e.g., "Wedding song in Telugu", "Love failure song in Hindi"), and I will orchestrate the perfect lyrics.', timestamp: Date.now() }
-    ]);
+    // View State
+    const [generatedResult, setGeneratedResult] = useState<{ lyrics: GeneratedLyrics, stylePrompt: string, compliance?: ComplianceReport } | null>(null);
+    const [showResultOnMobile, setShowResultOnMobile] = useState(false);
+
+    // Chat State - Load from browser storage
+    const [messages, setMessages] = useState<ChatMessage[]>(() => {
+        const saved = loadChatHistory();
+        return saved.length > 0 ? saved : [INITIAL_MESSAGE];
+    });
     const [input, setInput] = useState('');
-    const [apiKey, setApiKey] = useState(() => localStorage.getItem("swaz_gemini_api_key") || '');
+    const [apiKey, setApiKey] = useState(() => loadApiKey() || ENV_API_KEY);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-save chat history
+    useEffect(() => {
+        saveChatHistory(messages);
+    }, [messages]);
 
     // Sidebar Settings
     const [agentStatus, setAgentStatus] = useState<AgentStatus>({ active: false, currentAgent: 'IDLE', progress: 0 });
     const [languageSettings, setLanguageSettings] = useState<LanguageProfile>({ primary: 'Hindi', secondary: 'English', tertiary: 'English' });
     const [generationSettings, setGenerationSettings] = useState<GenerationSettings>({
-        category: '', ceremony: '', theme: AUTO_OPTION, customTheme: '', 
-        mood: AUTO_OPTION, customMood: '', style: AUTO_OPTION, customStyle: '', 
-        singerConfig: AUTO_OPTION, customSingerConfig: '', rhymeScheme: AUTO_OPTION, 
+        category: '', ceremony: '', theme: AUTO_OPTION, customTheme: '',
+        mood: AUTO_OPTION, customMood: '', style: AUTO_OPTION, customStyle: '',
+        singerConfig: AUTO_OPTION, customSingerConfig: '', rhymeScheme: AUTO_OPTION,
         customRhymeScheme: '', complexity: AUTO_OPTION
     });
     const [savedSongs, setSavedSongs] = useState<SavedSong[]>([]);
@@ -67,21 +76,33 @@ export const LyricStudio: React.FC = () => {
         };
     };
 
+    const handleClearChat = useCallback(() => {
+        if (confirm('Are you sure you want to clear chat history? This cannot be undone.')) {
+            clearChatHistory();
+            setMessages([INITIAL_MESSAGE]);
+        }
+    }, []);
+
     const handleSendMessage = async () => {
         if (!input.trim()) return;
 
-        if (!apiKey) {
-             setMessages(prev => [...prev, { role: 'user', content: input, timestamp: Date.now() }, { role: 'ai', content: '⚠️ Please enter your Gemini API Key in the Settings section of the sidebar to start generating.', timestamp: Date.now() }]);
-             setInput('');
-             setIsSidebarOpen(true);
-             return;
+        // Validate API Key
+        const apiValidation = validateApiKey(apiKey);
+        if (!apiValidation.valid) {
+            setMessages(prev => [...prev,
+            { role: 'user', content: input, timestamp: Date.now() },
+            { role: 'ai', content: `⚠️ ${apiValidation.error}. Please enter your Gemini API Key in the Settings section of the sidebar.`, timestamp: Date.now() }
+            ]);
+            setInput('');
+            setIsSidebarOpen(true);
+            return;
         }
 
         const userText = input;
         setMessages(prev => [...prev, { role: 'user', content: userText, timestamp: Date.now() }]);
         setInput('');
         setAgentStatus({ active: true, currentAgent: 'IDLE', progress: 5 });
-        
+
         // Clear previous result to focus user on generation
         if (window.innerWidth < 1024) setShowResultOnMobile(false);
 
@@ -99,7 +120,7 @@ export const LyricStudio: React.FC = () => {
                     });
                     // Inject Logs into Chat Stream
                     if (step.type === 'log' || step.agent !== 'IDLE') {
-                         setMessages(prev => [...prev, { role: 'log', content: step.message, timestamp: Date.now() }]);
+                        setMessages(prev => [...prev, { role: 'log', content: step.message, timestamp: Date.now() }]);
                     }
                 }
             );
@@ -110,7 +131,7 @@ export const LyricStudio: React.FC = () => {
                 const lines = result.lyrics.split('\n');
                 const sections: any[] = [];
                 let currentSection = { sectionName: "[Intro]", lines: [] as string[] };
-                
+
                 lines.forEach(line => {
                     if (line.trim().startsWith('[') && line.trim().endsWith(']')) {
                         if (currentSection.lines.length > 0) sections.push(currentSection);
@@ -131,7 +152,7 @@ export const LyricStudio: React.FC = () => {
                     sections: sections
                 };
             } catch (e) {
-                 struct = parseLyricsToStructure(result.lyrics, "Generated Song");
+                struct = parseLyricsToStructure(result.lyrics, "Generated Song");
             }
 
             setGeneratedResult({
@@ -139,15 +160,38 @@ export const LyricStudio: React.FC = () => {
                 stylePrompt: result.stylePrompt,
                 compliance: result.compliance
             });
-            
+
             setMessages(prev => [...prev, { role: 'ai', content: '✨ Song generated successfully! Check the result panel.', timestamp: Date.now() }]);
             if (window.innerWidth < 1024) {
                 setShowResultOnMobile(true);
             }
 
         } catch (error: any) {
-            console.error(error);
-            setMessages(prev => [...prev, { role: 'ai', content: `❌ Generation Failed: ${error.message || 'Unknown error'}`, timestamp: Date.now() }]);
+            console.error('Generation Error:', error);
+
+            let errorMessage = 'Unknown error occurred';
+            if (error.message) {
+                errorMessage = error.message;
+            } else if (typeof error === 'string') {
+                errorMessage = error;
+            }
+
+            // User-friendly error messages
+            if (errorMessage.includes('quota')) {
+                errorMessage = 'API quota exceeded. Please wait a few minutes or check your Google AI Studio quota.';
+            } else if (errorMessage.includes('rate limit')) {
+                errorMessage = 'Rate limit reached. Please wait a moment before trying again.';
+            } else if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+                errorMessage = 'Network error. Please check your internet connection.';
+            } else if (errorMessage.includes('API Key')) {
+                errorMessage = 'Invalid API Key. Please check your settings.';
+            }
+
+            setMessages(prev => [...prev, {
+                role: 'ai',
+                content: `❌ Generation Failed: ${errorMessage}\\n\\nTip: Check the browser console for more details.`,
+                timestamp: Date.now()
+            }]);
         } finally {
             setAgentStatus({ active: false, currentAgent: 'IDLE', progress: 0 });
         }
@@ -157,7 +201,7 @@ export const LyricStudio: React.FC = () => {
         const struct = parseLyricsToStructure(song.content, song.title);
         struct.coverArt = song.coverArt;
         struct.structure = song.structure || "Standard";
-        
+
         setGeneratedResult({
             lyrics: struct,
             stylePrompt: song.stylePrompt || ""
@@ -171,23 +215,23 @@ export const LyricStudio: React.FC = () => {
         <div className="flex h-[calc(100vh-80px)] bg-background overflow-hidden transition-colors duration-300 relative">
             {/* Mobile Backdrop */}
             {isSidebarOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 xl:hidden animate-fade-in"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
-            <LyricSidebar 
+            <LyricSidebar
                 isOpen={isSidebarOpen}
                 onCloseMobile={() => setIsSidebarOpen(false)}
                 agentStatus={agentStatus}
                 languageSettings={languageSettings}
-                onLanguageChange={(key, val) => setLanguageSettings(prev => ({...prev, [key]: val}))}
+                onLanguageChange={(key, val) => setLanguageSettings(prev => ({ ...prev, [key]: val }))}
                 generationSettings={generationSettings}
-                onSettingChange={(key, val) => setGenerationSettings(prev => ({...prev, [key]: val}))}
+                onSettingChange={(key, val) => setGenerationSettings(prev => ({ ...prev, [key]: val }))}
                 onLoadProfile={(l, g) => { setLanguageSettings(l); setGenerationSettings(g); }}
-                onOpenHelp={() => {}}
+                onOpenHelp={() => { }}
                 onOpenSettings={() => setIsSidebarOpen(true)}
                 savedSongs={savedSongs}
                 onDeleteSong={(id) => setSavedSongs(prev => prev.filter(s => s.id !== id))}
@@ -197,27 +241,47 @@ export const LyricStudio: React.FC = () => {
 
             {/* Main Split View Area */}
             <main className={`flex-1 flex relative transition-all duration-300 ${isSidebarOpen ? 'xl:ml-80' : ''} h-full`}>
-                
+
                 {/* LEFT: CHAT & PROMPTING (Fixed Width on Desktop) */}
                 <div className={`
                     flex flex-col h-full border-r border-border transition-all duration-500 bg-background
                     ${showResultOnMobile ? 'hidden lg:flex' : 'w-full'}
                     lg:w-[450px] lg:flex-none
                 `}>
+                    {/* Desktop Header */}
+                    <div className="hidden lg:flex items-center justify-between p-3 border-b border-border bg-surface/80 backdrop-blur">
+                        <span className="font-bold text-primary text-sm">Chat History</span>
+                        <button
+                            onClick={handleClearChat}
+                            className="p-1.5 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors text-secondary"
+                            title="Clear Chat"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
+
                     {/* Mobile Header */}
                     <div className="lg:hidden flex items-center justify-between p-4 border-b border-border bg-surface/90 backdrop-blur z-10">
                         <button onClick={() => setIsSidebarOpen(true)} className="p-2 -ml-2 hover:bg-accent/10 rounded-full">
                             <Sliders className="w-5 h-5" />
                         </button>
                         <span className="font-bold text-primary">Lyric Assistant</span>
-                        {generatedResult && (
-                            <button 
-                                onClick={() => setShowResultOnMobile(true)} 
-                                className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-full animate-pulse"
+                        <div className="flex items-center gap-2">
+                            {generatedResult && (
+                                <button
+                                    onClick={() => setShowResultOnMobile(true)}
+                                    className="text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-full animate-pulse"
+                                >
+                                    View Result
+                                </button>
+                            )}
+                            <button
+                                onClick={handleClearChat}
+                                className="p-2 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors text-secondary"
                             >
-                                View Result
+                                <Trash2 className="w-4 h-4" />
                             </button>
-                        )}
+                        </div>
                     </div>
 
                     {/* Chat Container */}
@@ -244,16 +308,16 @@ export const LyricStudio: React.FC = () => {
                                 )}
                             </div>
                         ))}
-                        
+
                         {agentStatus.active && (
                             <div className="flex justify-center animate-fade-in">
                                 <div className="bg-surface border border-accent/20 px-4 py-3 rounded-full flex items-center gap-3 shadow-lg shadow-accent/5">
                                     <Loader className="w-4 h-4 animate-spin text-accent" />
                                     <span className="text-xs font-bold text-primary animate-pulse">
-                                        {agentStatus.currentAgent === 'LYRICIST' ? 'Agent: Composing lyrics...' : 
-                                         agentStatus.currentAgent === 'REVIEW' ? 'Agent: Checking rhythm...' : 
-                                         agentStatus.currentAgent === 'COMPLIANCE' ? 'Agent: Safety Check...' :
-                                         'Processing request...'}
+                                        {agentStatus.currentAgent === 'LYRICIST' ? 'Agent: Composing lyrics...' :
+                                            agentStatus.currentAgent === 'REVIEW' ? 'Agent: Checking rhythm...' :
+                                                agentStatus.currentAgent === 'COMPLIANCE' ? 'Agent: Safety Check...' :
+                                                    'Processing request...'}
                                     </span>
                                 </div>
                             </div>
@@ -264,16 +328,16 @@ export const LyricStudio: React.FC = () => {
                     {/* Input Area */}
                     <div className="p-4 bg-surface border-t border-border">
                         <div className="relative group">
-                            <input 
+                            <input
                                 type="text"
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && !agentStatus.active && handleSendMessage()}
-                                placeholder={apiKey ? "Describe song idea (e.g. 'Love failure song in Tamil')" : "Enter API Key first"}
+                                placeholder={apiKey ? "Describe song idea (e.g. 'Love failure song in Tamil')" : "Enter API Key in Settings or .env"}
                                 disabled={agentStatus.active}
                                 className="input rounded-2xl pl-5 pr-12 py-4 shadow-sm border-accent/20 focus:border-accent focus:ring-1 focus:ring-accent disabled:opacity-50"
                             />
-                            <button 
+                            <button
                                 onClick={handleSendMessage}
                                 disabled={!input.trim() || agentStatus.active}
                                 className="absolute right-2 top-2 bottom-2 aspect-square bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors shadow-md disabled:opacity-50 flex items-center justify-center"
@@ -289,8 +353,8 @@ export const LyricStudio: React.FC = () => {
                     flex-1 bg-surface/30 backdrop-blur-md h-full overflow-hidden flex flex-col transition-all duration-500 border-l border-border
                     ${showResultOnMobile ? 'fixed inset-0 z-50 bg-background' : 'hidden lg:flex'}
                 `}>
-                     {/* Mobile Back Button */}
-                     {showResultOnMobile && (
+                    {/* Mobile Back Button */}
+                    {showResultOnMobile && (
                         <div className="lg:hidden p-4 border-b border-border bg-surface flex items-center gap-2">
                             <button onClick={() => setShowResultOnMobile(false)} className="p-2 hover:bg-background rounded-full">
                                 <ChevronLeft className="w-6 h-6" />
@@ -301,7 +365,7 @@ export const LyricStudio: React.FC = () => {
 
                     {generatedResult ? (
                         <div className="flex-1 overflow-hidden p-4 md:p-6">
-                             <LyricResultViewer 
+                            <LyricResultViewer
                                 lyricsData={generatedResult.lyrics}
                                 stylePrompt={generatedResult.stylePrompt}
                                 complianceData={generatedResult.compliance}
@@ -316,7 +380,7 @@ export const LyricStudio: React.FC = () => {
                             </div>
                             <h3 className="text-2xl font-bold text-primary mb-3">Lyric Studio</h3>
                             <p className="text-secondary max-w-sm leading-relaxed">
-                                Your personal multi-agent songwriting team. <br/>
+                                Your personal multi-agent songwriting team. <br />
                                 Prompt on the left, see magic on the right.
                             </p>
                         </div>

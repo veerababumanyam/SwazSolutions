@@ -11,12 +11,16 @@ export const Footer: React.FC = () => {
                         {/* Brand Section */}
                         <div>
                             <div className="flex items-center gap-3 mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-lg text-white font-black text-xl">
-                                    S
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
+                                    <img
+                                        src="/assets/SwazLogo.webp"
+                                        alt="Swaz Solutions Logo"
+                                        className="w-full h-full object-contain"
+                                    />
                                 </div>
                                 <div>
                                     <h3 className="text-lg font-bold text-primary">SWAZ</h3>
-                                    <p className="text-xs text-secondary">Data Recovery & AI Lyrics</p>
+                                    <p className="text-xs text-muted">Data Recovery & AI Lyrics</p>
                                 </div>
                             </div>
                             <p className="text-sm text-secondary leading-relaxed">
@@ -58,8 +62,8 @@ export const Footer: React.FC = () => {
                             <h4 className="text-sm font-bold text-primary mb-4 uppercase tracking-wide">Support</h4>
                             <ul className="space-y-2 list-none">
                                 <li>
-                                    <a 
-                                        href="mailto:support@swaz.com" 
+                                    <a
+                                        href="mailto:support@swaz.com"
                                         className="text-sm text-secondary hover:text-accent transition-colors duration-200"
                                     >
                                         support@swaz.com
@@ -71,7 +75,7 @@ export const Footer: React.FC = () => {
                                     </span>
                                 </li>
                                 <li>
-                                    <button 
+                                    <button
                                         onClick={() => alert('Accessibility features active. This site is WCAG 2.1 AA Compliant.')}
                                         className="text-sm text-secondary hover:text-accent transition-colors duration-200 text-left"
                                     >

@@ -9,6 +9,16 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       host: '0.0.0.0',
       strictPort: false,
+      proxy: {
+        '/covers': {
+          target: 'http://localhost:3000',
+          changeOrigin: true
+        },
+        '/music': {
+          target: 'http://localhost:3000',
+          changeOrigin: true
+        }
+      },
       hmr: {
         protocol: 'ws',
         host: 'localhost',
@@ -20,8 +30,10 @@ export default defineConfig(({ mode }) => {
       postcss: './postcss.config.cjs',
     },
     define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      // DO NOT expose API keys in client bundle
+      // API keys should be stored client-side only in localStorage
+      // and should ideally be proxied through backend
+      'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL || 'http://localhost:3000')
     },
     resolve: {
       alias: {

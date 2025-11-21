@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { MODEL_FAST, SYSTEM_INSTRUCTION_STYLE_AGENT , getModelToUse} from "./config";
+import { validateApiKey } from "../utils/validation";
 
 export const runStyleAgent = async (
   currentInput: string, 
@@ -8,7 +9,10 @@ export const runStyleAgent = async (
   selectedModel?: string
 ): Promise<string> => {
   const key = apiKey;
-  if (!key) throw new Error("API Key is missing");
+  const validation = validateApiKey(key || '');
+  if (!validation.valid) {
+    throw new Error(validation.error || "Invalid API Key");
+  }
 
   const ai = new GoogleGenAI({ apiKey: key });
 

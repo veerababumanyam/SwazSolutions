@@ -262,6 +262,7 @@ export const LyricSidebar: React.FC<SidebarProps> = ({
   };
 
   const handleCeremonySelect = (category: string, event: CeremonyDefinition) => {
+    // Apply ceremony context settings
     onSettingChange('category', category);
     onSettingChange('ceremony', event.id);
     onSettingChange('theme', event.label);
@@ -270,6 +271,15 @@ export const LyricSidebar: React.FC<SidebarProps> = ({
     onSettingChange('complexity', event.defaultComplexity);
     onSettingChange('rhymeScheme', event.defaultRhyme);
     onSettingChange('singerConfig', event.defaultSinger);
+    
+    // Clear custom overrides when ceremony is selected
+    onSettingChange('customTheme', '');
+    onSettingChange('customMood', '');
+    onSettingChange('customStyle', '');
+    onSettingChange('customRhymeScheme', '');
+    onSettingChange('customSingerConfig', '');
+    
+    // Trigger visual feedback
     setAutoConfigured(true);
   };
 
@@ -377,11 +387,11 @@ export const LyricSidebar: React.FC<SidebarProps> = ({
                     onClick={() => setActiveCategory(activeCategory === category.id ? "" : category.id)}
                     className={`
                        w-full flex items-center justify-between p-2 text-left transition-all rounded-md text-sm
-                       ${activeCategory === category.id ? "bg-background font-bold text-primary" : "text-secondary hover:bg-background"}
+                       ${activeCategory === category.id ? "bg-background font-bold text-primary" : "text-primary hover:bg-background hover:text-accent"}
                      `}
                   >
                     <span>{category.label}</span>
-                    <ChevronRight className={`w-3 h-3 transition-transform duration-200 opacity-50 ${activeCategory === category.id ? "rotate-90" : ""}`} />
+                    <ChevronRight className={`w-3 h-3 transition-transform duration-200 ${activeCategory === category.id ? "rotate-90" : ""}`} />
                   </button>
 
                   <div className={`
@@ -399,8 +409,7 @@ export const LyricSidebar: React.FC<SidebarProps> = ({
                                text-left px-2.5 py-1.5 rounded-md transition-all flex items-center justify-between group relative text-xs
                                ${generationSettings.ceremony === event.id
                                 ? "bg-accent/10 font-semibold text-accent"
-                                : "text-secondary hover:bg-background"
-                              }
+                                : "text-primary hover:bg-surface hover:text-accent"}
                              `}
                           >
                             <span className="truncate mr-2">{event.label}</span>
@@ -606,7 +615,8 @@ export const LyricSidebar: React.FC<SidebarProps> = ({
             defaultOpen={!apiKey}
             badge={!apiKey && <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>}
           >
-            <div className="space-y-3">
+            <div className="space-y-4">
+              {/* API Key Section */}
               <div className="bg-accent/5 border border-accent/10 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-bold text-accent flex items-center gap-1">
@@ -648,6 +658,33 @@ export const LyricSidebar: React.FC<SidebarProps> = ({
                     Required for AI features. Keys are stored locally in your browser.
                   </p>
                 )}
+              </div>
+
+              {/* HQ Tags Customization */}
+              <div className="bg-surface/50 border border-border rounded-lg p-3">
+                <label className="text-xs font-bold text-primary mb-2 block">
+                  HQ AUDIO TAGS (Optional)
+                </label>
+                <p className="text-[10px] text-muted mb-2">
+                  Customize quality tags for Suno.com. Leave empty for AI auto-selection.
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {['High Fidelity', 'Masterpiece', 'Studio Quality', '4k Audio', 'Wide Stereo', 'Professional Mix', 'Clear Vocals', 'Heavy Bass'].map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        // Toggle tag selection - implement with state if needed
+                        alert('HQ Tags feature - Add state management for selection');
+                      }}
+                      className="px-2 py-1 text-[10px] bg-background border border-border rounded hover:border-accent hover:text-accent transition-colors"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-accent italic">
+                  💡 Tip: Leave unselected to let AI choose based on your song's style and mood.
+                </p>
               </div>
             </div>
           </SidebarSection>

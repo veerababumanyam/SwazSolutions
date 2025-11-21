@@ -1,19 +1,25 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { SYSTEM_INSTRUCTION_REVIEW } from "./config";
+import { SYSTEM_INSTRUCTION_REVIEW, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { GeneratedLyrics, LanguageProfile, GenerationSettings } from "./types";
 import { cleanAndParseJSON, formatLyricsForDisplay } from "../utils";
 
 const getRhymeDescription = (scheme: string): string => {
-  if (scheme.startsWith("AABB")) return "Couplets. Line 1 rhymes with 2. Line 3 rhymes with 4.";
-  if (scheme.startsWith("ABAB")) return "Alternate rhyme. Line 1 rhymes with 3. Line 2 rhymes with 4.";
-  if (scheme.startsWith("ABCB")) return "Ballad. Line 2 rhymes with 4. Lines 1 and 3 are free.";
-  if (scheme.startsWith("AABA")) return "Rubaiyat. Lines 1, 2, and 4 rhyme. Line 3 is free.";
-  if (scheme.startsWith("ABBA")) return "Enclosed. Line 1 rhymes with 4. Line 2 rhymes with 3.";
-  if (scheme.startsWith("AAAA")) return "Monorhyme. All lines end with same rhyme.";
-  if (scheme.startsWith("AABCCB")) return "Sestet. Line 1 rhymes with 2. Line 4 rhymes with 5. Line 3 rhymes with 6.";
-  if (scheme.startsWith("Terza")) return "Chain Rhyme (ABA BCB).";
-  if (scheme.startsWith("Limerick")) return "AABBA structure.";
+  if (scheme.includes("AABB") || scheme.includes("Couplet")) return "Couplets (AABB). Line 1-2 rhyme, 3-4 rhyme.";
+  if (scheme.includes("ABAB") || scheme.includes("Alternate")) return "Alternate (ABAB). Line 1-3 rhyme, 2-4 rhyme.";
+  if (scheme.includes("ABCB") || scheme.includes("Ballad")) return "Ballad (ABCB). Only line 2-4 rhyme.";
+  if (scheme.includes("ABBA") || scheme.includes("Enclosed")) return "Enclosed (ABBA). Line 1-4, 2-3 rhyme.";
+  if (scheme.includes("AAAA") || scheme.includes("Monorhyme")) return "Monorhyme (AAAA). All lines same rhyme.";
+  if (scheme.includes("AABA") || scheme.includes("Rubaiyat")) return "Rubaiyat (AABA). Lines 1,2,4 rhyme.";
+  if (scheme.includes("AABCCB") || scheme.includes("Sestet")) return "Sestet (AABCCB). Complex 6-line.";
+  if (scheme.includes("Terza")) return "Terza Rima (ABA BCB). Chain linking.";
+  if (scheme.includes("Limerick")) return "Limerick (AABBA). Humorous pattern.";
+  if (scheme.includes("Sonnet")) return "Sonnet (14 lines). ABAB CDCD EFEF GG structure.";
+  if (scheme.includes("Sanskrit") || scheme.includes("Sloka") || scheme.includes("Doha") || scheme.includes("Chaupai")) return "Indian classical meter. Follow traditional syllable count and rhyme.";
+  if (scheme.includes("Ghazal")) return "Ghazal (AA BA CA). First couplet both lines rhyme, then only second lines.";
+  if (scheme.includes("Pallavi") || scheme.includes("Sthayi")) return "Classical song structure. Refrain + verses.";
+  if (scheme.includes("Hip-Hop") || scheme.includes("Rap")) return "Internal rhymes and flow. Multiple rhymes per line.";
+  if (scheme.includes("Free Verse") || scheme.includes("No Rhyme") || scheme.includes("Blank")) return "Free verse. No strict rhyme. Focus on rhythm.";
   return "Consistent end rhymes (Anthya Prasa).";
 };
 
@@ -110,7 +116,10 @@ export const runReviewAgent = async (
         systemInstruction: SYSTEM_INSTRUCTION_REVIEW,
         responseMimeType: "application/json",
         responseSchema: lyricsSchema,
-        temperature: 0.3, // Very low temperature for strict adherence
+        temperature: AGENT_TEMPERATURES.REVIEW,
+        // maxOutputTokens removed to allow dynamic length
+        topP: AGENT_TOP_P.REVIEW,
+        topK: 40
       }
     });
 

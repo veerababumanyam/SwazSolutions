@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const validator = require('validator');
 const { optionalAuth } = require('../middleware/auth');
 
 /**
@@ -43,17 +44,16 @@ function findCoverImage(albumPath, musicDir) {
     }
 
     // Final fallback: check for default cover in MusicFiles root
-    const defaultCover = path.join(musicDir, 'cover.jpg');
-    if (fs.existsSync(defaultCover)) {
-        return '/music/cover.jpg';
+    const defaultCovers = ['default-cover.png', 'default-cover.jpg', 'cover.png', 'cover.jpg'];
+    for (const coverFile of defaultCovers) {
+        const defaultCoverPath = path.join(musicDir, coverFile);
+        if (fs.existsSync(defaultCoverPath)) {
+            return `/music/${coverFile}`;
+        }
     }
 
-    const defaultCoverPng = path.join(musicDir, 'cover.png');
-    if (fs.existsSync(defaultCoverPng)) {
-        return '/music/cover.png';
-    }
-
-    return null;
+    // Ultimate fallback: placeholder image
+    return '/placeholder-album.png';
 }
 
 function createSongRoutes(db) {
@@ -97,16 +97,23 @@ function createSongRoutes(db) {
             const songs = db.prepare(query).all(...params);
             const { total } = db.prepare(countQuery).get(...params.slice(0, -2));
 
-            // Enhance songs with cover_path
+            // Enhance songs with cover_path using three-tier fallback:
+            // 1. Metadata embedded cover (from DB)
+            // 2. Folder image (cover.jpg, folder.jpg, etc.)
+            // 3. Default placeholder
             const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
             const enhancedSongs = songs.map(song => {
-                // Extract album path from file_path
-                // Example: /music/Album Name/song.mp3 -> Album Name
-                const filePath = song.file_path.replace('/music/', '');
-                const albumPath = path.join(musicDir, path.dirname(filePath));
-
-                // Use DB cover_path if available, otherwise try to find in folder
-                const coverPath = song.cover_path || findCoverImage(albumPath, musicDir);
+                let coverPath = null;
+                
+                // Priority 1: Metadata embedded cover from database
+                if (song.cover_path) {
+                    coverPath = song.cover_path;
+                } else {
+                    // Priority 2: Look for cover in album folder
+                    const filePath = song.file_path.replace('/music/', '');
+                    const albumPath = path.join(musicDir, path.dirname(filePath));
+                    coverPath = findCoverImage(albumPath, musicDir);
+                }
 
                 return {
                     ...song,
@@ -211,12 +218,18 @@ function createSongRoutes(db) {
                 return res.status(400).json({ error: 'Search query required' });
             }
 
+            // Sanitize and validate search query
+            const sanitizedQuery = validator.trim(validator.escape(q.toString()));
+            if (sanitizedQuery.length > 100) {
+                return res.status(400).json({ error: 'Search query too long' });
+            }
+
             const songs = db.prepare(`
         SELECT * FROM songs
         WHERE title LIKE ? OR artist LIKE ? OR album LIKE ?
         ORDER BY play_count DESC
         LIMIT 50
-      `).all(`%${q}%`, `%${q}%`, `%${q}%`);
+      `).all(`%${sanitizedQuery}%`, `%${sanitizedQuery}%`, `%${sanitizedQuery}%`);
 
             res.json({ results: songs, query: q });
         } catch (error) {

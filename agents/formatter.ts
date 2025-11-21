@@ -1,16 +1,39 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { SYSTEM_INSTRUCTION_FORMATTER, DEFAULT_HQ_TAGS } from "./config";
+import { SYSTEM_INSTRUCTION_FORMATTER, getHQTags, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { cleanAndParseJSON } from "../utils";
+import { validateApiKey, validateLyricsLength } from "../utils/validation";
 
 export interface FormatterOutput {
   stylePrompt: string;
   formattedLyrics: string;
 }
 
-export const runFormatterAgent = async (lyrics: string, apiKey: string, selectedModel: string): Promise<FormatterOutput> => {
-  if (!apiKey) throw new Error("API Key is missing");
+export interface FormatterOptions {
+  customHQTags?: string[];
+  context?: string;
+}
+
+export const runFormatterAgent = async (
+  lyrics: string,
+  apiKey: string,
+  selectedModel: string,
+  options?: FormatterOptions
+): Promise<FormatterOutput> => {
+  // Validation
+  const apiKeyValidation = validateApiKey(apiKey);
+  if (!apiKeyValidation.valid) {
+    throw new Error(apiKeyValidation.error);
+  }
+
+  const lyricsValidation = validateLyricsLength(lyrics);
+  if (!lyricsValidation.valid) {
+    throw new Error(lyricsValidation.error);
+  }
 
   const ai = new GoogleGenAI({ apiKey: apiKey });
+
+  // Get HQ tags based on user preferences or context
+  const hqTags = getHQTags(options?.customHQTags, options?.context);
 
   const schema = {
     type: Type.OBJECT,
@@ -29,7 +52,7 @@ export const runFormatterAgent = async (lyrics: string, apiKey: string, selected
     1. Generate a "Creative Music Style Prompt" for Suno.com.
        - If Indian/Asian: Mix Global genres with Native instruments (Fusion).
        - If European/Western: Use specific sub-genres and authentic instrumentation.
-    2. **IMPORTANT:** The stylePrompt MUST end with: "${DEFAULT_HQ_TAGS}".
+    2. **IMPORTANT:** The stylePrompt MUST end with: "${hqTags}".
     3. Format the lyrics with [Square Bracket] meta-tags for Suno.
     4. **STRICT RULE:** Do NOT generate [Spoken Word].
   `;
@@ -40,7 +63,10 @@ export const runFormatterAgent = async (lyrics: string, apiKey: string, selected
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION_FORMATTER,
-        temperature: 0.75,
+        temperature: AGENT_TEMPERATURES.FORMATTER,
+        // maxOutputTokens removed to allow dynamic length
+        topP: AGENT_TOP_P.FORMATTER,
+        topK: 40,
         responseMimeType: "application/json",
         responseSchema: schema
       }
@@ -52,19 +78,13 @@ export const runFormatterAgent = async (lyrics: string, apiKey: string, selected
 
     // Fallback
     return {
-      stylePrompt: `Cinematic, Fusion, ${DEFAULT_HQ_TAGS}`,
+      stylePrompt: `Cinematic, Fusion, ${hqTags}`,
       formattedLyrics: lyrics
     };
 
   } catch (error) {
     console.error("Formatter Agent Error:", error);
-    if (error instanceof Error && error.message === "API_KEY_MISSING") {
-      throw error;
-    }
-    // Return fallback for other errors
-    return {
-      stylePrompt: `Global Music Style, ${DEFAULT_HQ_TAGS}`,
-      formattedLyrics: lyrics
-    };
+    const { wrapGenAIError } = await import("../utils");
+    throw wrapGenAIError(error);
   }
 };

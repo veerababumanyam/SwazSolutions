@@ -1,4 +1,5 @@
 const express = require('express');
+const validator = require('validator');
 const { authenticateToken } = require('../middleware/auth');
 
 function createPlaylistRoutes(db) {
@@ -57,12 +58,27 @@ function createPlaylistRoutes(db) {
                 return res.status(400).json({ error: 'Playlist name required' });
             }
 
+            // Validate and sanitize playlist name
+            const sanitizedName = validator.trim(name);
+            if (!validator.isLength(sanitizedName, { min: 1, max: 100 })) {
+                return res.status(400).json({ error: 'Playlist name must be 1-100 characters' });
+            }
+
+            // Validate description if provided
+            let sanitizedDescription = null;
+            if (description) {
+                sanitizedDescription = validator.trim(description);
+                if (sanitizedDescription.length > 500) {
+                    return res.status(400).json({ error: 'Description must be less than 500 characters' });
+                }
+            }
+
             const stmt = db.prepare(`
         INSERT INTO playlists (user_id, name, description, is_public)
         VALUES (?, ?, ?, ?)
       `);
 
-            const result = stmt.run(0, name, description || null, is_public ? 1 : 0);
+            const result = stmt.run(0, sanitizedName, sanitizedDescription, is_public ? 1 : 0);
 
             const playlist = db.prepare('SELECT * FROM playlists WHERE id = ?').get(result.lastInsertRowid);
 

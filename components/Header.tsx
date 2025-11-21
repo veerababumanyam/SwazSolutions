@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info } from 'lucide-react';
+import { Home, Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera } from 'lucide-react';
 
 export const Header: React.FC = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -15,12 +15,12 @@ export const Header: React.FC = () => {
             setIsScrolled(window.scrollY > 20);
         };
         window.addEventListener('scroll', handleScroll);
-        
+
         // Initialize Theme
         const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
         const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-        
+
         setTheme(initialTheme);
         document.documentElement.setAttribute('data-theme', initialTheme);
 
@@ -67,19 +67,23 @@ export const Header: React.FC = () => {
         <>
             <header className={`glass-nav ${isScrolled ? 'scrolled' : 'bg-background/50 border-transparent shadow-none'}`}>
                 <div className={`absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-accent/50 to-transparent transition-opacity duration-500 ${isScrolled ? 'opacity-100' : 'opacity-0'}`}></div>
-                
+
                 <div className="container mx-auto">
                     <div className="flex items-center justify-between h-20 px-4 lg:px-6 relative z-50">
                         {/* Logo Section */}
                         <Link to="/" onClick={() => handleMobileNavClick()} className="flex items-center gap-3 group flex-shrink-0">
-                            <div className="relative w-12 h-12 flex items-center justify-center bg-brand-gradient rounded-xl shadow-lg group-hover:scale-105 transition-transform">
-                                 <span className="text-white font-black text-2xl">S</span>
+                            <div className="relative w-12 h-12 flex items-center justify-center rounded-xl shadow-lg group-hover:scale-105 transition-transform overflow-hidden">
+                                <img
+                                    src="/assets/SwazLogo.webp"
+                                    alt="Swaz Solutions Logo"
+                                    className="w-full h-full object-contain"
+                                />
                             </div>
                             <div className="block">
                                 <h1 className="text-base sm:text-lg lg:text-xl font-black text-primary group-hover:text-accent transition-all duration-300">
                                     Swaz Solutions
                                 </h1>
-                                <p className="hidden lg:block text-xs text-secondary font-medium">Data Recovery & AI</p>
+                                <p className="hidden lg:block text-xs text-muted font-medium">Data Recovery & AI</p>
                             </div>
                         </Link>
 
@@ -88,11 +92,10 @@ export const Header: React.FC = () => {
                             <Link
                                 to="/"
                                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
-                                    isActive('/') 
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30' 
+                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
                                         : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                }`}
+                                    }`}
                             >
                                 <Home className="w-4 h-4" />
                                 <span>Home</span>
@@ -108,11 +111,10 @@ export const Header: React.FC = () => {
 
                             <Link
                                 to="/music"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
-                                    isActive('/music') 
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30' 
+                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/music')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
                                         : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                }`}
+                                    }`}
                             >
                                 <Headphones className="w-4 h-4" />
                                 <span>Music</span>
@@ -120,23 +122,32 @@ export const Header: React.FC = () => {
 
                             <Link
                                 to="/studio"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
-                                    isActive('/studio') 
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30' 
+                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/studio')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
                                         : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                }`}
+                                    }`}
                             >
                                 <Music className="w-4 h-4" />
                                 <span>Studio</span>
                             </Link>
 
                             <Link
-                                to="/about"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${
-                                    isActive('/about') 
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30' 
+                                to="/camera-updates"
+                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/camera-updates')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
                                         : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                }`}
+                                    }`}
+                            >
+                                <Camera className="w-4 h-4" />
+                                <span>Camera</span>
+                            </Link>
+
+                            <Link
+                                to="/about"
+                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/about')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                    }`}
                             >
                                 <Info className="w-4 h-4" />
                                 <span>About</span>
@@ -145,14 +156,14 @@ export const Header: React.FC = () => {
 
                         {/* CTA Button & Theme Toggle */}
                         <div className="flex items-center gap-3">
-                             <button
+                            <button
                                 onClick={toggleTheme}
                                 className="p-2.5 rounded-xl text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-border transition-all"
                                 aria-label="Toggle Dark Mode"
                             >
                                 {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                             </button>
-                            
+
                             <Link
                                 to="/studio"
                                 className="btn btn-primary px-5 md:px-6 py-2.5 rounded-xl text-sm hover-lift hidden sm:flex"
@@ -162,7 +173,7 @@ export const Header: React.FC = () => {
                             </Link>
 
                             {/* Mobile Menu Toggle */}
-                            <button 
+                            <button
                                 className="md:hidden p-2.5 text-secondary hover:text-primary hover:bg-surface rounded-xl transition-colors z-50"
                                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                                 aria-label="Toggle Menu"
@@ -178,17 +189,17 @@ export const Header: React.FC = () => {
             {isMobileMenuOpen && (
                 <div className="fixed inset-0 bg-background/98 backdrop-blur-3xl z-40 md:hidden overflow-y-auto animate-fade-in flex flex-col pt-20">
                     <div className="flex-1 p-6 space-y-4">
-                         <Link
+                        <Link
                             to="/"
                             onClick={() => handleMobileNavClick()}
                             className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
                         >
                             <Home className="w-6 h-6" /> Home
                         </Link>
-                        
+
                         <button
-                             onClick={() => scrollToSection('services')}
-                             className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                            onClick={() => scrollToSection('services')}
+                            className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
                         >
                             <Database className="w-6 h-6" /> Services
                         </button>
@@ -207,6 +218,14 @@ export const Header: React.FC = () => {
                             className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/studio') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
                         >
                             <Music className="w-6 h-6" /> Lyric Studio
+                        </Link>
+
+                        <Link
+                            to="/camera-updates"
+                            onClick={() => handleMobileNavClick()}
+                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/camera-updates') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                        >
+                            <Camera className="w-6 h-6" /> Camera Updates
                         </Link>
 
                         <Link

@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { MODEL_NAME, SYSTEM_INSTRUCTION_EMOTION , getModelToUse} from "./config";
+import { MODEL_NAME, SYSTEM_INSTRUCTION_EMOTION, getModelToUse, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { EmotionAnalysis } from "./types";
 import { cleanAndParseJSON, retryWithBackoff } from "../utils";
 
@@ -16,10 +16,10 @@ export const runEmotionAgent = async (input: string, apiKey?: string, selectedMo
       sentiment: { type: Type.STRING, description: "Positive, Negative, or Neutral" },
       navarasa: { type: Type.STRING, description: "The dominant Rasa (e.g., Shringara, Raudra)" },
       intensity: { type: Type.INTEGER, description: "Scale of 1 to 10" },
-      suggestedKeywords: { 
-        type: Type.ARRAY, 
+      suggestedKeywords: {
+        type: Type.ARRAY,
         items: { type: Type.STRING },
-        description: "Keywords that match this emotion" 
+        description: "Keywords that match this emotion"
       },
       vibeDescription: { type: Type.STRING, description: "A poetic description of the detected vibe" },
       // AI Configuration Suggestions
@@ -57,7 +57,10 @@ export const runEmotionAgent = async (input: string, apiKey?: string, selectedMo
             systemInstruction: SYSTEM_INSTRUCTION_EMOTION,
             responseMimeType: "application/json",
             responseSchema: emotionSchema,
-            temperature: 0.6,
+            temperature: AGENT_TEMPERATURES.EMOTION,
+            // maxOutputTokens removed to allow dynamic length
+            topP: AGENT_TOP_P.EMOTION,
+            topK: 40
           }
         });
 

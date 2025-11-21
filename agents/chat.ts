@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { MODEL_NAME, SYSTEM_INSTRUCTION_CHAT, getModelToUse } from "./config";
+import { MODEL_NAME, SYSTEM_INSTRUCTION_CHAT, getModelToUse, API_KEY, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { Message } from "./types";
 import { wrapGenAIError } from "../utils";
 
@@ -100,8 +100,10 @@ export const runChatAgent = async (
       model: getModelToUse(selectedModel),
       config: {
         systemInstruction: systemInstruction,
-        temperature: 0.7, // Balanced creativity and coherence
-        topK: 40,
+        temperature: AGENT_TEMPERATURES.CHAT,
+        // maxOutputTokens removed to allow dynamic length
+        topP: AGENT_TOP_P.CHAT,
+        topK: 40
       },
       contents: contents
     });

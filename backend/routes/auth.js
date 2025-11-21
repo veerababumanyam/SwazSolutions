@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const validator = require('validator');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
 
 function createAuthRoutes(db) {
@@ -14,8 +15,28 @@ function createAuthRoutes(db) {
             return res.status(400).json({ error: 'Username and password required' });
         }
 
-        if (password.length < 6) {
-            return res.status(400).json({ error: 'Password must be at least 6 characters' });
+        // Validate username
+        if (!validator.isLength(username, { min: 3, max: 20 })) {
+            return res.status(400).json({ error: 'Username must be 3-20 characters' });
+        }
+        if (!validator.isAlphanumeric(username, 'en-US')) {
+            return res.status(400).json({ error: 'Username must be alphanumeric (letters and numbers only)' });
+        }
+
+        // Validate password strength
+        if (password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        }
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({ 
+                error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)' 
+            });
+        }
+
+        // Validate email if provided
+        if (email && !validator.isEmail(email)) {
+            return res.status(400).json({ error: 'Invalid email format' });
         }
 
         try {

@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 require('dotenv').config();
 
 // Initialize database
@@ -11,6 +13,7 @@ const db = require('./config/database');
 const createAuthRoutes = require('./routes/auth');
 const createSongRoutes = require('./routes/songs');
 const createPlaylistRoutes = require('./routes/playlists');
+const { router: cameraUpdatesRouter, init: initCameraRoutes, saveUpdatesToDb } = require('./routes/cameraUpdates');
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -19,12 +22,40 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+        credentials: true,
         methods: ["GET", "POST"]
     }
 });
 
 const PORT = process.env.PORT || 3000;
+
+// Rate Limiters
+const authLimiter = rateLimit({
+    windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+    max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 5,
+    message: 'Too many authentication attempts, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+    windowMs: parseInt(process.env.API_RATE_LIMIT_WINDOW_MS) || 60 * 1000, // 1 minute  
+    max: parseInt(process.env.API_RATE_LIMIT_MAX) || 100,
+    message: 'Too many requests, please slow down',
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Database ready flag
+let isDatabaseReady = false;
+db.ready.then(() => {
+    isDatabaseReady = true;
+    console.log('✅ Database ready');
+}).catch(err => {
+    console.error('❌ Database initialization failed:', err);
+    process.exit(1);
+});
 
 // Socket.io Logic
 io.on('connection', (socket) => {
@@ -61,13 +92,41 @@ io.on('connection', (socket) => {
 });
 
 // Middleware
-app.use(cors());
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+        },
+    },
+}));
+app.use(cors({
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Database readiness check
+app.use((req, res, next) => {
+    if (!isDatabaseReady && !req.path.startsWith('/api/health')) {
+        return res.status(503).json({ 
+            error: 'Service initializing', 
+            message: 'Database is starting up, please try again in a moment' 
+        });
+    }
+    next();
+});
+
 // Logging middleware
 app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+    }
     next();
 });
 
@@ -88,10 +147,16 @@ if (!fs.existsSync(coversDir)) {
 app.use('/covers', express.static(coversDir));
 console.log(`🖼️  Serving covers from: ${coversDir}`);
 
-// API Routes
-app.use('/api/auth', createAuthRoutes(db));
-app.use('/api/songs', createSongRoutes(db));
-app.use('/api/playlists', createPlaylistRoutes(db));
+// Initialize camera updates routes with database
+initCameraRoutes(db);
+
+// API Routes with rate limiting
+// Note: Authentication is disabled for open access
+// Auth routes kept for future use but not enforced
+app.use('/api/auth', apiLimiter, createAuthRoutes(db));
+app.use('/api/songs', apiLimiter, createSongRoutes(db));
+app.use('/api/playlists', apiLimiter, createPlaylistRoutes(db));
+app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -160,6 +225,28 @@ function getLocalIP() {
     return 'localhost';
 }
 
+// Scheduled scan variables (module scope for cleanup)
+let scanIntervalId = null;
+let scanRetryTimeoutId = null;
+let isScanning = false;
+let cameraScraperIntervalId = null;
+
+// Cleanup function for graceful shutdown
+const cleanupScheduledTasks = () => {
+    if (scanIntervalId) {
+        clearInterval(scanIntervalId);
+        scanIntervalId = null;
+    }
+    if (scanRetryTimeoutId) {
+        clearTimeout(scanRetryTimeoutId);
+        scanRetryTimeoutId = null;
+    }
+    if (cameraScraperIntervalId) {
+        clearInterval(cameraScraperIntervalId);
+        cameraScraperIntervalId = null;
+    }
+};
+
 // Start server
 server.listen(PORT, '0.0.0.0', () => {
     const localIP = getLocalIP();
@@ -187,6 +274,7 @@ server.listen(PORT, '0.0.0.0', () => {
   `);
 
     console.log('🎯 Ready to serve music!');
+    console.log('⚠️  Running in OPEN ACCESS mode - no authentication required');
     console.log('');
 
     // Schedule music scan (every 12 hours) with safety boundaries and retry logic
@@ -196,6 +284,19 @@ server.listen(PORT, '0.0.0.0', () => {
     const { scanMusicDirectory } = require('./services/musicScanner');
 
     async function runSafeScan(retryCount = 0) {
+        // Prevent concurrent scans
+        if (isScanning) {
+            console.log('⏭️  Scan already in progress, skipping...');
+            return;
+        }
+
+        // Clear any pending retry timeout
+        if (scanRetryTimeoutId) {
+            clearTimeout(scanRetryTimeoutId);
+            scanRetryTimeoutId = null;
+        }
+
+        isScanning = true;
         console.log(`🔄 Starting scheduled music scan (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})...`);
 
         try {
@@ -211,44 +312,92 @@ server.listen(PORT, '0.0.0.0', () => {
             // Retry logic
             if (retryCount < MAX_RETRIES) {
                 console.log(`⏳ Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
-                setTimeout(() => {
-                    // Use a separate try-catch for the retry execution to ensure it doesn't crash the main loop
-                    try {
-                        runSafeScan(retryCount + 1);
-                    } catch (retryError) {
-                        console.error('❌ Critical error during retry dispatch:', retryError);
-                    }
+                scanRetryTimeoutId = setTimeout(() => {
+                    scanRetryTimeoutId = null;
+                    runSafeScan(retryCount + 1).catch(err => {
+                        console.error('❌ Critical error during retry:', err);
+                    });
                 }, RETRY_DELAY_MS);
             } else {
                 console.error('❌ Max retries reached. Giving up until next schedule.');
             }
+        } finally {
+            isScanning = false;
         }
     }
 
     console.log('⏰ Scheduling music scan (Every 12 hours)...');
 
     // Start the interval
-    setInterval(() => {
+    scanIntervalId = setInterval(() => {
         // Wrap in top-level try-catch to guarantee server stability
         try {
-            runSafeScan();
+            runSafeScan().catch(err => {
+                console.error('❌ Critical error initiating scheduled scan:', err);
+            });
         } catch (criticalError) {
             console.error('❌ Critical error initiating scheduled scan:', criticalError);
         }
     }, SCAN_INTERVAL_MS);
+
+    // Camera Updates AI Agent - Daily scraping
+    console.log('📸 Initializing Camera Updates AI Agent...');
+    const { scrapeAllBrands } = require('./services/cameraUpdatesScraper');
+
+    async function runCameraScraper() {
+        try {
+            console.log('🔄 Starting camera updates scraping...');
+            const updates = await scrapeAllBrands();
+            
+            if (updates && updates.length > 0) {
+                const result = saveUpdatesToDb(updates);
+                if (result.inserted > 0 || result.updated > 0) {
+                    console.log(`✅ Camera updates saved: ${result.inserted} new, ${result.updated} updated, ${result.skipped} unchanged (${updates.length} total)`);
+                } else {
+                    console.log(`ℹ️  All ${result.skipped} updates are current, no changes needed`);
+                }
+            } else {
+                const existingCount = db.prepare('SELECT COUNT(*) as count FROM camera_updates').get().count;
+                console.log(`ℹ️  No new updates from scraper, keeping ${existingCount} existing updates active`);
+            }
+        } catch (error) {
+            console.error('❌ Camera scraper error:', error.message);
+            console.error(error.stack);
+            const existingCount = db.prepare('SELECT COUNT(*) as count FROM camera_updates').get().count;
+            console.log(`ℹ️  Scraper failed, preserving ${existingCount} existing updates`);
+        }
+    }
+
+    // Wait a bit for database to be fully ready, then run
+    setTimeout(() => {
+        runCameraScraper().catch(err => {
+            console.error('❌ Initial camera scraper failed:', err);
+        });
+    }, 2000);
+
+    // Schedule daily updates (every 24 hours)
+    const CAMERA_SCRAPE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+    cameraScraperIntervalId = setInterval(runCameraScraper, CAMERA_SCRAPE_INTERVAL);
+    console.log('⏰ Camera updates scheduled (Daily)');
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
     console.log('SIGTERM signal received: closing HTTP server');
-    db.close();
-    process.exit(0);
+    cleanupScheduledTasks();
+    server.close(() => {
+        db.close();
+        process.exit(0);
+    });
 });
 
 process.on('SIGINT', () => {
     console.log('\nSIGINT signal received: closing HTTP server');
-    db.close();
-    process.exit(0);
+    cleanupScheduledTasks();
+    server.close(() => {
+        db.close();
+        process.exit(0);
+    });
 });
 
 module.exports = app;

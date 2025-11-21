@@ -1,5 +1,7 @@
 // API Base URL - automatically detects if running through backend or Vite dev server
-const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL 
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api');
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
@@ -110,7 +112,8 @@ export const songsAPI = {
 
     // Get song URL for audio player
     getSongUrl(filePath: string): string {
-        return `http://localhost:3000${filePath}`;
+        const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
+        return `${baseUrl}${filePath}`;
     },
 };
 

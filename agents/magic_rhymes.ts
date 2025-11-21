@@ -3,13 +3,26 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { MODEL_FAST } from "./config";
 import { LyricSection } from "./types";
 import { cleanAndParseJSON } from "../utils";
+import { validateApiKey, validateLanguage } from "../utils/validation";
 
 export const runMagicRhymesAgent = async (
     sections: LyricSection[], 
     language: string,
     apiKey: string
 ): Promise<LyricSection[]> => {
-    if (!apiKey) throw new Error("API Key is missing");
+    const apiValidation = validateApiKey(apiKey);
+    if (!apiValidation.valid) {
+        throw new Error(apiValidation.error || "Invalid API Key");
+    }
+    
+    const langValidation = validateLanguage(language);
+    if (!langValidation.valid) {
+        throw new Error(langValidation.error || "Invalid Language");
+    }
+    
+    if (!sections || sections.length === 0) {
+        throw new Error("No lyrics sections provided");
+    }
 
     const ai = new GoogleGenAI({ apiKey: apiKey });
 

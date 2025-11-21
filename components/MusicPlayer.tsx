@@ -5,6 +5,7 @@ import { AdvancedEqualizer } from './AdvancedEqualizer';
 import { QueuePanel } from './QueuePanel';
 import { ThemeToggle } from './ThemeToggle';
 import { MiniPlayer } from './MiniPlayer';
+import { handleImageError } from '../utils/imageUtils';
 
 const Visualizer: React.FC<{ analyser: AnalyserNode | null, isPlaying: boolean }> = ({ analyser, isPlaying }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -177,10 +178,7 @@ export const MusicPlayer: React.FC = () => {
                         <div className="relative group flex-shrink-0">
                             <img
                                 src={currentSong.cover || "/placeholder-album.png"}
-                                onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = "/placeholder-album.png";
-                                }}
+                                onError={handleImageError}
                                 alt={`Album cover for ${currentSong.title}`}
                                 className={`w-10 h-10 md:w-12 md:h-12 rounded-lg object-cover shadow-sm border border-border ${isPlaying ? 'animate-pulse' : ''}`}
                             />

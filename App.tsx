@@ -7,32 +7,51 @@ import { LandingPage } from './pages/LandingPage';
 import { LyricStudio } from './pages/LyricStudio';
 import { MusicPage } from './pages/MusicPage';
 import { AboutPage } from './pages/AboutPage';
+import { CameraUpdatesPage } from './pages/CameraUpdatesPage';
 import { MusicProvider } from './contexts/MusicContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const App: React.FC = () => {
   return (
-    <HashRouter>
-      <ToastProvider>
-        <MusicProvider>
-          <div className="flex flex-col min-h-screen bg-background text-primary font-sans antialiased selection:bg-accent selection:text-white">
-            <Header />
-            <Routes>
-              <Route path="/" element={<>
-                <LandingPage />
-                <Footer />
-              </>} />
-              <Route path="/about" element={<>
-                <AboutPage />
-                <Footer />
-              </>} />
-              <Route path="/studio" element={<LyricStudio />} />
-              <Route path="/music" element={<MusicPage />} />
-            </Routes>
-          </div>
-        </MusicProvider>
-      </ToastProvider>
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <ToastProvider>
+          <MusicProvider>
+            <ErrorBoundary>
+              <div className="flex flex-col min-h-screen bg-background text-primary font-sans antialiased selection:bg-accent selection:text-white">
+                <Header />
+                <Routes>
+                  <Route path="/" element={<>
+                    <LandingPage />
+                    <Footer />
+                  </>} />
+                  <Route path="/about" element={<>
+                    <AboutPage />
+                    <Footer />
+                  </>} />
+                  <Route path="/studio" element={
+                    <ErrorBoundary>
+                      <LyricStudio />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/music" element={
+                    <ErrorBoundary>
+                      <MusicPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/camera-updates" element={
+                    <ErrorBoundary>
+                      <CameraUpdatesPage />
+                    </ErrorBoundary>
+                  } />
+                </Routes>
+              </div>
+            </ErrorBoundary>
+          </MusicProvider>
+        </ToastProvider>
+      </HashRouter>
+    </ErrorBoundary>
   );
 };
 

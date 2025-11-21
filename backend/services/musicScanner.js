@@ -13,6 +13,29 @@ async function loadMusicMetadata() {
 }
 
 /**
+ * Find cover image in a directory
+ * Looks for common cover image filenames
+ * @param {string} dir - Directory to search in
+ * @returns {string|null} - Absolute path to cover image or null
+ */
+function findCoverImage(dir) {
+    const coverNames = [
+        'cover.jpg', 'cover.jpeg', 'cover.png',
+        'folder.jpg', 'folder.jpeg', 'folder.png',
+        'album.jpg', 'album.jpeg', 'album.png',
+        'artwork.jpg', 'artwork.jpeg', 'artwork.png'
+    ];
+
+    for (const name of coverNames) {
+        const coverPath = path.join(dir, name);
+        if (fs.existsSync(coverPath)) {
+            return coverPath;
+        }
+    }
+    return null;
+}
+
+/**
  * Scans the music directory and updates the database
  * @param {Object} db - The database instance
  * @param {string} musicDir - The absolute path to the music directory
@@ -65,7 +88,7 @@ async function scanMusicDirectory(db, musicDir) {
                             if (metadata.common.album) metaAlbum = metadata.common.album;
                             if (metadata.format.duration) duration = Math.round(metadata.format.duration);
 
-                            // Extract cover art
+                            // Priority 1: Extract embedded cover art from metadata
                             if (metadata.common.picture && metadata.common.picture.length > 0) {
                                 const picture = metadata.common.picture[0];
                                 const buffer = picture.data;
@@ -82,6 +105,48 @@ async function scanMusicDirectory(db, musicDir) {
 
                         } catch (err) {
                             console.warn(`⚠️ Failed to parse metadata for ${item.name}: ${err.message}`);
+                        }
+
+                        // Priority 2: If no embedded cover, look for cover image in album folder
+                        if (!coverPath) {
+                            const albumCoverPath = findCoverImage(dir);
+                            if (albumCoverPath) {
+                                try {
+                                    const buffer = fs.readFileSync(albumCoverPath);
+                                    const hash = crypto.createHash('md5').update(buffer).digest('hex');
+                                    const imageExt = path.extname(albumCoverPath).toLowerCase();
+                                    const coverFilename = `${hash}${imageExt}`;
+                                    const coverAbsPath = path.join(coversDir, coverFilename);
+
+                                    if (!fs.existsSync(coverAbsPath)) {
+                                        fs.copyFileSync(albumCoverPath, coverAbsPath);
+                                    }
+                                    coverPath = `/covers/${coverFilename}`;
+                                } catch (err) {
+                                    console.warn(`⚠️ Failed to copy album cover for ${item.name}: ${err.message}`);
+                                }
+                            }
+                        }
+
+                        // Priority 3: If still no cover, use default cover from MusicFiles folder
+                        if (!coverPath) {
+                            const defaultCoverPath = findCoverImage(musicDir);
+                            if (defaultCoverPath) {
+                                try {
+                                    const buffer = fs.readFileSync(defaultCoverPath);
+                                    const hash = crypto.createHash('md5').update(buffer).digest('hex');
+                                    const imageExt = path.extname(defaultCoverPath).toLowerCase();
+                                    const coverFilename = `${hash}${imageExt}`;
+                                    const coverAbsPath = path.join(coversDir, coverFilename);
+
+                                    if (!fs.existsSync(coverAbsPath)) {
+                                        fs.copyFileSync(defaultCoverPath, coverAbsPath);
+                                    }
+                                    coverPath = `/covers/${coverFilename}`;
+                                } catch (err) {
+                                    console.warn(`⚠️ Failed to copy default cover for ${item.name}: ${err.message}`);
+                                }
+                            }
                         }
 
                         // Insert or update song

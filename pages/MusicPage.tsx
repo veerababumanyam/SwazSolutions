@@ -75,6 +75,11 @@ export const MusicPage: React.FC = () => {
     // Enable keyboard shortcuts
     useKeyboardShortcuts();
 
+    // Handle broken images
+    const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        e.currentTarget.src = '/placeholder-album.png';
+    };
+
     // --- Data Filtering ---
     const getViewData = (): ViewData => {
         if (currentView.type === 'all') {
@@ -188,7 +193,7 @@ export const MusicPage: React.FC = () => {
                         {song.cover ? (
                             <img
                                 src={song.cover || '/placeholder-album.png'}
-                                onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-album.png'; }}
+                                onError={handleImageError}
                                 alt={song.album}
                                 className="w-full h-full object-cover"
                             />
@@ -302,7 +307,7 @@ export const MusicPage: React.FC = () => {
                                 {viewData.type === 'album-detail' && viewData.cover ? (
                                     <img
                                         src={viewData.cover || '/placeholder-album.png'}
-                                        onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-album.png'; }}
+                                        onError={handleImageError}
                                         alt={viewData.title}
                                         className="w-full h-full object-cover"
                                     />
@@ -390,7 +395,7 @@ export const MusicPage: React.FC = () => {
                                             {album.cover ? (
                                                 <img
                                                     src={album.cover || '/placeholder-album.png'}
-                                                    onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder-album.png'; }}
+                                                    onError={handleImageError}
                                                     alt={album.title}
                                                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                                 />

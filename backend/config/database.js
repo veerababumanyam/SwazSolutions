@@ -63,6 +63,33 @@ async function initializeDatabase() {
       console.error('❌ Failed to add cover_path column:', alterError);
     }
   }
+
+  // Create camera_updates table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS camera_updates (
+      id TEXT PRIMARY KEY,
+      brand TEXT NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      date TEXT NOT NULL,
+      version TEXT,
+      description TEXT,
+      features TEXT,
+      download_link TEXT,
+      image_url TEXT,
+      source_url TEXT NOT NULL,
+      source_name TEXT NOT NULL,
+      priority TEXT DEFAULT 'normal',
+      category TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_camera_brand ON camera_updates(brand);
+    CREATE INDEX IF NOT EXISTS idx_camera_type ON camera_updates(type);
+    CREATE INDEX IF NOT EXISTS idx_camera_date ON camera_updates(date DESC);
+    CREATE INDEX IF NOT EXISTS idx_camera_priority ON camera_updates(priority);
+  `);
   // Playlists and other tables
   db.run(`
     -- Playlists table
@@ -125,6 +152,7 @@ const dbWrapper = {
   prepare: (sql) => {
     return {
       run: (...params) => {
+        if (!db) throw new Error('Database not initialized');
         db.run(sql, params);
         saveDatabase();
         // sql.js doesn't have a direct lastInsertRowid, simulate it
@@ -133,6 +161,7 @@ const dbWrapper = {
         return { lastInsertRowid: lastInsertRowid, changes: 1 };
       },
       get: (...params) => {
+        if (!db) return null;
         const result = db.exec(sql, params);
         if (result.length === 0) return null;
         const row = result[0];
@@ -144,6 +173,7 @@ const dbWrapper = {
         return obj;
       },
       all: (...params) => {
+        if (!db) return [];
         const result = db.exec(sql, params);
         if (result.length === 0) return [];
         const row = result[0];
@@ -158,6 +188,7 @@ const dbWrapper = {
     };
   },
   exec: (sql) => {
+    if (!db) throw new Error('Database not initialized');
     db.run(sql);
     saveDatabase();
   },

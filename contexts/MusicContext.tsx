@@ -163,9 +163,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const setupAudioNodes = () => {
         if (!Howler.ctx) return;
 
-        // Resume context if suspended (browser policy)
+        // Note: AudioContext may be suspended due to autoplay policy
+        // It will automatically resume on first user interaction (play button)
         if (Howler.ctx.state === 'suspended') {
-            Howler.ctx.resume();
+            console.log('AudioContext suspended, will resume on user interaction');
         }
 
         if (eqNodesRef.current) return;
@@ -254,9 +255,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 artist: s.artist || 'Unknown Artist',
                 album: s.album || 'Unknown Album',
                 duration: s.duration || 0,
-                // Use backend-provided cover_path with fallback to placeholder
-                cover: s.cover_path ? `${baseUrl}${s.cover_path} ` : '/placeholder-album.png',
-                src: `${baseUrl}${s.file_path} `,
+                // Use relative URLs in development to leverage Vite proxy
+                // In production, these should be absolute URLs
+                cover: s.cover_path || '/placeholder-album.png',
+                src: s.file_path,
                 genre: s.genre,
             }));
 
@@ -342,23 +344,14 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                     // Create the sound but don't auto-play
                     const song = restoredQueue[validIndex];
-                    
+
                     // Validate the audio source
                     if (!song.src || typeof song.src !== 'string') {
                         console.warn('Invalid audio source in session, clearing session');
                         localStorage.removeItem('swaz_music_session');
                         return;
                     }
-                    
-                    // Pre-check if the audio file is accessible (for local files)
-                    if (song.src.startsWith('http://localhost') || song.src.startsWith('/music/')) {
-                        // Test if the file is accessible before creating Howl
-                        fetch(song.src, { method: 'HEAD' }).catch(() => {
-                            console.warn('Session audio file not accessible, skipping restore');
-                            localStorage.removeItem('swaz_music_session');
-                        });
-                    }
-                    
+
                     const sound = new Howl({
                         src: [song.src],
                         html5: true,

@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'swaz-music-v1';
+const CACHE_NAME = 'swaz-music-v2';
 const STATIC_ASSETS = [
     '/',
     '/index.html',
@@ -34,54 +34,107 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
+    // Skip chrome-extension and other non-http(s) requests
+    if (!url.protocol.startsWith('http')) {
+        return;
+    }
+
+    // Skip non-GET requests (Cache API only supports GET)
+    if (event.request.method !== 'GET') {
+        return;
+    }
+
     // Handle Music Files - Cache First, Fallback to Network, Cache on Response
     if (url.pathname.startsWith('/music/') || url.pathname.endsWith('.mp3') || url.pathname.endsWith('.wav')) {
         event.respondWith(
-            caches.match(event.request).then((cachedResponse) => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-                return fetch(event.request).then((networkResponse) => {
-                    if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-                        return networkResponse;
+            caches.match(event.request)
+                .then((cachedResponse) => {
+                    if (cachedResponse) {
+                        return cachedResponse;
                     }
-                    // Clone the response before using it
-                    const responseToCache = networkResponse.clone();
-                    const responseToReturn = networkResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
+                    return fetch(event.request).then((networkResponse) => {
+                        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+                            return networkResponse;
+                        }
+                        // Clone the response before using it
+                        const responseToCache = networkResponse.clone();
+                        const responseToReturn = networkResponse.clone();
+                        caches.open(CACHE_NAME).then((cache) => {
+                            cache.put(event.request, responseToCache);
+                        });
+                        return responseToReturn;
                     });
-                    return responseToReturn;
-                });
-            })
+                })
+                .catch((error) => {
+                    console.warn('Music file fetch failed:', error);
+                    // Return a basic error response
+                    return new Response('Audio file not available', {
+                        status: 404,
+                        statusText: 'Not Found'
+                    });
+                })
         );
         return;
     }
 
-    // Handle API Calls - Network Only (don't cache API responses for now to ensure freshness)
+    // Handle API Calls - Network Only with error handling
     if (url.pathname.startsWith('/api/')) {
-        event.respondWith(fetch(event.request));
+        event.respondWith(
+            fetch(event.request)
+                .catch((error) => {
+                    console.warn('API fetch failed:', error);
+                    return new Response(JSON.stringify({ error: 'Network request failed' }), {
+                        status: 503,
+                        statusText: 'Service Unavailable',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                })
+        );
         return;
     }
 
     // Default Strategy - Stale While Revalidate for other assets
     event.respondWith(
-        caches.match(event.request).then((cachedResponse) => {
-            const fetchPromise = fetch(event.request).then((networkResponse) => {
-                // Only cache valid responses
-                if (networkResponse && networkResponse.status === 200) {
-                    // Clone before caching
-                    const responseToCache = networkResponse.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
+        caches.match(event.request)
+            .then((cachedResponse) => {
+                const fetchPromise = fetch(event.request)
+                    .then((networkResponse) => {
+                        // Only cache valid responses
+                        if (networkResponse && networkResponse.status === 200) {
+                            // Clone before caching
+                            const responseToCache = networkResponse.clone();
+                            caches.open(CACHE_NAME).then((cache) => {
+                                cache.put(event.request, responseToCache);
+                            }).catch(() => {
+                                // Silently fail cache operations
+                            });
+                        }
+                        return networkResponse;
+                    })
+                    .catch((error) => {
+                        // Return cached response if fetch fails
+                        if (cachedResponse) {
+                            return cachedResponse;
+                        }
+                        // If no cache, return a basic error response
+                        console.warn('Fetch failed for:', url.pathname, error);
+                        return new Response('Resource not available', {
+                            status: 404,
+                            statusText: 'Not Found'
+                        });
                     });
-                }
-                return networkResponse;
-            }).catch(() => {
-                // Return cached response if fetch fails
-                return cachedResponse;
-            });
-            return cachedResponse || fetchPromise;
-        })
+
+                return cachedResponse || fetchPromise;
+            })
+            .catch((error) => {
+                console.warn('Cache match failed:', error);
+                // Try direct fetch as last resort
+                return fetch(event.request).catch(() => {
+                    return new Response('Service unavailable', {
+                        status: 503,
+                        statusText: 'Service Unavailable'
+                    });
+                });
+            })
     );
 });
