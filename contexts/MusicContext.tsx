@@ -709,7 +709,46 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         soundRef.current?.pause();
     };
 
-    const next = () => handleTrackEnd();
+    const next = () => {
+        if (queue.length === 0) return;
+        
+        let nextIndex;
+        
+        if (isShuffling) {
+            // Smart Shuffle Logic
+            const recentHistory = history.slice(-10);
+            const candidates = queue.map((s, i) => ({ s, i }))
+                .filter(item => item.i !== currentIndex && !recentHistory.includes(item.s.id));
+
+            if (candidates.length > 0) {
+                const currentSong = queue[currentIndex];
+                const scored = candidates.map(item => {
+                    let score = Math.random();
+                    if (currentSong && item.s.artist === currentSong.artist) score += 0.3;
+                    if (currentSong && item.s.genre === currentSong.genre) score += 0.2;
+                    if (likedSongs.has(item.s.id)) score += 0.2;
+                    return { ...item, score };
+                });
+                scored.sort((a, b) => b.score - a.score);
+                const top3 = scored.slice(0, Math.min(3, scored.length));
+                nextIndex = top3[Math.floor(Math.random() * top3.length)].i;
+            } else {
+                nextIndex = (currentIndex + 1) % queue.length;
+            }
+        } else {
+            nextIndex = currentIndex + 1;
+        }
+
+        if (nextIndex >= queue.length) {
+            if (repeatMode === 'all') {
+                playTrackByIndex(0, queue);
+            } else {
+                pause();
+            }
+        } else {
+            playTrackByIndex(nextIndex, queue);
+        }
+    };
 
     const prev = () => {
         if (soundRef.current && soundRef.current.seek() > 3) {
@@ -821,8 +860,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             recentlyPlayed, searchHistory, addSearchQuery, clearSearchHistory,
             play, pause, next, prev, seek, setVolume, toggleShuffle, toggleRepeat, playTrack, playPlaylist, playAlbum,
             toggleLike, addToQueue, clearError, refreshLibrary, connectLocalLibrary,
-            createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById,
-            setQueue, playTrackByIndex
+            createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById
         }}>
             {children}
         </MusicContext.Provider>

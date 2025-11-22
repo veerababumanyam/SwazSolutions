@@ -86,11 +86,11 @@ const MOCK_UPDATES: Update[] = [
 
 export const CameraUpdatesPage: React.FC = () => {
   // SEO Meta Tags
-  const pageTitle = generatePageTitle('Camera Updates & Firmware News');
+  const pageTitle = generatePageTitle('Camera News & Firmware Updates');
   const metaDescription = generateMetaDescription(
     'Latest camera firmware updates, lens announcements & photography tech news for Canon, Nikon, Sony. Daily updates on mirrorless cameras, DSLRs, firmware releases. Professional photography equipment tracking by Swaz Solutions.'
   );
-  const canonicalUrl = generateCanonicalUrl('/camera-updates');
+  const canonicalUrl = generateCanonicalUrl('/news');
 
   const [updates, setUpdates] = useState<Update[]>([]);
   const [filteredUpdates, setFilteredUpdates] = useState<Update[]>([]);
@@ -272,7 +272,7 @@ export const CameraUpdatesPage: React.FC = () => {
               <div>
                 <h1 className="text-4xl font-black text-primary mb-2 flex items-center gap-3">
                   <Camera className="w-10 h-10 text-accent" />
-                  Professional Camera Updates
+                  Camera News & Updates
                 </h1>
                 <p className="text-secondary text-lg">
                   Latest news from Canon, Nikon, and Sony - Cameras, Lenses, and Firmware

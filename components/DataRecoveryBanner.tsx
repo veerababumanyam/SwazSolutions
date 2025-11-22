@@ -24,7 +24,7 @@ export default function DataRecoveryBanner() {
   const [isVisible, setIsVisible] = useState(false);
 
   // Only show on specific pages
-  const allowedPaths = ['/music', '/studio', '/camera-updates'];
+  const allowedPaths = ['/music', '/studio', '/news'];
   const shouldShow = allowedPaths.includes(location.pathname);
 
   // Configuration

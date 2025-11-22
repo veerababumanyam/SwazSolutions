@@ -41,7 +41,7 @@ const App: React.FC = () => {
                       <MusicPage />
                     </ErrorBoundary>
                   } />
-                  <Route path="/camera-updates" element={
+                  <Route path="/news" element={
                     <ErrorBoundary>
                       <CameraUpdatesPage />
                     </ErrorBoundary>

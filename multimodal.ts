@@ -1,6 +1,6 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { MODEL_NAME, SYSTEM_INSTRUCTION_MULTIMODAL, getModelToUse } from "../config";
+import { MODEL_FAST, SYSTEM_INSTRUCTION_MULTIMODAL } from "./agents/config";
 
 export const runMultiModalAgent = async (input: string, image?: string, audio?: string, apiKey?: string, selectedModel?: string): Promise<string> => {
   // If no media is provided, just return the text input
@@ -27,7 +27,7 @@ export const runMultiModalAgent = async (input: string, image?: string, audio?: 
 
   try {
     const response = await ai.models.generateContent({
-      model: getModelToUse(selectedModel),
+      model: selectedModel || MODEL_FAST,
       config: { systemInstruction: SYSTEM_INSTRUCTION_MULTIMODAL },
       contents: [{ role: "user", parts: parts }]
     });

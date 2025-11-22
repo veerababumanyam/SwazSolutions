@@ -73,9 +73,9 @@ export const Footer: React.FC = () => {
                                         </Link>
                                     </li>
                                     <li>
-                                        <Link to="/camera-updates" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">
+                                        <Link to="/news" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">
                                             <Camera className="w-3 h-3" />
-                                            Camera Updates
+                                            News
                                         </Link>
                                     </li>
                                     <li>
@@ -136,7 +136,7 @@ export const Footer: React.FC = () => {
                                         </Link>
                                     </li>
                                     <li>
-                                        <Link to="/camera-updates" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">
+                                        <Link to="/news" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">
                                             <span className="w-1 h-1 rounded-full bg-accent/50 group-hover:bg-accent transition-colors"></span>
                                             Camera News & Updates
                                         </Link>

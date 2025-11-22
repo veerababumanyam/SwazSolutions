@@ -177,8 +177,7 @@ export const LyricStudio: React.FC = () => {
 
             setGeneratedResult({
                 lyrics: struct,
-                stylePrompt: result.stylePrompt,
-                compliance: result.compliance
+                stylePrompt: result.stylePrompt
             });
 
             // Auto-save to Library

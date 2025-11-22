@@ -1735,13 +1735,28 @@ html {
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
-.contact-toggle-btn:hover {
-  color: rgb(var(--color-primary));
+.contact-toggle-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   background: rgb(var(--color-border));
+  opacity: 0;
+  transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
+}
+
+.contact-toggle-btn:hover:not(.active)::before {
+  opacity: 1;
+}
+
+.contact-toggle-btn:hover:not(.active) {
+  color: rgb(var(--color-primary));
 }
 
 .contact-toggle-btn.active {
@@ -1750,6 +1765,17 @@ html {
       rgb(var(--color-accent-main)) 0%,
       rgb(var(--color-accent-second)) 100%);
   box-shadow: var(--shadow-md), var(--shadow-glow);
+  transform: translateY(0);
+}
+
+.contact-toggle-btn:active {
+  transform: scale(0.98);
+}
+
+.contact-toggle-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .contact-toggle-btn svg {

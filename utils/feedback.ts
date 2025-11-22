@@ -123,7 +123,7 @@ const updateFeedbackInsights = (feedback: FeedbackEntry[]): void => {
  */
 export const loadFeedbackInsights = (): FeedbackStats | null => {
     try {
-        const data = localStorage.setItem(FEEDBACK_INSIGHTS_KEY);
+        const data = localStorage.getItem(FEEDBACK_INSIGHTS_KEY);
         return data ? JSON.parse(data) : null;
     } catch (error) {
         console.error("Failed to load feedback insights:", error);

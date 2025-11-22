@@ -121,14 +121,14 @@ export const Header: React.FC = () => {
                             </Link>
 
                             <Link
-                                to="/camera-updates"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/camera-updates')
+                                to="/news"
+                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/news')
                                     ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
                                     : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
                                     }`}
                             >
                                 <Camera className="w-4 h-4" />
-                                <span>Camera updates</span>
+                                <span>News</span>
                             </Link>
 
                             <Link
@@ -213,11 +213,11 @@ export const Header: React.FC = () => {
                         </Link>
 
                         <Link
-                            to="/camera-updates"
+                            to="/news"
                             onClick={() => handleMobileNavClick()}
-                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/camera-updates') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/news') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
                         >
-                            <Camera className="w-6 h-6" /> Camera Updates
+                            <Camera className="w-6 h-6" /> News
                         </Link>
 
                         <Link

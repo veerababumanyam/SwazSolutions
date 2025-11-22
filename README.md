@@ -6,7 +6,7 @@
 
 ### Professional Data Recovery • AI-Powered Solutions • Music & Creativity Tools
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/veerababumanyam/SwazSolutions)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/veerababumanyam/SwazSolutions)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/react-19.2.0-blue.svg)](https://reactjs.org/)
@@ -33,6 +33,15 @@ Swaz Solutions is a comprehensive platform combining enterprise-grade data recov
 | **🎨 Modern UI/UX** | Glassmorphism design with light/dark themes | ✅ Production |
 | **🔒 Security** | SOC 2 compliant, JWT auth, rate limiting, secure storage | ✅ Production |
 | **📱 Responsive** | Mobile-first design with PWA support | ✅ Production |
+
+## 🌟 Version 1.0.1 - Updates
+
+### New in v1.0.1:
+- ✅ **Contact Form Toggle Fix** - Smooth switching between Data Recovery and Agentic AI forms
+- ✅ **Navigation Rename** - Camera Updates section renamed to "News" for broader content
+- ✅ **Route Updates** - Updated all routes from `/camera-updates` to `/news`
+- ✅ **UI Consistency** - Consistent labeling across header, footer, and mobile navigation
+- ✅ **Build Optimization** - Improved build process and deployment readiness
 
 ## 🌟 Version 1.0.0 - Major Updates
 ```mermaid
@@ -702,5 +711,5 @@ MIT License - See LICENSE file for details
 
 **Made with ❤️ for music creators worldwide**
 
-**Version:** 1.0.0 Production Ready ✅  
+**Version:** 1.0.1 Production Ready ✅  
 **Last Updated:** November 22, 2025

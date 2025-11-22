@@ -188,7 +188,13 @@ export const UnifiedContactForm: React.FC<UnifiedContactFormProps> = ({
         }
     };
 
-    const handleSubmit = contactType === 'data-recovery' ? handleDataRecoverySubmit : handleAgenticAISubmit;
+    const handleSubmit = (e: React.FormEvent) => {
+        if (contactType === 'data-recovery') {
+            handleDataRecoverySubmit(e);
+        } else {
+            handleAgenticAISubmit(e);
+        }
+    };
 
     return (
         <div className={`glass-card p-8 md:p-12 rounded-3xl shadow-2xl border-border bg-background/50 relative overflow-hidden ${className}`}>
@@ -201,11 +207,16 @@ export const UnifiedContactForm: React.FC<UnifiedContactFormProps> = ({
                         <button
                             type="button"
                             onClick={() => {
-                                setContactType('data-recovery');
-                                setSubmitStatus('idle');
-                                setSubmitMessage('');
+                                if (contactType !== 'data-recovery') {
+                                    setContactType('data-recovery');
+                                    setSubmitStatus('idle');
+                                    setSubmitMessage('');
+                                    setIsSubmitting(false);
+                                }
                             }}
                             className={`contact-toggle-btn ${contactType === 'data-recovery' ? 'active' : ''}`}
+                            aria-pressed={contactType === 'data-recovery'}
+                            aria-label="Switch to Data Recovery form"
                         >
                             <HardDrive className="w-5 h-5" />
                             <span>Data Recovery</span>
@@ -213,11 +224,16 @@ export const UnifiedContactForm: React.FC<UnifiedContactFormProps> = ({
                         <button
                             type="button"
                             onClick={() => {
-                                setContactType('agentic-ai');
-                                setSubmitStatus('idle');
-                                setSubmitMessage('');
+                                if (contactType !== 'agentic-ai') {
+                                    setContactType('agentic-ai');
+                                    setSubmitStatus('idle');
+                                    setSubmitMessage('');
+                                    setIsSubmitting(false);
+                                }
                             }}
                             className={`contact-toggle-btn ${contactType === 'agentic-ai' ? 'active' : ''}`}
+                            aria-pressed={contactType === 'agentic-ai'}
+                            aria-label="Switch to Agentic AI Development form"
                         >
                             <Bot className="w-5 h-5" />
                             <span>Agentic AI Development</span>

@@ -1036,7 +1036,7 @@ export const LandingPage: React.FC = () => {
                                     ))}
                                 </div>
 
-                                <Link to="/camera-updates" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
+                                <Link to="/news" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
                                     <Camera className="w-5 h-5" /> View Live Updates
                                 </Link>
                             </div>
