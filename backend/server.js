@@ -13,6 +13,8 @@ const db = require('./config/database');
 const createAuthRoutes = require('./routes/auth');
 const createSongRoutes = require('./routes/songs');
 const createPlaylistRoutes = require('./routes/playlists');
+const createVisitorRoutes = require('./routes/visitors');
+const createContactRoutes = require('./routes/contact');
 const { router: cameraUpdatesRouter, init: initCameraRoutes, saveUpdatesToDb } = require('./routes/cameraUpdates');
 
 const http = require('http');
@@ -114,9 +116,9 @@ app.use(express.urlencoded({ extended: true }));
 // Database readiness check
 app.use((req, res, next) => {
     if (!isDatabaseReady && !req.path.startsWith('/api/health')) {
-        return res.status(503).json({ 
-            error: 'Service initializing', 
-            message: 'Database is starting up, please try again in a moment' 
+        return res.status(503).json({
+            error: 'Service initializing',
+            message: 'Database is starting up, please try again in a moment'
         });
     }
     next();
@@ -156,6 +158,8 @@ initCameraRoutes(db);
 app.use('/api/auth', apiLimiter, createAuthRoutes(db));
 app.use('/api/songs', apiLimiter, createSongRoutes(db));
 app.use('/api/playlists', apiLimiter, createPlaylistRoutes(db));
+app.use('/api/visitors', apiLimiter, createVisitorRoutes(db));
+app.use('/api/contact', createContactRoutes(db)); // Contact has its own rate limiter
 app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter);
 
 // Health check
@@ -348,7 +352,7 @@ server.listen(PORT, '0.0.0.0', () => {
         try {
             console.log('🔄 Starting camera updates scraping...');
             const updates = await scrapeAllBrands();
-            
+
             if (updates && updates.length > 0) {
                 const result = saveUpdatesToDb(updates);
                 if (result.inserted > 0 || result.updated > 0) {

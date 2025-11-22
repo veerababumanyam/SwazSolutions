@@ -195,13 +195,6 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                                 isActive={isViewActive({ type: 'recently-played' })}
                                 onClick={() => handleNavigate({ type: 'recently-played' })}
                             />
-                            <NavItem
-                                view={{ type: 'lyrics' }}
-                                icon={Mic2}
-                                label="Lyrics"
-                                isActive={isViewActive({ type: 'lyrics' })}
-                                onClick={() => handleNavigate({ type: 'lyrics' })}
-                            />
                         </div>
 
                         {/* Albums (Folders) */}

@@ -111,8 +111,8 @@ export const AdvancedEqualizer: React.FC<AdvancedEqualizerProps> = ({ isOpen, on
     };
 
     return (
-        <div className="fixed bottom-full right-0 mb-4 bg-surface/98 backdrop-blur-xl border border-border rounded-2xl shadow-2xl w-full max-w-2xl animate-scale-in z-50 max-h-[80vh] overflow-auto">
-            <div className="sticky top-0 bg-surface/95 backdrop-blur-xl border-b border-border p-4 flex items-center justify-between z-10">
+        <div className="fixed bottom-full right-0 mb-4 bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-2xl animate-scale-in z-50 max-h-[80vh] overflow-auto">
+            <div className="sticky top-0 bg-surface border-b border-border p-4 flex items-center justify-between z-10">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 text-accent">
                         <Sliders className="w-5 h-5" />

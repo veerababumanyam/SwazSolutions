@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -8,6 +8,7 @@ import { LyricStudio } from './pages/LyricStudio';
 import { MusicPage } from './pages/MusicPage';
 import { AboutPage } from './pages/AboutPage';
 import { CameraUpdatesPage } from './pages/CameraUpdatesPage';
+import { HelpPage } from './pages/HelpPage';
 import { MusicProvider } from './contexts/MusicContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -45,6 +46,10 @@ const App: React.FC = () => {
                       <CameraUpdatesPage />
                     </ErrorBoundary>
                   } />
+                  <Route path="/help" element={<>
+                    <HelpPage />
+                    <Footer />
+                  </>} />
                 </Routes>
               </div>
             </ErrorBoundary>

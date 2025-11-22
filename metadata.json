@@ -1,5 +1,18 @@
 {
   "name": "Swaz Solutions",
-  "description": "A modern, glassmorphic web application for Swaz Solutions featuring Data Recovery services and an AI Lyric Studio.",
+  "description": "Professional Data Recovery (98% success rate), AI-Powered Lyric Studio (23 languages), Agentic AI Development, Camera Tech Updates & Copyright-Free Music. ISO 27001 certified, HIPAA compliant.",
+  "version": "2.0.0",
+  "author": "Swaz Solutions",
+  "website": "https://www.swazsolutions.com",
+  "keywords": ["data recovery", "AI lyric generator", "agentic AI", "multi-agent systems", "RAID recovery", "SSD recovery", "Telugu songs", "Tamil lyrics", "Hindi songwriting", "Suno AI", "camera updates", "copyright-free music", "enterprise AI", "autonomous agents"],
+  "services": [
+    "Professional Data Recovery Services",
+    "AI-Powered Lyric Generation (Samskara Engine)",
+    "Agentic AI Development & Consulting",
+    "Camera Firmware Updates & Tech News",
+    "Copyright-Free Music Library"
+  ],
+  "certifications": ["ISO 27001", "HIPAA Compliant", "GDPR Compliant"],
+  "languages": ["English", "Telugu", "Tamil", "Hindi", "Kannada", "Malayalam", "Bengali", "Punjabi", "Marathi", "Gujarati", "Spanish", "French", "German", "Italian", "Portuguese", "Japanese", "Korean", "Chinese", "Arabic", "Russian", "Turkish", "Dutch", "Polish"],
   "requestFramePermissions": []
 }

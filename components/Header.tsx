@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera } from 'lucide-react';
+import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot } from 'lucide-react';
+import { VisitorCounter } from './VisitorCounter';
 
 export const Header: React.FC = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -83,37 +84,25 @@ export const Header: React.FC = () => {
                                 <h1 className="text-base sm:text-lg lg:text-xl font-black text-primary group-hover:text-accent transition-all duration-300">
                                     Swaz Solutions
                                 </h1>
-                                <p className="hidden lg:block text-xs text-muted font-medium">Data Recovery & AI</p>
+                                <p className="hidden lg:block text-xs text-muted font-medium">Data Recovery & AI Solutions</p>
                             </div>
                         </Link>
 
                         {/* Desktop Navigation */}
                         <nav className="hidden md:flex items-center gap-1 bg-surface/50 rounded-2xl px-2 py-2 border border-border shadow-sm backdrop-blur-md">
-                            <Link
-                                to="/"
-                                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                    }`}
-                            >
-                                <Home className="w-4 h-4" />
-                                <span>Home</span>
-                            </Link>
-
                             <button
                                 onClick={() => scrollToSection('services')}
                                 className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-bold text-sm text-accent bg-accent/10 border border-accent/30 hover:bg-accent hover:text-white hover:border-accent hover:shadow-lg hover:shadow-accent/20 flex items-center gap-2 group"
                             >
                                 <Database className="w-4 h-4 transition-colors group-hover:text-white" />
-                                <span>Services</span>
+                                <span>Data Recovery Services</span>
                             </button>
 
                             <Link
                                 to="/music"
                                 className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/music')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
                                     }`}
                             >
                                 <Headphones className="w-4 h-4" />
@@ -123,39 +112,50 @@ export const Header: React.FC = () => {
                             <Link
                                 to="/studio"
                                 className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/studio')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
                                     }`}
                             >
                                 <Music className="w-4 h-4" />
-                                <span>Studio</span>
+                                <span>Lyric Studio</span>
                             </Link>
 
                             <Link
                                 to="/camera-updates"
                                 className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/camera-updates')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
                                     }`}
                             >
                                 <Camera className="w-4 h-4" />
-                                <span>Camera</span>
+                                <span>Camera updates</span>
                             </Link>
 
                             <Link
-                                to="/about"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/about')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                to="/help"
+                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/help')
+                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
                                     }`}
                             >
-                                <Info className="w-4 h-4" />
-                                <span>About</span>
+                                <HelpCircle className="w-4 h-4" />
+                                <span>Help</span>
                             </Link>
+
+                            <button
+                                onClick={() => scrollToSection('contact')}
+                                className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
+                            >
+                                <Info className="w-4 h-4" />
+                                <span>Contact Us</span>
+                            </button>
                         </nav>
 
                         {/* CTA Button & Theme Toggle */}
                         <div className="flex items-center gap-3">
+                            <div>
+                                <VisitorCounter />
+                            </div>
                             <button
                                 onClick={toggleTheme}
                                 className="p-2.5 rounded-xl text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-border transition-all"
@@ -189,19 +189,11 @@ export const Header: React.FC = () => {
             {isMobileMenuOpen && (
                 <div className="fixed inset-0 bg-background/98 backdrop-blur-3xl z-40 md:hidden overflow-y-auto animate-fade-in flex flex-col pt-20">
                     <div className="flex-1 p-6 space-y-4">
-                        <Link
-                            to="/"
-                            onClick={() => handleMobileNavClick()}
-                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                        >
-                            <Home className="w-6 h-6" /> Home
-                        </Link>
-
                         <button
                             onClick={() => scrollToSection('services')}
                             className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
                         >
-                            <Database className="w-6 h-6" /> Services
+                            <Database className="w-6 h-6" /> Data Recovery Services
                         </button>
 
                         <Link
@@ -229,12 +221,19 @@ export const Header: React.FC = () => {
                         </Link>
 
                         <Link
-                            to="/about"
+                            to="/help"
                             onClick={() => handleMobileNavClick()}
-                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/about') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/help') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
                         >
-                            <Info className="w-6 h-6" /> About Us
+                            <HelpCircle className="w-6 h-6" /> Help
                         </Link>
+
+                        <button
+                            onClick={() => scrollToSection('contact')}
+                            className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                        >
+                            <Info className="w-6 h-6" /> Contact Us
+                        </button>
 
                         <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-6"></div>
 

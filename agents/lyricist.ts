@@ -110,12 +110,36 @@ export const runLyricistAgent = async (
 
   let languageInstruction = `PRIMARY LANGUAGE: "${languageProfile.primary}".`;
 
+  // ANTI-HALLUCINATION: Language Validation Rules
+  const antiHallucinationRules = `
+    *** ANTI-HALLUCINATION LANGUAGE VALIDATION (CRITICAL) ***
+    YOU MUST FOLLOW THESE RULES TO PREVENT NONSENSICAL OUTPUT:
+    
+    1. **REAL WORDS ONLY**: Every single word you write MUST exist in the real ${languageProfile.primary} language dictionary.
+       - ❌ NO invented words, NO gibberish, NO nonsensical combinations
+       - ✅ Only authentic, verifiable words that a native speaker would recognize
+    
+    2. **GRAMMATICAL CORRECTNESS**: Maintain proper grammar in ${languageProfile.primary}
+       - ❌ Do NOT mix grammar rules from different languages
+       - ✅ Use correct sentence structure, verb conjugations, and word order for ${languageProfile.primary}
+    
+    3. **PHONETIC VALIDITY**: All words must be phonetically pronounceable in ${languageProfile.primary}
+       - ❌ No unpronounceable character combinations
+       - ✅ Natural syllable patterns that flow when spoken/sung
+    
+    4. **CONTEXT APPROPRIATENESS**: Words must fit the cultural and emotional context
+       - Use vocabulary appropriate to the ${languageProfile.primary} culture
+       - Match register (formal vs colloquial) to the song style
+  `;
+
   // Script Enforcement
   if (isIndian) {
     languageInstruction += `\n    CRITICAL: Write the lyrics content STRICTLY in ${languageProfile.primary} NATIVE SCRIPT.
-      DO NOT USE ROMAN/LATIN CHARACTERS FOR LYRICS (No Transliteration like "Nenu").`;
+      DO NOT USE ROMAN/LATIN CHARACTERS FOR LYRICS (No Transliteration like "Nenu").
+      ${antiHallucinationRules}`;
   } else {
-    languageInstruction += `\n    CRITICAL: Write the lyrics in standard ${languageProfile.primary} script and orthography.`;
+    languageInstruction += `\n    CRITICAL: Write the lyrics in standard ${languageProfile.primary} script and orthography.
+      ${antiHallucinationRules}`;
   }
 
   // Mixing & Rhyme Logic
@@ -125,16 +149,23 @@ export const runLyricistAgent = async (
     const mixedLangs = [secondary, tertiary].filter(Boolean).join(" and ");
 
     languageInstruction += `\n    **FUSION MODE ACTIVATED**: The user has explicitly requested a mix of ${languageProfile.primary} with ${mixedLangs}.
-    - **Dominance:** Keep approx 80-90% of the lyrics in the Primary Language (${languageProfile.primary}).
+    - **Dominance:** Keep approx 70-80% of the lyrics in the Primary Language (${languageProfile.primary}).
     - **Intelligent Mixing:** You are permitted to borrow words or short phrases from ${mixedLangs} IF AND ONLY IF:
       1. It matches the colloquial style (e.g., Tanglish, Hinglish, Spanglish).
       2. **CRITICAL:** It helps you achieve a perfect **Anthya Prasa (End Rhyme)** that would be difficult or impossible using only pure ${languageProfile.primary} words.
-    - **Formatting:** If borrowing a word, transliterate it into the ${languageProfile.primary} script so the singer can read it flowingly.`;
+      3. **CODE-SWITCHING RULES:**
+         - Switch at natural phrase boundaries (e.g., after a complete thought)
+         - ❌ NEVER mix mid-word (e.g., "love-u" is FORBIDDEN unless it's intentional modern slang)
+         - ✅ Switch entire words or phrases cleanly
+         - Ensure both languages maintain grammatical correctness
+    - **Formatting:** If borrowing a word, transliterate it into the ${languageProfile.primary} script so the singer can read it flowingly.
+    - **VALIDATION:** After composing, mentally verify that EVERY word is either valid ${languageProfile.primary} OR valid ${mixedLangs}.`;
   } else {
     languageInstruction += `\n    **PURE MODE ACTIVATED**: All language slots are set to ${languageProfile.primary}.
     - **Strict Rule:** You must write PURE ${languageProfile.primary}.
     - **Prohibited:** Do NOT use English words or words from other languages, even if they are common. Use pure vocabulary.
-    - **Rhyme Strategy:** You must find rhymes strictly within the ${languageProfile.primary} lexicon.`;
+    - **Rhyme Strategy:** You must find rhymes strictly within the ${languageProfile.primary} lexicon.
+    - **VALIDATION:** After composing, verify that EVERY word is authentic ${languageProfile.primary}.`;
   }
 
   // Settings are already resolved by Orchestrator (Auto-Detect logic handled there)
@@ -204,12 +235,35 @@ export const runLyricistAgent = async (
     *** COMPLEXITY INSTRUCTION (${complexity}): ***
     ${specificComplexityInstruction}
 
-    *** RHYME & PRASA INSTRUCTION (CRITICAL): ***
+    *** RHYME & PRASA INSTRUCTION (MANDATORY - HIGHEST PRIORITY): ***
     - **SELECTED SCHEME:** ${rhymeScheme}
     - **PATTERN DEFINITION:** ${rhymeInstruction}
-    - You MUST maintain **ANTHYA PRASA** (End Rhyme) strictly according to the pattern above.
-    - The last words/syllables of the matching lines MUST sound similar phonetically.
-    - If in Fusion Mode, use secondary language words if needed to force a rhyme.
+    
+    **CRITICAL RHYME ENFORCEMENT RULES:**
+    1. **MANDATORY COMPLIANCE**: The rhyme scheme ${rhymeScheme} is NOT optional - it is MANDATORY for EVERY verse
+    2. **END RHYME VERIFICATION**: After composing EACH verse, verify that:
+       - The last syllable/word of each line matches the pattern
+       - Phonetic endings are identical or very similar (e.g., -ആം/-aam, -లో/-lo)
+       - Natural pronunciation produces the rhyme sound
+    
+    3. **RHYME QUALITY HIERARCHY** (in order of preference):
+       a) Perfect Rhyme: Identical ending sounds (highest priority)
+       b) Near Rhyme: Similar but not identical sounds (acceptable if natural)
+       c) Forced Rhyme: Grammatically awkward but rhymes (use only if necessary)
+       d) NO RHYME: Completely FORBIDDEN - NEVER produce non-rhyming lines where rhyme is required
+    
+    4. **CROSS-LANGUAGE RHYMING** (if in Fusion Mode):
+       - You MAY use words from ${languageProfile.secondary} to achieve perfect rhymes
+       - Example: In Tanglish, "காதல் + fall" or "மனசு + miss" are acceptable end rhymes
+       - But ensure the borrowed word fits the context naturally
+    
+    5. **RHYME VERIFICATION CHECKLIST** (mentally verify before finalizing):
+       - [ ] Did I count the rhyme pattern correctly (A-B-A-B or A-A-B-B, etc.)?
+       - [ ] Do the ending sounds actually match when spoken aloud?
+       - [ ] Are the rhymes natural, not forced?
+       - [ ] Did I maintain ${rhymeScheme} pattern throughout ALL verses/choruses?
+    
+    **SPECIAL NOTE: If the user did NOT specify a rhyme scheme, use AABB (Couplets) as the MANDATORY DEFAULT.**
 
     *** PUNCTUATION & EXPRESSION (MANDATORY): ***
     - Add punctuation (comma, exclamation, question mark) to the end of every line to convey the singing expression.
@@ -233,16 +287,22 @@ export const runLyricistAgent = async (
     3. Draft the verses mentally to ensure the rhyme scheme ${rhymeScheme} is perfectly met.
     4. **Add Expression**: Decide where to place '!', '?', and ',' to control the singing dynamic.
 
-    MANDATORY STRUCTURAL BLUEPRINT (DO NOT DEVIATE):
-    1. **[Intro]**: Include humming, alaap, or atmospheric sounds.
-    2. **[Verse 1]**: First stanza.
-    3. **[Chorus]**: Main Hook.
-    4. **[Verse 2]**: Second stanza (progression).
-    5. **[Chorus]**: Main Hook (Repeat).
-    6. **[Bridge]**: Emotional/Tempo shift.
-    7. **[Verse 3]**: Third stanza (Climax).
-    8. **[Chorus]**: Main Hook (Final Repeat).
-    9. **[Outro]**: Fading out, humming.
+    DYNAMIC STRUCTURAL GUIDELINES (FLEXIBLE BUT MANDATORY COMPONENTS):
+    You have full creative freedom to arrange the song structure to best suit the content, emotion, and flow.
+    However, you MUST include the following components in your arrangement (order is up to you, but make it musical):
+    
+    REQUIRED COMPONENTS (Checklist):
+    - [ ] Intro (x1)
+    - [ ] Verse (x3)
+    - [ ] Chorus (x3)
+    - [ ] Bridge (x1)
+    - [ ] Outro (x1)
+
+    INSTRUCTION:
+    - Analyze the user request and emotion.
+    - Design a structure that maximizes impact (e.g., maybe start with a Chorus? maybe double verses? maybe a long outro?).
+    - Ensure all required components listed above are present in your final JSON.
+    - You can add extra short sections (like Pre-Chorus or Interlude) if it enhances the song.
 
     Output strictly in JSON format matching the schema.
   `;

@@ -1,6 +1,7 @@
 /**
  * Browser Storage Utilities for Persistent Data
  * Handles API Keys, Chat History, User Preferences, and Settings
+ * Updated for Language Persistence
  */
 
 export interface StorageKeys {
@@ -184,4 +185,24 @@ export const isStorageAvailable = (): boolean => {
   } catch (e) {
     return false;
   }
+};
+/**
+ * Last Used Settings Management (Language, etc.)
+ */
+export interface LastSettings {
+  language?: {
+    primary: string;
+    secondary: string;
+    tertiary: string;
+  };
+}
+
+export const saveLastSettings = (settings: Partial<LastSettings>): boolean => {
+  const current = loadLastSettings();
+  const updated = { ...current, ...settings };
+  return setStorageItem(STORAGE_KEYS.LAST_SETTINGS, updated);
+};
+
+export const loadLastSettings = (): LastSettings => {
+  return getStorageItem<LastSettings>(STORAGE_KEYS.LAST_SETTINGS, {});
 };

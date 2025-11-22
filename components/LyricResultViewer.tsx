@@ -7,10 +7,26 @@ import {
     Clock, ListMusic, Mic2, User, Users, Baby, ShieldCheck, AlertTriangle, X
 } from 'lucide-react';
 import { GeneratedLyrics, SavedSong, ComplianceReport } from '../agents/types';
-import { runArtAgent } from '../agents/art';
-import { runStyleAgent } from '../agents/style';
-import { runMagicRhymesAgent } from '../agents/magic_rhymes';
+// import { runArtAgent } from '../agents/art'; // TODO: Create art agent
+// import { runStyleAgent } from '../agents/style'; // TODO: Create style agent
+// import { runMagicRhymesAgent } from '../agents/magic_rhymes'; // TODO: Create magic_rhymes agent
 import { MODEL_FAST } from '../agents/config';
+
+// Temporary stubs for missing agents
+const runArtAgent = async (title: string, snippet: string, style: string, apiKey: string): Promise<string | null> => {
+    console.warn('Art agent not implemented yet');
+    return null;
+};
+
+const runStyleAgent = async (...args: any[]): Promise<any> => {
+    console.warn('Style agent not implemented yet');
+    return null;
+};
+
+const runMagicRhymesAgent = async (sections: any[], language: string, apiKey: string): Promise<any[]> => {
+    console.warn('Magic rhymes agent not implemented yet');
+    return sections; // Return unchanged sections
+};
 
 interface LyricResultViewerProps {
     lyricsData: GeneratedLyrics;
@@ -178,8 +194,8 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                             key={mode.id}
                             onClick={() => setViewMode(mode.id as ViewMode)}
                             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${viewMode === mode.id
-                                    ? 'bg-accent text-white shadow-sm'
-                                    : 'text-secondary hover:text-primary hover:bg-surface'
+                                ? 'bg-accent text-white shadow-sm'
+                                : 'text-secondary hover:text-primary hover:bg-surface'
                                 }`}
                         >
                             <mode.icon className="w-3.5 h-3.5" />
@@ -264,8 +280,8 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                                     <button
                                         onClick={() => setShowComplianceModal(true)}
                                         className={`mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-transform hover:scale-105 cursor-pointer ${complianceData.originalityScore > 80
-                                                ? 'bg-green-50 border-green-200 text-green-700'
-                                                : 'bg-yellow-50 border-yellow-200 text-yellow-700'
+                                            ? 'bg-green-50 border-green-200 text-green-700'
+                                            : 'bg-yellow-50 border-yellow-200 text-yellow-700'
                                             }`}
                                     >
                                         {complianceData.originalityScore > 80 ? <ShieldCheck className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}

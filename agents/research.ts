@@ -3,19 +3,29 @@ import { GoogleGenAI } from "@google/genai";
 import { RESEARCH_PROMPT_TEMPLATE, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { retryWithBackoff } from "../utils";
 
-export const runResearchAgent = async (topic: string, mood: string | undefined, apiKey: string, selectedModel: string) => {
+/**
+ * SIMPLIFIED RESEARCH AGENT
+ * Core Responsibility: Cultural context from knowledge base ONLY
+ * Google Search removed for reliability and speed
+ */
+export const runResearchAgent = async (
+  topic: string,
+  mood: string | undefined,
+  apiKey: string,
+  selectedModel: string
+): Promise<string> => {
   if (!apiKey) throw new Error("API_KEY_MISSING");
 
   const ai = new GoogleGenAI({ apiKey: apiKey });
 
-  // Enhance prompt to leverage search capabilities
-  const searchPrompt = `${RESEARCH_PROMPT_TEMPLATE(topic, mood)}
+  const prompt = `${RESEARCH_PROMPT_TEMPLATE(topic, mood)}
   
-  CRITICAL INSTRUCTION: 
-  Use Google Search to find:
-  1. Recent lyrical trends or slang relevant to this topic.
-  2. If the user references a specific movie or song style, find its details (Composer, Raagam, Vibe).
-  3. Cultural metaphors associated with this specific mood.
+  CRITICAL INSTRUCTIONS:
+  - Focus on cultural metaphors, idioms, and traditional references
+  - Provide language-specific vocabulary appropriate to the mood
+  - Include ceremony-specific imagery if relevant
+  - Draw from your knowledge base (no external search needed)
+  - Keep response concise (max 500 words)
   `;
 
   try {
@@ -23,12 +33,9 @@ export const runResearchAgent = async (topic: string, mood: string | undefined, 
       async () => {
         const result = await ai.models.generateContent({
           model: selectedModel,
-          contents: searchPrompt,
+          contents: prompt,
           config: {
-            // Enable Google Search Grounding for research
-            tools: [{ googleSearch: {} }],
             temperature: AGENT_TEMPERATURES.RESEARCH,
-            // maxOutputTokens removed to allow dynamic length
             topP: AGENT_TOP_P.RESEARCH,
             topK: 40
           }
@@ -42,39 +49,14 @@ export const runResearchAgent = async (topic: string, mood: string | undefined, 
       1000
     );
 
-    let resultText = response.text || "";
-
-    // Extract and append grounding metadata (sources) if available
-    const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
-    if (groundingMetadata?.groundingChunks) {
-      const sources = groundingMetadata.groundingChunks
-        .map((chunk: any) => chunk.web?.title ? `- ${chunk.web.title} (${chunk.web.uri})` : null)
-        .filter(Boolean);
-
-      if (sources.length > 0) {
-        resultText += "\n\n[RESEARCH SOURCES]:\n" + sources.join("\n");
-      }
-    }
-
-    return resultText;
+    return response.text || "";
 
   } catch (error) {
-    console.warn("Research Agent (Search) failed, falling back to basic knowledge...", error);
-
+    console.error("Research Agent Error:", error);
     if (error instanceof Error && error.message === "API_KEY_MISSING") {
       throw error;
     }
-
-    // Try fallback without search tool
-    try {
-      const fallbackResponse = await ai.models.generateContent({
-        model: selectedModel,
-        contents: RESEARCH_PROMPT_TEMPLATE(topic, mood)
-      });
-      return fallbackResponse.text || "";
-    } catch (fallbackError) {
-      const { wrapGenAIError } = await import("../utils");
-      throw wrapGenAIError(fallbackError);
-    }
+    const { wrapGenAIError } = await import("../utils");
+    throw wrapGenAIError(error);
   }
 };

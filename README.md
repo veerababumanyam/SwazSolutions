@@ -1,8 +1,85 @@
-# Swaz Solutions - AI-Powered Music & Lyric Studio
+<div align="center">
 
-An advanced multi-agent AI system for lyric generation with integrated music streaming. Features intelligent songwriting, cultural context awareness, and professional-grade music production tools.
+<img src="./public/assets/images/content/swaz-logo-800.png" alt="Swaz Solutions Logo" width="300"/>
+
+# Swaz Solutions
+
+### Professional Data Recovery • AI-Powered Solutions • Music & Creativity Tools
+
+[![Version](https://img.shields.io/badge/version-2.0-blue.svg)](https://github.com/veerababumanyam/SwazSolutions)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+[![React](https://img.shields.io/badge/react-19.2.0-blue.svg)](https://reactjs.org/)
+
+[🚀 Quick Start](#quick-start) • [📖 Documentation](#documentation) • [✨ Features](#core-features) • [🤝 Contributing](#contributing)
+
+</div>
+
+---
+
+## 🎯 Overview
+
+Swaz Solutions is a comprehensive platform combining enterprise-grade data recovery services, advanced AI-powered tools, and creative content solutions. From recovering critical business data to generating professional-quality lyrics with multi-agent AI systems, we deliver cutting-edge solutions for businesses and creators worldwide.
+
+## 🌟 Key Highlights
+
+| Feature | Description | Status |
+|---------|-------------|--------|
+| **💾 Data Recovery** | Enterprise RAID, SSD, HDD recovery with 24/7 emergency service | ✅ Production |
+| **🤖 Agentic AI** | Autonomous multi-agent systems with LLM orchestration | ✅ Production |
+| **🎙️ Lyric Studio** | 13-agent AI system for professional songwriting in 23 languages | ✅ Production |
+| **🎵 Music Player** | High-performance streaming with EQ, visualizer, remote control | ✅ Production |
+| **📷 Camera Updates** | Real-time firmware & product updates for Canon/Nikon/Sony | ✅ Production |
+| **🎨 Modern UI/UX** | Glassmorphism design with light/dark themes | ✅ Production |
+| **🔒 Security** | SOC 2 compliant, JWT auth, rate limiting, secure storage | ✅ Production |
+| **📱 Responsive** | Mobile-first design with PWA support | ✅ Production |
 
 ## 🌟 Version 2.0 - Major Updates
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as LyricStudio (UI)
+    participant Orch as Orchestrator
+    participant Emotion as Emotion Agent
+    participant Research as Research Agent
+    participant Lyricist as Lyricist Agent
+    participant Review as Review Agent
+    participant Compliance as Compliance Agent
+    participant Format as Formatter Agent
+
+    User->>UI: Enters Request (e.g., "Love failure song in Tamil")
+    UI->>UI: Validate Input & API Key
+    UI->>Orch: runLyricGenerationWorkflow(request, settings)
+    
+    Note over Orch: 1. Analysis Phase
+    Orch->>Emotion: Analyze Sentiment & Mood
+    Emotion-->>Orch: { sentiment: "Sad", navarasa: "Karuna", ... }
+    
+    Orch->>Research: Get Cultural Context (based on Mood)
+    Research-->>Orch: { metaphors, cultural_references, ... }
+    
+    Note over Orch: 2. Configuration Phase
+    Orch->>Orch: Resolve Settings (User Prefs + AI Suggestions)
+    
+    Note over Orch: 3. Generation Phase
+    Orch->>Lyricist: Generate Draft (Research + Settings)
+    Lyricist-->>Orch: Draft Lyrics
+    
+    Note over Orch: 4. Refinement Phase
+    Orch->>Review: Audit Meter (Chandassu) & Rhyme (Prasa)
+    Review-->>Orch: Refined Lyrics
+    
+    Note over Orch: 5. Safety Phase
+    Orch->>Compliance: Check Originality & Safety
+    Compliance-->>Orch: Compliance Report
+    
+    Note over Orch: 6. Formatting Phase
+    Orch->>Format: Format for Suno.com (Tags + Structure)
+    Format-->>Orch: Final Formatted Output
+    
+    Orch-->>UI: WorkflowResult (Lyrics, Analysis, Report)
+    UI->>User: Display Result & Style Card
+```
 
 ### New in v2.0:
 - ✅ **Persistent API Key Management** - Securely stored in browser
@@ -22,19 +99,48 @@ An advanced multi-agent AI system for lyric generation with integrated music str
 📊 **Compliance Check** - Plagiarism detection and originality scoring  
 🎶 **Suno.com Integration** - Export-ready formatted lyrics
 
-## Core Features
+## ✨ Core Features
+
+### 💾 Data Recovery Services (Enterprise)
+- **Hard Drive Recovery** - Mechanical, logical, and firmware-level repairs
+- **RAID Array Recovery** - Enterprise server arrays (RAID 0/1/5/6/10/50/60)
+- **SSD & NVMe Recovery** - Flash memory and solid-state device recovery
+- **Ransomware Recovery** - Data decryption and system restoration
+- **24/7 Emergency Service** - Critical data recovery with rapid turnaround
+- **Free Evaluation** - No-risk assessment and transparent pricing
+- **Cleanroom Facility** - ISO-certified environment for physical repairs
+- **Data Security** - SOC 2 compliant with enterprise-grade protection
+
+### 🤖 Agentic AI Solutions
+- **Autonomous AI Agents** - Task-driven planning and execution systems
+- **Multi-Agent Orchestration** - Collaborative AI agent coordination
+- **Domain-Specific Intelligence** - Custom knowledge models and RAG systems
+- **Tool & API Integration** - Secure system interactions and automation
+- **Enterprise LLM Support** - OpenAI, Anthropic Claude, Google Gemini, Llama
+- **Secure Execution Environment** - Enterprise safeguards and monitoring
+- **AI Assistants** - Customer support and knowledge management
+- **Decision-Support Agents** - Analytics, forecasting, and recommendations
+- **Operational Automation** - IT operations, DevOps, and RPA enhancement
+- **Multi-Modal Processing** - Text, voice, vision, and document analysis
 
 ### 🎙️ Lyric Studio (AI-Powered)
-- **Intelligent Songwriting** - Multi-agent orchestration for professional lyrics
-- **Cultural Context** - Scenario-based generation (Weddings, Films, Devotional)
+- **13 Specialized AI Agents** - Multi-agent orchestration for professional lyrics
+- **23 Languages Supported** - All Indian languages with native script support
+- **Cultural Context Engine** - Scenario-based generation (Weddings, Films, Devotional)
 - **Language Fusion** - Mix languages (Tanglish, Hinglish) with 80-90% dominance
-- **Rhyme Schemes** - AABB, ABAB, ABCB, Free Verse, and more
+- **Advanced Rhyme Schemes** - AABB, ABAB, ABCB, Free Verse, and custom patterns
+- **Magic Rhymes** - Automatic rhyme fixing and optimization
 - **Quality Control** - Review agent checks rhythm, meter, and rhymes
-- **Originality** - Compliance agent ensures plagiarism-free content
-- **Album Art** - AI-generated cover art using Imagen 4.0
-- **Export Ready** - Suno.com formatted output with style prompts
+- **Originality Checker** - Compliance agent ensures plagiarism-free content
+- **Album Art Generator** - AI-powered cover art using Google Imagen 4.0
+- **Suno.com Integration** - Export-ready formatted lyrics with style prompts
+- **Emotion Analysis** - Sentiment and Navarasa (9 emotions) detection
+- **Cultural Research** - Metaphors, idioms, and cultural references
+- **Dynamic HQ Tags** - Context-aware audio quality tags
+- **Browser Storage** - Persistent chat history and preferences
+- **Export Features** - Download lyrics in multiple formats
 
-### 🎵 Music Player (Enhanced)
+### 🎵 Music Player (Professional-Grade)
 - **Smart Shuffle** - Context-aware shuffling based on artist, genre, and listening history
 - **Audio Visualization** - Real-time frequency visualizer with smooth animations
 - **Advanced Equalizer** - 3-band EQ (Bass, Mid, Treble) with preamp control
@@ -42,18 +148,47 @@ An advanced multi-agent AI system for lyric generation with integrated music str
 - **Keyboard Shortcuts** - Full keyboard control support (Space, Arrows, M, L, etc.)
 - **Remote Control** - Socket.io based remote control for multi-device playback
 - **Recently Played** - History tracking with quick access to last 50 songs
-- **Multi-User Support** - User registration and authentication  
-- **Music Streaming** - Stream from local files (100-10,000+ users)
-- **Playlists** - Create and manage personal playlists  
-- **Search** - Find songs, albums, and artists  
-- **Auto-Discovery** - Automatic music folder scanning  
+- **Queue Management** - Drag-and-drop queue editor with save/restore
+- **Multi-User Support** - User registration, authentication, and profiles
+- **Music Streaming** - High-performance streaming (supports 100-10,000+ concurrent users)
+- **Playlists** - Create and manage personal playlists with sharing
+- **Advanced Search** - Find songs, albums, artists with filters
+- **Auto-Discovery** - Automatic music folder scanning with metadata extraction
+- **Album Art Display** - Automatic cover art detection and fallback images
+- **Play Count Tracking** - Listen statistics and personalized recommendations
+
+### 📷 Camera Updates Hub
+- **Multi-Brand Coverage** - Canon, Nikon, Sony firmware and product updates
+- **Real-Time Updates** - Daily automated scanning of official manufacturer sites
+- **Smart Filtering** - Filter by brand, type (firmware/camera/lens), and priority
+- **Update Notifications** - Critical, high-priority, and normal updates
+- **Detailed Information** - Version numbers, features, download links
+- **Source Verification** - Direct links to official manufacturer sources
+- **Priority System** - Critical security updates highlighted
+- **Search Functionality** - Quick search across all updates
 
 ### 🎨 UI/UX Experience
 - **Glassmorphism Design** - Premium "Red & White" aesthetic with frosted glass effects
 - **Theme System** - Light/Dark mode with persistent user preferences
-- **Responsive Layout** - Mobile-first design adapting to all screen sizes
-- **Feedback System** - Integrated user feedback collection
+- **Responsive Layout** - Mobile-first design adapting to all screen sizes (mobile/tablet/desktop)
+- **Accessibility** - WCAG 2.1 AA compliant with keyboard navigation
+- **Error Boundaries** - Graceful error recovery with user-friendly messages
 - **Toast Notifications** - Non-intrusive status updates
+- **Loading States** - Skeleton loaders and progress indicators
+- **SEO Optimized** - Meta tags, Open Graph, Twitter Cards, and Schema.org markup
+- **Performance** - Lazy loading, code splitting, and optimized assets
+- **Breadcrumbs** - Enhanced navigation with structured data
+
+### 🔒 Security & Privacy
+- **Secure API Key Storage** - Browser-side encryption, never sent to servers
+- **JWT Authentication** - Secure token-based user authentication
+- **Rate Limiting** - API protection against abuse
+- **Input Validation** - All forms validated client and server-side
+- **SQL Injection Protection** - Parameterized queries and prepared statements
+- **XSS Prevention** - Content sanitization and CSP headers
+- **CORS Configuration** - Controlled cross-origin resource sharing
+- **Helmet Security** - HTTP security headers
+- **Data Privacy** - No tracking, no analytics, user data stays local
 
 ## Quick Start
 
@@ -112,54 +247,141 @@ npm start
 - **Music Player:** http://localhost:3000/#/music
 - **Network:** http://YOUR_IP:3000 (share with others!)
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 swaz-solutions/
-├── agents/                 # AI Agent System (13 agents)
-│   ├── orchestrator.ts    # Main workflow coordinator
-│   ├── lyricist.ts        # Lyrics generation
-│   ├── review.ts          # Quality control
-│   ├── emotion.ts         # Sentiment analysis
-│   ├── research.ts        # Cultural context
-│   ├── formatter.ts       # Suno.com formatting
-│   ├── compliance.ts      # Originality check
-│   ├── art.ts             # Album art generation
-│   ├── magic_rhymes.ts    # Rhyme optimization
-│   ├── style.ts           # Music style agent
-│   ├── theme.ts           # UI theme generator
-│   ├── multimodal.ts      # Image/audio processing
-│   └── chat.ts            # Conversational AI
-├── backend/               # Node.js backend
-│   ├── server.js          # Express server
+├── agents/                      # AI Agent System (13 agents)
+│   ├── orchestrator.ts          # Main workflow coordinator
+│   ├── lyricist.ts              # Lyrics generation
+│   ├── review.ts                # Quality control
+│   ├── emotion.ts               # Sentiment analysis
+│   ├── research.ts              # Cultural context
+│   ├── formatter.ts             # Suno.com formatting
+│   ├── compliance.ts            # Originality check
+│   ├── art.ts                   # Album art generation
+│   ├── magic_rhymes.ts          # Rhyme optimization
+│   ├── style.ts                 # Music style agent
+│   ├── theme.ts                 # UI theme generator
+│   ├── multimodal.ts            # Image/audio processing
+│   ├── chat.ts                  # Conversational AI
+│   ├── config.ts                # Agent configuration
+│   ├── types.ts                 # TypeScript definitions
+│   └── constants.ts             # Agent constants
+│
+├── backend/                     # Node.js Backend Server
+│   ├── server.js                # Express server entry point
+│   ├── package.json             # Backend dependencies
 │   ├── config/
-│   │   └── database.js    # SQLite database
+│   │   └── database.js          # SQLite database configuration
+│   ├── middleware/
+│   │   └── auth.js              # JWT authentication middleware
 │   ├── routes/
-│   │   ├── auth.js        # Authentication
-│   │   ├── songs.js       # Music API
-│   │   └── playlists.js   # Playlist management
-│   └── services/
-│       └── musicScanner.js # Auto music discovery
-├── components/            # React components
-│   ├── LyricSidebar.tsx   # Studio settings panel
-│   ├── LyricResultViewer.tsx # Result display
-│   ├── ErrorBoundary.tsx  # Error handling
-│   └── ...
-├── pages/                 # Main application pages
-│   ├── LyricStudio.tsx    # AI Lyric Studio
-│   ├── MusicPage.tsx      # Music Player
-│   ├── LandingPage.tsx    # Home page
-│   └── AboutPage.tsx      # About page
-├── utils/                 # Utility functions
-│   ├── storage.ts         # Browser storage management
-│   ├── validation.ts      # Input validation
-│   └── ...
-├── docs/                  # Documentation
-│   ├── IMPROVEMENTS.md    # v2.0 changes
-│   └── QUICK_START.md     # Getting started guide
-├── data/MusicFiles/       # Your music collection
-├── music.db               # SQLite database (auto-created)
-└── .env                   # Configuration
+│   │   ├── auth.js              # User authentication API
+│   │   ├── songs.js             # Music streaming API
+│   │   ├── playlists.js         # Playlist management API
+│   │   ├── cameraUpdates.js     # Camera updates API
+│   │   ├── contact.js           # Contact form API
+│   │   └── visitors.js          # Visitor counter API
+│   ├── services/
+│   │   └── musicScanner.js      # Automatic music discovery
+│   └── scripts/
+│       └── update_camera_descriptions.js  # Camera data updater
+│
+├── components/                  # React Components
+│   ├── LyricSidebar.tsx         # Studio settings panel
+│   ├── LyricResultViewer.tsx    # Result display
+│   ├── LyricsDisplay.tsx        # Lyrics renderer
+│   ├── MusicPlayer.tsx          # Main music player
+│   ├── MusicSidebar.tsx         # Player sidebar
+│   ├── MiniPlayer.tsx           # Floating mini player
+│   ├── AdvancedEqualizer.tsx    # Audio equalizer
+│   ├── Equalizer.tsx            # Visual equalizer
+│   ├── QueuePanel.tsx           # Queue management
+│   ├── RecentlyPlayedView.tsx   # History viewer
+│   ├── Header.tsx               # Navigation header
+│   ├── Footer.tsx               # Site footer
+│   ├── ErrorBoundary.tsx        # Error handling
+│   ├── ThemeToggle.tsx          # Theme switcher
+│   ├── UnifiedContactForm.tsx   # Contact form
+│   ├── AgenticAIContactForm.tsx # AI solutions contact
+│   ├── Breadcrumbs.tsx          # Navigation breadcrumbs
+│   ├── Schema.tsx               # SEO schema markup
+│   ├── VisitorCounter.tsx       # Visit tracking
+│   ├── ChatInput.tsx            # Chat interface
+│   ├── FeedbackButtons.tsx      # User feedback
+│   ├── LoadingStates.tsx        # Loading indicators
+│   ├── LazyImage.tsx            # Optimized images
+│   ├── SearchHistoryDropdown.tsx # Search history
+│   └── KeyboardShortcutsModal.tsx # Shortcuts help
+│
+├── pages/                       # Main Application Pages
+│   ├── LandingPage.tsx          # Home page with rotating hero
+│   ├── LyricStudio.tsx          # AI Lyric Studio
+│   ├── MusicPage.tsx            # Music Player
+│   ├── AgenticAIPage.tsx        # Agentic AI services
+│   ├── CameraUpdatesPage.tsx    # Camera updates hub
+│   ├── AboutPage.tsx            # About company
+│   └── HelpPage.tsx             # Help & FAQ
+│
+├── contexts/                    # React Contexts
+│   ├── MusicContext.tsx         # Music player state
+│   └── ToastContext.tsx         # Toast notifications
+│
+├── hooks/                       # Custom React Hooks
+│   └── useKeyboardShortcuts.ts  # Keyboard controls
+│
+├── utils/                       # Utility Functions
+│   ├── storage.ts               # Browser storage management
+│   ├── validation.ts            # Input validation
+│   ├── seo.ts                   # SEO utilities
+│   └── ...                      # Other utilities
+│
+├── data/                        # Static Data & Media
+│   ├── musicData.ts             # Sample music metadata
+│   ├── MusicFiles/              # Your music collection
+│   │   ├── Album 1/
+│   │   └── Album 2/
+│   └── covers/                  # Album cover images
+│
+├── docs/                        # Documentation
+│   ├── AGENTIC_AI_IMPLEMENTATION.md
+│   ├── AGENTIC_AI_ARCHITECTURE.md
+│   ├── AGENTIC_AI_CONTACT_IMPLEMENTATION.md
+│   ├── LANDING_PAGE_IMPLEMENTATION_SUMMARY.md
+│   ├── CONTACT_FORM_SETUP.md
+│   ├── EMAIL_CONFIGURATION_GUIDE.md
+│   ├── architecture.md
+│   └── ...                      # More documentation
+│
+├── public/                      # Static Public Assets
+│   ├── assets/
+│   │   ├── images/
+│   │   │   ├── content/         # Content images
+│   │   │   └── icons/           # Icon assets
+│   │   └── SwazLogo.webp        # Main logo
+│   ├── sitemap.xml              # Main sitemap
+│   ├── sitemap-*.xml            # Page-specific sitemaps
+│   ├── robots.txt               # SEO crawler rules
+│   ├── service-worker.js        # PWA service worker
+│   └── *.png                    # Favicon & app icons
+│
+├── scripts/                     # Build & Deployment Scripts
+│   ├── setup_github_token.sh    # GitHub token setup
+│   ├── update_music_daily.sh    # Music update automation
+│   └── setup_camera_updates.sh  # Camera updates setup
+│
+├── App.tsx                      # Main React app
+├── index.tsx                    # App entry point
+├── index.html                   # HTML template
+├── package.json                 # Frontend dependencies
+├── vite.config.ts               # Vite configuration
+├── tailwind.config.cjs          # Tailwind CSS config
+├── tsconfig.json                # TypeScript config
+├── ecosystem.config.js          # PM2 configuration
+├── .env                         # Environment variables
+├── music.db                     # SQLite database (auto-created)
+└── README.md                    # This file
 ```
 
 ## AI Agent System

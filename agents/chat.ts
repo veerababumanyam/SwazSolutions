@@ -1,7 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
-import { MODEL_NAME, SYSTEM_INSTRUCTION_CHAT, getModelToUse, API_KEY, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
-import { Message } from "./types";
+import { SYSTEM_INSTRUCTION_CHAT, SYSTEM_INSTRUCTION_PROMPT_ENGINEER, getModelToUse, AGENT_TEMPERATURES, AGENT_TOP_P, MODEL_FAST, DEFAULT_RHYME_SCHEME } from "./config";
+import { Message, PromptEnhancementResult, GenerationSettings, LanguageProfile } from "./types";
 import { wrapGenAIError } from "../utils";
+import { AUTO_OPTION } from "./constants";
 
 // Define Part type locally to ensure type safety without depending on specific SDK exports
 type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
@@ -56,6 +57,116 @@ const getDynamicInstruction = (history: Message[], currentInput: string) => {
   return instruction;
 };
 
+/**
+ * PROMPT ENGINEER AGENT 
+ * Transforms raw user input into enhanced prompts and infers missing settings
+ */
+export const runPromptEngineerAgent = async (
+  userInput: string,
+  sidebarSettings: GenerationSettings,
+  languageProfile: LanguageProfile,
+  chatHistory: Message[],
+  apiKey: string,
+  selectedModel?: string
+): Promise<PromptEnhancementResult> => {
+  if (!apiKey) throw new Error("API Key is missing. Please configure it in settings.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Build context from chat history
+  const historyContext = getOptimizedHistory(chatHistory);
+
+  // Build analysis of current settings (what's missing vs what's set)
+  const settingsAnalysis = `
+CURRENT USER SETTINGS:
+- Ceremony: ${sidebarSettings.ceremony || 'Not selected'}
+- Mood: ${sidebarSettings.mood === AUTO_OPTION ? 'Auto (needs inference)' : sidebarSettings.mood}
+- Style: ${sidebarSettings.style === AUTO_OPTION ? 'Auto (needs inference)' : sidebarSettings.style}
+- Theme: ${sidebarSettings.theme === AUTO_OPTION ? 'Auto (needs inference)' : sidebarSettings.theme}
+- Rhyme Scheme: ${sidebarSettings.rhymeScheme === AUTO_OPTION ? 'Auto (needs inference)' : sidebarSettings.rhymeScheme}
+- Singer Config: ${sidebarSettings.singerConfig === AUTO_OPTION ? 'Auto (needs inference)' : sidebarSettings.singerConfig}
+- Complexity: ${sidebarSettings.complexity === AUTO_OPTION ? 'Auto (needs inference)' : sidebarSettings.complexity}
+- Languages: Primary=${languageProfile.primary}, Secondary=${languageProfile.secondary}, Tertiary=${languageProfile.tertiary}
+
+USER REQUEST: "${userInput}"
+
+TASK:
+1. Enhance the user's request to be more specific and detailed
+2. For any setting marked as "Auto (needs inference)", suggest an appropriate value based on the request
+3. Do NOT override settings that are already specified
+4. If rhyme scheme is "Auto", suggest "${DEFAULT_RHYME_SCHEME}" as default
+5. Ensure all suggested settings are coherent with each other
+6. Consider the chat history for context
+7. Generate a creative Suno.com style prompt (music style description)
+   - For Indian/Asian songs: Mix global genres with native instruments (Fusion)
+   - For Western songs: Use specific sub-genres and authentic instrumentation
+   - Examples: "Cinematic Bollywood Fusion, Tabla, Sitar, Orchestral Strings"
+   - Examples: "Acoustic Pop Ballad, Piano, Soft Guitar, Emotional Vocals"
+
+RESPOND WITH VALID JSON ONLY (no markdown, no extra text):
+{
+  "enhancedPrompt": "detailed, specific prompt",
+  "stylePrompt": "creative music style description for Suno.com",
+  "inferredSettings": {
+    "mood": "suggested mood or null",
+    "style": "suggested style or null",
+    "theme": "suggested theme or null",
+    "rhymeScheme": "suggested rhyme or null",
+    "singerConfig": "suggested singer or null",
+    "complexity": "suggested complexity or null"
+  },
+  "confidenceScore": 0.85,
+  "reasoningLog": "Brief explanation of your decisions"
+}
+`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: getModelToUse(selectedModel, MODEL_FAST),
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION_PROMPT_ENGINEER,
+        temperature: AGENT_TEMPERATURES.CHAT,
+        topP: AGENT_TOP_P.CHAT,
+        topK: 40,
+        responseMimeType: "application/json"
+      },
+      contents: [
+        ...historyContext,
+        { role: "user", parts: [{ text: settingsAnalysis }] }
+      ]
+    });
+
+    const responseText = response.text;
+    const parsed = JSON.parse(responseText);
+
+    return {
+      enhancedPrompt: parsed.enhancedPrompt || userInput,
+      stylePrompt: parsed.stylePrompt || "Cinematic, Fusion", // NEW: Style prompt generated here
+      inferredSettings: parsed.inferredSettings || {},
+      confidenceScore: parsed.confidenceScore || 0.5,
+      reasoningLog: parsed.reasoningLog || "No reasoning provided"
+    };
+
+  } catch (error) {
+    console.warn("Prompt Engineer Agent failed, using fallback...", error);
+
+    // Fallback: Return original input with defaults
+    return {
+      enhancedPrompt: userInput,
+      stylePrompt: "Cinematic, Emotional", // Fallback style
+      inferredSettings: {
+        rhymeScheme: DEFAULT_RHYME_SCHEME
+      },
+      confidenceScore: 0.3,
+      reasoningLog: "Fallback mode: Agent failed, using defaults"
+    };
+  }
+};
+
+/**
+ * CHAT AGENT (Original functionality)
+ * Used for conversational interactions, not part of lyric workflow
+ */
 export const runChatAgent = async (
   text: string,
   history: Message[],
@@ -101,7 +212,6 @@ export const runChatAgent = async (
       config: {
         systemInstruction: systemInstruction,
         temperature: AGENT_TEMPERATURES.CHAT,
-        // maxOutputTokens removed to allow dynamic length
         topP: AGENT_TOP_P.CHAT,
         topK: 40
       },

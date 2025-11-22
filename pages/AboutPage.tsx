@@ -33,9 +33,7 @@ export const AboutPage: React.FC = () => {
                             Swaz Solutions began as a specialized cleanroom facility for enterprise data recovery. We built our reputation recovering mission-critical data from physically damaged RAID arrays and server infrastructures when others failed.
                         </p>
                         <ul className="space-y-3">
-                            <li className="flex items-center gap-3 text-sm text-primary font-medium">
-                                <div className="w-2 h-2 rounded-full bg-accent"></div> ISO 27001 Certified Lab
-                            </li>
+
                             <li className="flex items-center gap-3 text-sm text-primary font-medium">
                                 <div className="w-2 h-2 rounded-full bg-accent"></div> Class 100 Cleanroom
                             </li>
@@ -68,14 +66,14 @@ export const AboutPage: React.FC = () => {
                         <h2 className="text-3xl font-black text-primary mb-4">Our Journey</h2>
                         <p className="text-secondary">From a garage lab to a global AI innovator.</p>
                     </div>
-                    
+
                     <div className="space-y-12 relative">
                         {/* Vertical Line */}
                         <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-border md:left-1/2 md:-ml-[1px]"></div>
 
                         {[
                             { year: "2012", title: "The Beginning", desc: "Founded as 'Swaz Recovery' in San Francisco, focusing on mechanical HDD repairs." },
-                            { year: "2015", title: "Enterprise Expansion", desc: "Opened first ISO-certified cleanroom facility. Secured contracts with Fortune 500 tech firms." },
+                            { year: "2015", title: "Enterprise Expansion", desc: "Opened first certified cleanroom facility. Secured contracts with Fortune 500 tech firms." },
                             { year: "2019", title: "Forensic Security", desc: "Expanded into digital forensics and ransomware reversal services for legal and healthcare sectors." },
                             { year: "2023", title: "Project Samskara", desc: "Internal R&D team develops the 'Samskara' context engine to solve cultural hallucinations in LLMs." },
                             { year: "2025", title: "Swaz Solutions 2.0", desc: "Rebranded to integrate Data Recovery services with the public launch of our Lyric Studio AI." }

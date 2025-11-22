@@ -10,19 +10,15 @@ const getRhymeDescription = (scheme: string): string => {
   if (scheme.includes("ABCB") || scheme.includes("Ballad")) return "Ballad (ABCB). Only line 2-4 rhyme.";
   if (scheme.includes("ABBA") || scheme.includes("Enclosed")) return "Enclosed (ABBA). Line 1-4, 2-3 rhyme.";
   if (scheme.includes("AAAA") || scheme.includes("Monorhyme")) return "Monorhyme (AAAA). All lines same rhyme.";
-  if (scheme.includes("AABA") || scheme.includes("Rubaiyat")) return "Rubaiyat (AABA). Lines 1,2,4 rhyme.";
-  if (scheme.includes("AABCCB") || scheme.includes("Sestet")) return "Sestet (AABCCB). Complex 6-line.";
-  if (scheme.includes("Terza")) return "Terza Rima (ABA BCB). Chain linking.";
-  if (scheme.includes("Limerick")) return "Limerick (AABBA). Humorous pattern.";
-  if (scheme.includes("Sonnet")) return "Sonnet (14 lines). ABAB CDCD EFEF GG structure.";
-  if (scheme.includes("Sanskrit") || scheme.includes("Sloka") || scheme.includes("Doha") || scheme.includes("Chaupai")) return "Indian classical meter. Follow traditional syllable count and rhyme.";
-  if (scheme.includes("Ghazal")) return "Ghazal (AA BA CA). First couplet both lines rhyme, then only second lines.";
-  if (scheme.includes("Pallavi") || scheme.includes("Sthayi")) return "Classical song structure. Refrain + verses.";
-  if (scheme.includes("Hip-Hop") || scheme.includes("Rap")) return "Internal rhymes and flow. Multiple rhymes per line.";
-  if (scheme.includes("Free Verse") || scheme.includes("No Rhyme") || scheme.includes("Blank")) return "Free verse. No strict rhyme. Focus on rhythm.";
+  if (scheme.includes("Free Verse") || scheme.includes("No Rhyme") || scheme.includes("Blank")) return "Free verse. No strict rhyme.";
   return "Consistent end rhymes (Anthya Prasa).";
 };
 
+/**
+ * STREAMLINED REVIEW AGENT
+ * Core Responsibility: Rhyme validation + Script verification ONLY
+ * Structure generation, complexity checks, punctuation removed (Lyricist handles these)
+ */
 export const runReviewAgent = async (
   draftLyrics: string,
   originalContext: string,
@@ -38,7 +34,7 @@ export const runReviewAgent = async (
   const lyricsSchema = {
     type: Type.OBJECT,
     properties: {
-      title: { type: Type.STRING, description: "Refined title in Native Script" },
+      title: { type: Type.STRING },
       language: { type: Type.STRING },
       ragam: { type: Type.STRING },
       taalam: { type: Type.STRING },
@@ -48,7 +44,7 @@ export const runReviewAgent = async (
         items: {
           type: Type.OBJECT,
           properties: {
-            sectionName: { type: Type.STRING, description: "MUST BE [English Tag] like [Chorus] or [Verse]" },
+            sectionName: { type: Type.STRING },
             lines: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
           required: ["sectionName", "lines"]
@@ -58,7 +54,6 @@ export const runReviewAgent = async (
     required: ["title", "sections"]
   };
 
-  const complexity = generationSettings?.complexity || "Poetic";
   const rhymeScheme = generationSettings?.rhymeScheme || "AABB (Couplet)";
   const rhymeInstruction = getRhymeDescription(rhymeScheme);
 
@@ -66,46 +61,38 @@ export const runReviewAgent = async (
     INPUT LYRICS (DRAFT):
     ${draftLyrics}
 
-    ORIGINAL CONTEXT:
-    ${originalContext}
-
     TARGET LANGUAGE: ${languageProfile.primary}
-    REQUESTED COMPLEXITY: ${complexity}
-    REQUESTED RHYME SCHEME: ${rhymeScheme}
+    RHYME SCHEME: ${rhymeScheme}
 
-    ROLE: You are a strict "Sahitya Pundit" (Literary Expert). Your job is to fix errors, not to compliment the writer.
+    ROLE: You are a "Sahitya Pundit" (Literary Critic) performing quality control.
 
-    TASK:
-    1. **SCRIPT AUDIT (HIGHEST PRIORITY):**
-       - **REJECT** any lines written in English/Roman script (Transliteration) like "Nenu vastunnanu".
-       - **CONVERT** them immediately to Native Script: "నేను వస్తున్నాను".
-       - The final output must contain 0% Roman characters in the lyrics lines.
-
-    2. **RHYME & PRASA REPAIR:**
-       - **TARGET SCHEME:** ${rhymeScheme} (${rhymeInstruction})
-       - Check the "Anthya Prasa" (End Rhyme) of every matching line.
-       - If they do not rhyme phonetically, **REWRITE** the line to force a rhyme while keeping the meaning.
-       - Do not allow weak rhymes.
-
-    3. **STRUCTURE & FORMATTING:**
-       - Ensure standardized English tags: [Chorus], [Verse 1], [Bridge].
-       - Remove any metadata lines inside the sections.
-       - Ensure the song is complete (Intro to Outro).
+    FOCUSED TASKS (DO NOT DO ANYTHING ELSE):
     
-    4. **COMPLEXITY CHECK:**
-       - If "Simple": Remove archaic/Grandhika words.
-       - If "Poetic": Ensure metaphors are logical.
+    1. **SCRIPT VERIFICATION (CRITICAL):**
+       - Verify all lyrics are in ${languageProfile.primary} NATIVE SCRIPT
+       - If any lines use Roman/Latin transliteration, CONVERT to native script
+       - Example: "Nenu vastunnanu" → "నేను వస్తున్నాను"
+       - Final output must have 0% Roman characters in lyrics
 
-    5. **PUNCTUATION & EXPRESSION FIX:**
-       - Scan the draft. If lines end without punctuation, ADD IT based on the mood.
-       - Use '!' for intensity, ',' for flow, '?' for questions, '...' for pauses.
-       - Ensure the lyrics look like poetry, not just text.
+    2. **RHYME VALIDATION:**
+       - Target: ${rhymeScheme} (${rhymeInstruction})
+       - Check phonetic end rhymes (Anthya Prasa)
+       - If rhymes are weak/missing, REWRITE the line to force a rhyme
+       - Maintain meaning while fixing rhymes
+       - Cross-language rhyming allowed if in fusion mode
 
-    6. **NO SPOKEN WORD:**
-       - If detected, remove any [Spoken Word], [Dialogue], or [Narration] sections.
-       - Convert them to melodic verses or remove them entirely.
+    3. **BASIC ERROR CORRECTION:**
+       - Fix obvious typos or grammatical errors
+       - Ensure tags are in English: [Chorus], [Verse], [Bridge], etc.
+       - Remove any metadata or instructions within lyrics
+    
+    DO NOT:
+    - Add missing sections (Lyricist handles structure)
+    - Change complexity level
+    - Add punctuation (Lyricist handles expression)
+    - Rewrite for style preferences
 
-    Return the COMPLETE, CORRECTED version in JSON.
+    Return the corrected version in JSON format.
   `;
 
   try {
@@ -117,7 +104,6 @@ export const runReviewAgent = async (
         responseMimeType: "application/json",
         responseSchema: lyricsSchema,
         temperature: AGENT_TEMPERATURES.REVIEW,
-        // maxOutputTokens removed to allow dynamic length
         topP: AGENT_TOP_P.REVIEW,
         topK: 40
       }
@@ -128,7 +114,7 @@ export const runReviewAgent = async (
       return formatLyricsForDisplay(data);
     }
 
-    return draftLyrics; // Return original if review fails
+    return draftLyrics;
 
   } catch (error) {
     console.error("Review Agent Error:", error);

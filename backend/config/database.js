@@ -48,6 +48,52 @@ async function initializeDatabase() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_play_count ON songs(play_count DESC);
+
+    -- Contact Tickets table (for data recovery inquiries)
+    CREATE TABLE IF NOT EXISTS contact_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      device_type TEXT NOT NULL,
+      symptoms TEXT NOT NULL,
+      is_emergency INTEGER DEFAULT 0,
+      ip_address TEXT,
+      user_agent TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_tickets_email ON contact_tickets(email);
+    CREATE INDEX IF NOT EXISTS idx_tickets_created ON contact_tickets(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_tickets_status ON contact_tickets(status);
+
+    -- Agentic AI Inquiries table
+    CREATE TABLE IF NOT EXISTS agentic_ai_inquiries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      company TEXT NOT NULL,
+      company_size TEXT,
+      service_type TEXT NOT NULL,
+      project_description TEXT NOT NULL,
+      budget TEXT,
+      timeline TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      status TEXT DEFAULT 'new',
+      priority TEXT DEFAULT 'normal',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ai_inquiries_email ON agentic_ai_inquiries(email);
+    CREATE INDEX IF NOT EXISTS idx_ai_inquiries_created ON agentic_ai_inquiries(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_ai_inquiries_status ON agentic_ai_inquiries(status);
+    CREATE INDEX IF NOT EXISTS idx_ai_inquiries_priority ON agentic_ai_inquiries(priority);
   `);
 
   // Migration: Add cover_path if it doesn't exist
@@ -89,6 +135,7 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_camera_type ON camera_updates(type);
     CREATE INDEX IF NOT EXISTS idx_camera_date ON camera_updates(date DESC);
     CREATE INDEX IF NOT EXISTS idx_camera_priority ON camera_updates(priority);
+    CREATE INDEX IF NOT EXISTS idx_camera_title ON camera_updates(title);
   `);
   // Playlists and other tables
   db.run(`
@@ -132,7 +179,25 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
     CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist ON playlist_songs(playlist_id);
     CREATE INDEX IF NOT EXISTS idx_play_count ON songs(play_count DESC);
+
+    -- Visitors table
+    CREATE TABLE IF NOT EXISTS visitors (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      count INTEGER DEFAULT 0,
+      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // Initialize visitors count if not exists
+  try {
+    const visitorCount = db.exec("SELECT count FROM visitors WHERE id = 1");
+    if (visitorCount.length === 0 || visitorCount[0].values.length === 0) {
+      db.run("INSERT INTO visitors (id, count) VALUES (1, 0)");
+      console.log('✅ Initialized visitor counter');
+    }
+  } catch (e) {
+    console.error('❌ Failed to initialize visitor counter:', e);
+  }
 
   // Save database to file
   saveDatabase();

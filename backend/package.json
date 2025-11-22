@@ -20,7 +20,8 @@
     "sql.js": "^1.13.0",
     "music-metadata": "^8.1.4",
     "axios": "^1.7.9",
-    "cheerio": "^1.0.0"
+    "cheerio": "^1.0.0",
+    "nodemailer": "^6.9.8"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"

@@ -1,9 +1,14 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { MODEL_NAME, SYSTEM_INSTRUCTION_EMOTION, getModelToUse, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
+import { SYSTEM_INSTRUCTION_EMOTION, getModelToUse, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { EmotionAnalysis } from "./types";
 import { cleanAndParseJSON, retryWithBackoff } from "../utils";
 
+/**
+ * SIMPLIFIED EMOTION AGENT
+ * Core Responsibility: Navarasa (9 classical emotions) detection ONLY
+ * Setting inference moved to Prompt Engineer Agent
+ */
 export const runEmotionAgent = async (input: string, apiKey?: string, selectedModel?: string): Promise<EmotionAnalysis> => {
   const key = apiKey;
   if (!key) throw new Error("API_KEY_MISSING");
@@ -14,37 +19,33 @@ export const runEmotionAgent = async (input: string, apiKey?: string, selectedMo
     type: Type.OBJECT,
     properties: {
       sentiment: { type: Type.STRING, description: "Positive, Negative, or Neutral" },
-      navarasa: { type: Type.STRING, description: "The dominant Rasa (e.g., Shringara, Raudra)" },
-      intensity: { type: Type.INTEGER, description: "Scale of 1 to 10" },
-      suggestedKeywords: {
-        type: Type.ARRAY,
-        items: { type: Type.STRING },
-        description: "Keywords that match this emotion"
-      },
-      vibeDescription: { type: Type.STRING, description: "A poetic description of the detected vibe" },
-      // AI Configuration Suggestions
-      suggestedMood: { type: Type.STRING, description: "Best matching mood (e.g., Romantic, Energetic)" },
-      suggestedStyle: { type: Type.STRING, description: "Best matching musical style (e.g., Cinematic, Pop, Folk)" },
-      suggestedTheme: { type: Type.STRING, description: "Best matching theme (e.g., Love, Nature)" },
-      suggestedRhymeScheme: { type: Type.STRING, description: "Best rhyme scheme (e.g., AABB (Couplet), Free Verse)" },
-      suggestedComplexity: { type: Type.STRING, enum: ["Low", "Medium", "High"], description: "Complexity level" },
-      suggestedSingerConfig: { type: Type.STRING, description: "Best singer setup (e.g., Duet, Solo Male)" }
+      navarasa: { type: Type.STRING, description: "The dominant Rasa (e.g., Shringar, Karuna, Raudra, Veera, Hasya, Bhayanaka, Bibhatsa, Adbhuta, Shanta)" },
+      intensity: { type: Type.INTEGER, description: "Emotional intensity scale 1-10" },
+      vibeDescription: { type: Type.STRING, description: "A poetic description of the detected emotional vibe" }
     },
-    required: ["sentiment", "navarasa", "intensity", "vibeDescription", "suggestedMood", "suggestedStyle", "suggestedTheme", "suggestedRhymeScheme", "suggestedComplexity", "suggestedSingerConfig"]
+    required: ["sentiment", "navarasa", "intensity", "vibeDescription"]
   };
 
   const prompt = `
     USER INPUT: "${input}"
     
-    TASK:
-    1. Analyze the emotional sentiment and "Navarasa" (Indian Aesthetic).
-    2. ACT AS A MUSIC PRODUCER: Based on the user's request, determine the best configuration for generating the song.
+    TASK: Analyze the emotional content using the Navarasa framework (9 classical emotions):
     
-    If the user says "Write a rap", suggestedStyle should be "Rap/Hip-Hop" and rhyme should be "AABB".
-    If the user says "Sad song about breakup", mood should be "Melancholic", style might be "Cinematic" or "Ghazal".
-    If the user says "Love song", mood is "Romantic".
+    1. Shringar (Love/Beauty/Romance)
+    2. Hasya (Laughter/Joy/Comedy)
+    3. Karuna (Compassion/Sadness/Pathos)
+    4. Raudra (Anger/Fury)
+    5. Veera (Courage/Valor/Heroism)
+    6. Bhayanaka (Fear/Terror)
+    7. Bibhatsa (Disgust/Aversion)
+    8. Adbhuta (Wonder/Amazement)
+    9. Shanta (Peace/Tranquility)
     
-    Provide specific values for suggestedMood, suggestedStyle, etc., that best fit the prompt.
+    Determine:
+    - Overall sentiment (Positive/Negative/Neutral)
+    - Dominant Navarasa emotion
+    - Intensity (1-10, where 10 is extreme)
+    - A poetic description of the vibe
   `;
 
   try {
@@ -58,7 +59,6 @@ export const runEmotionAgent = async (input: string, apiKey?: string, selectedMo
             responseMimeType: "application/json",
             responseSchema: emotionSchema,
             temperature: AGENT_TEMPERATURES.EMOTION,
-            // maxOutputTokens removed to allow dynamic length
             topP: AGENT_TOP_P.EMOTION,
             topK: 40
           }
@@ -69,14 +69,13 @@ export const runEmotionAgent = async (input: string, apiKey?: string, selectedMo
         }
         return result;
       },
-      2, // max 2 retries for rate limits
-      1000 // start with 1s delay
+      2,
+      1000
     );
 
     return cleanAndParseJSON<EmotionAnalysis>(response.text);
   } catch (error) {
     console.error("Emotion Agent Error:", error);
-    // Re-throw API key errors to be handled by orchestrator
     if (error instanceof Error && error.message === "API_KEY_MISSING") {
       throw error;
     }

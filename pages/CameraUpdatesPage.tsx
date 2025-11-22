@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Camera, Download, Calendar, Filter, Search, ChevronDown, ChevronUp, ExternalLink, AlertCircle, Zap, RefreshCw, Circle } from 'lucide-react';
+import { generatePageTitle, generateMetaDescription, generateCanonicalUrl } from '../utils/seo';
 
 interface Update {
   id: string;
@@ -83,6 +85,13 @@ const MOCK_UPDATES: Update[] = [
 ];
 
 export const CameraUpdatesPage: React.FC = () => {
+  // SEO Meta Tags
+  const pageTitle = generatePageTitle('Camera Updates & Firmware News');
+  const metaDescription = generateMetaDescription(
+    'Latest camera firmware updates, lens announcements & photography tech news for Canon, Nikon, Sony. Daily updates on mirrorless cameras, DSLRs, firmware releases. Professional photography equipment tracking by Swaz Solutions.'
+  );
+  const canonicalUrl = generateCanonicalUrl('/camera-updates');
+
   const [updates, setUpdates] = useState<Update[]>([]);
   const [filteredUpdates, setFilteredUpdates] = useState<Update[]>([]);
   const [selectedBrands, setSelectedBrands] = useState<string[]>(['Canon', 'Nikon', 'Sony']);
@@ -230,21 +239,45 @@ export const CameraUpdatesPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background py-8">
-      <div className="container mx-auto px-4 max-w-7xl">
-        
-        {/* Header Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-black text-primary mb-2 flex items-center gap-3">
-                <Camera className="w-10 h-10 text-accent" />
-                Professional Camera Updates
-              </h1>
-              <p className="text-secondary text-lg">
-                Latest news from Canon, Nikon, and Sony - Cameras, Lenses, and Firmware
-              </p>
-            </div>
+    <>
+      {/* SEO Meta Tags */}
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={metaDescription} />
+        <link rel="canonical" href={canonicalUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://www.swazsolutions.com/assets/camera-updates-og.jpg" />
+
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content="https://www.swazsolutions.com/assets/camera-updates-twitter.jpg" />
+
+        {/* Keywords */}
+        <meta name="keywords" content="camera firmware updates, Canon firmware, Nikon firmware, Sony firmware, mirrorless camera news, DSLR updates, lens announcements, photography equipment, camera tech news, firmware download, EOS R5, Sony A7, Nikon Z series" />
+      </Helmet>
+
+      <div className="min-h-screen bg-background pb-8">
+        <div className="container mx-auto px-4 max-w-7xl pt-8">
+          
+          {/* Header Section */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h1 className="text-4xl font-black text-primary mb-2 flex items-center gap-3">
+                  <Camera className="w-10 h-10 text-accent" />
+                  Professional Camera Updates
+                </h1>
+                <p className="text-secondary text-lg">
+                  Latest news from Canon, Nikon, and Sony - Cameras, Lenses, and Firmware
+                </p>
+              </div>
             <button
               onClick={refreshUpdates}
               disabled={isRefreshing}
@@ -414,36 +447,50 @@ export const CameraUpdatesPage: React.FC = () => {
                   <p className="text-secondary mb-4 leading-relaxed">{update.description}</p>
 
                   {/* Features (Collapsed/Expanded) */}
-                  {expandedCards.has(update.id) && (
+                  {expandedCards.has(update.id) && update.features && update.features.length > 0 && (
                     <div className="mb-4 p-4 bg-accent-light/50 dark:bg-accent-light/10 rounded-xl border border-accent/20">
                       <h3 className="text-sm font-bold text-primary mb-3">Key Features & Improvements:</h3>
                       <ul className="space-y-2">
-                        {update.features.map((feature, idx) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm text-secondary">
-                            <span className="text-accent mt-0.5">•</span>
-                            <span>{feature}</span>
-                          </li>
-                        ))}
+                        {update.features
+                          .filter(feature => feature && feature.trim().length > 0)
+                          .map((feature, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-secondary">
+                              <span className="text-accent mt-0.5">•</span>
+                              <span>{feature}</span>
+                            </li>
+                          ))}
                       </ul>
+                    </div>
+                  )}
+                  
+                  {/* No features message when expanded */}
+                  {expandedCards.has(update.id) && (!update.features || update.features.length === 0) && (
+                    <div className="mb-4 p-4 bg-surface rounded-xl border border-border">
+                      <p className="text-sm text-muted italic">
+                        Detailed features not available for this update. Please visit the source link below for more information.
+                      </p>
                     </div>
                   )}
 
                   {/* Actions */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    <button
-                      onClick={() => toggleCard(update.id)}
-                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface hover:bg-border border border-border text-primary font-semibold text-sm transition-colors"
-                    >
-                      {expandedCards.has(update.id) ? (
-                        <>
-                          <ChevronUp className="w-4 h-4" /> Show Less
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown className="w-4 h-4" /> Show More
-                        </>
-                      )}
-                    </button>
+                    {/* Show More/Less button - only show if there are features or additional info */}
+                    {(update.features && update.features.length > 0) && (
+                      <button
+                        onClick={() => toggleCard(update.id)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface hover:bg-border border border-border text-primary font-semibold text-sm transition-colors"
+                      >
+                        {expandedCards.has(update.id) ? (
+                          <>
+                            <ChevronUp className="w-4 h-4" /> Show Less
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="w-4 h-4" /> Show More
+                          </>
+                        )}
+                      </button>
+                    )}
 
                     {update.downloadLink && (
                       <a
@@ -470,7 +517,8 @@ export const CameraUpdatesPage: React.FC = () => {
             ))
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };

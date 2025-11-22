@@ -55,22 +55,27 @@ router.get('/', async (req, res) => {
         }
         
         const sql = `SELECT * FROM camera_updates ${whereClause} ORDER BY ${orderBy}`;
-        const updates = db.prepare(sql).all(...params).map(row => ({
-            id: row.id,
-            brand: row.brand,
-            type: row.type,
-            title: row.title,
-            date: row.date,
-            version: row.version,
-            description: row.description,
-            features: JSON.parse(row.features || '[]'),
-            downloadLink: row.download_link,
-            imageUrl: row.image_url,
-            sourceUrl: row.source_url,
-            sourceName: row.source_name,
-            priority: row.priority,
-            category: row.category
-        }));
+        const updates = db.prepare(sql).all(...params)
+            .map(row => ({
+                id: row.id,
+                brand: row.brand,
+                type: row.type,
+                title: row.title,
+                date: row.date,
+                version: row.version,
+                description: row.description,
+                features: JSON.parse(row.features || '[]'),
+                downloadLink: row.download_link,
+                imageUrl: row.image_url,
+                sourceUrl: row.source_url,
+                sourceName: row.source_name,
+                priority: row.priority,
+                category: row.category
+            }))
+            // Filter: Only return English content
+            .filter(update => {
+                return isEnglishText(update.title) && isEnglishText(update.description);
+            });
         
         res.json({
             success: true,
@@ -228,6 +233,25 @@ router.post('/refresh', async (req, res) => {
 });
 
 /**
+ * Basic English language detection
+ */
+function isEnglishText(text) {
+    if (!text || text.length < 10) return false;
+    
+    // Check for non-English character ranges
+    const nonEnglishChars = /[\u0400-\u04FF\u0600-\u06FF\u0E00-\u0E7F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/;
+    if (nonEnglishChars.test(text)) return false;
+    
+    // Check for common English words
+    const englishWords = /\b(the|is|at|which|on|a|an|as|are|was|were|been|be|have|has|had|do|does|did|will|would|could|should|of|for|to|in|with|by|from|about|camera|lens|firmware|update)\b/gi;
+    const matches = text.match(englishWords);
+    const wordCount = text.split(/\s+/).length;
+    const englishWordRatio = matches ? matches.length / wordCount : 0;
+    
+    return englishWordRatio >= 0.1;
+}
+
+/**
  * Compare two objects for meaningful changes
  */
 function hasContentChanged(existing, newUpdate) {
@@ -263,6 +287,11 @@ function saveUpdatesToDb(updates) {
     let insertCount = 0;
     let updateCount = 0;
     let skippedCount = 0;
+    
+    // Pre-filter: Only save English content
+    updates = updates.filter(update => {
+        return isEnglishText(update.title) && isEnglishText(update.description);
+    });
     
     for (const update of updates) {
         try {

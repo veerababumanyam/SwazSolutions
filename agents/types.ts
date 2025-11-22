@@ -23,7 +23,7 @@ export interface GenerationSettings {
 
 export interface AgentStatus {
     active: boolean;
-    currentAgent: 'LYRICIST' | 'REVIEW' | 'IDLE' | 'ARTIST' | 'MAGIC' | 'COMPLIANCE';
+    currentAgent: 'LYRICIST' | 'REVIEW' | 'IDLE' | 'ARTIST' | 'MAGIC' | 'COMPLIANCE' | 'CHAT';
     progress: number;
 }
 
@@ -122,6 +122,8 @@ export interface ComplianceReport {
     flaggedPhrases: string[];
     similarSongs: string[];
     verdict: string;
+    issues?: string[];
+    recommendations?: string[];
 }
 
 export interface EmotionAnalysis {
@@ -159,4 +161,32 @@ export interface AppTheme {
     id: string;
     name: string;
     colors: ThemeColors;
+}
+
+// Prompt Engineer Agent Types
+export interface PromptEnhancementResult {
+    enhancedPrompt: string;
+    stylePrompt: string; // NEW: Style prompt for music generation
+    inferredSettings: Partial<GenerationSettings>;
+    confidenceScore: number;
+    reasoningLog: string;
+}
+
+// Review Agent Enhanced Types
+export interface RhymeValidation {
+    scheme: string;
+    violations: { line: number; issue: string }[];
+}
+
+export interface MeterAnalysis {
+    consistent: boolean;
+    issues: string[];
+}
+
+export interface ReviewReport {
+    refinedLyrics: string;
+    hallucinationIssues: string[];
+    rhymeValidation: RhymeValidation;
+    meterAnalysis: MeterAnalysis;
+    suggestions: string[];
 }

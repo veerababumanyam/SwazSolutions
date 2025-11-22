@@ -1,5 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { MusicSidebar, ViewType } from '../components/MusicSidebar';
 import { MusicPlayer } from '../components/MusicPlayer';
 import { LyricsDisplay } from '../components/LyricsDisplay';
@@ -8,6 +9,7 @@ import { KeyboardShortcutsModal } from '../components/KeyboardShortcutsModal';
 import { SearchHistoryDropdown } from '../components/SearchHistoryDropdown';
 import { useMusic } from '../contexts/MusicContext';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { generatePageTitle, generateMetaDescription, generateCanonicalUrl } from '../utils/seo';
 import {
     Menu, Music, Play, Pause, Heart, MoreHorizontal,
     PlusCircle, Radio, Disc, ChevronDown, ChevronUp, Trash2,
@@ -48,6 +50,13 @@ const formatDuration = (seconds?: number) => {
 };
 
 export const MusicPage: React.FC = () => {
+    // SEO Meta Tags
+    const pageTitle = generatePageTitle('Copyright-Free Music Player');
+    const metaDescription = generateMetaDescription(
+        'Stream copyright-free music by Swaz Solutions. High-quality tracks for content creators, developers, and music lovers. No licensing fees, no attribution required. Perfect for YouTube, podcasts, and personal projects.'
+    );
+    const canonicalUrl = generateCanonicalUrl('/music');
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [currentView, setCurrentView] = useState<ViewType>({ type: 'all' });
     const [searchQuery, setSearchQuery] = useState('');
@@ -273,16 +282,56 @@ export const MusicPage: React.FC = () => {
     };
 
     return (
-        <div className="h-[calc(100vh-80px)] bg-background flex flex-col lg:flex-row relative overflow-hidden">
+        <>
+            {/* SEO Meta Tags */}
+            <Helmet>
+                <title>{pageTitle}</title>
+                <meta name="description" content={metaDescription} />
+                <link rel="canonical" href={canonicalUrl} />
 
-            <MusicSidebar
-                isOpen={isSidebarOpen}
-                setIsOpen={setIsSidebarOpen}
-                currentView={currentView}
-                onNavigate={(v) => { setCurrentView(v); setSearchQuery(''); }}
-            />
+                {/* Open Graph */}
+                <meta property="og:title" content={pageTitle} />
+                <meta property="og:description" content={metaDescription} />
+                <meta property="og:url" content={canonicalUrl} />
+                <meta property="og:type" content="website" />
+                <meta property="og:image" content="https://www.swazsolutions.com/assets/music-og.jpg" />
+
+                {/* Twitter Card */}
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content={pageTitle} />
+                <meta name="twitter:description" content={metaDescription} />
+                <meta name="twitter:image" content="https://www.swazsolutions.com/assets/music-twitter.jpg" />
+
+                {/* Keywords */}
+                <meta name="keywords" content="copyright-free music, royalty-free music, free music for content creators, no attribution music, music player, streaming music, Swaz music, background music for videos, podcast music, YouTube music" />
+            </Helmet>
+
+            <div className="h-[calc(100vh-80px)] bg-background flex flex-col lg:flex-row relative overflow-hidden">
+
+                <MusicSidebar
+                    isOpen={isSidebarOpen}
+                    setIsOpen={setIsSidebarOpen}
+                    currentView={currentView}
+                    onNavigate={(v) => { setCurrentView(v); setSearchQuery(''); }}
+                />
 
             <main className="flex-1 flex flex-col relative pb-24 overflow-hidden">
+
+                {/* Legal Disclaimer - Sticky Notice */}
+                <div className="sticky top-0 z-40 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-b border-amber-200 dark:border-amber-800 shadow-sm">
+                    <div className="px-4 py-2 md:px-6">
+                        <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 mt-0.5">
+                                <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="flex-1 text-xs leading-relaxed text-amber-900 dark:text-amber-100">
+                                <span className="font-bold">Copyright Notice:</span> All musical works and sound recordings accessible through this platform are proprietary content owned by Swaz Solutions ("the Proprietor") and are protected under the Copyright Act, 1957 (India) and applicable intellectual property laws. Users are hereby granted a limited, non-exclusive, revocable license to utilize the music for personal, commercial, or live event purposes, subject to the following conditions: (i) The music shall not be monetized, distributed, or exploited for revenue generation through any medium including but not limited to streaming platforms, advertisements, or derivative works; (ii) In the event of any monetization activity, the Proprietor reserves an absolute and unconditional right to claim and receive up to fifty percent (50%) of all revenues, earnings, or consideration derived therefrom; (iii) The Proprietor retains the right to pursue legal remedies under Section 51 and Section 55 of the Copyright Act, 1957, for any unauthorized use or infringement. By accessing this content, you acknowledge and agree to be bound by these terms.
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Mobile Toggle FAB */}
                 {!isSidebarOpen && (
@@ -518,6 +567,7 @@ export const MusicPage: React.FC = () => {
 
             {/* Keyboard Shortcuts Help */}
             <KeyboardShortcutsModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
-        </div >
+            </div>
+        </>
     );
 };

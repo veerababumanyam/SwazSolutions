@@ -184,3 +184,60 @@ export interface ApiAlbum {
     title: string;
     song_ids?: string;
 }
+
+// Contact & Inquiry Types
+export interface ContactTicket {
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+    deviceType: string;
+    symptoms: string;
+    isEmergency: boolean;
+    status: 'pending' | 'in-progress' | 'resolved' | 'cancelled';
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface AgenticAIInquiry {
+    id: number;
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+    companySize?: string;
+    serviceType: string;
+    projectDescription: string;
+    budget?: string;
+    timeline?: string;
+    status: 'new' | 'contacted' | 'in-discussion' | 'proposal-sent' | 'closed-won' | 'closed-lost';
+    priority: 'low' | 'normal' | 'high' | 'urgent';
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface AgenticAIFormData {
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+    companySize: string;
+    serviceType: string;
+    projectDescription: string;
+    budget: string;
+    timeline: string;
+    honeypot: string;
+    timestamp: number;
+}
+
+export interface ContactFormResponse {
+    success: boolean;
+    message: string;
+    inquiryId?: string;
+    ticketId?: string;
+    estimatedResponseTime?: string;
+    priority?: string;
+    error?: string;
+    errors?: string[];
+}

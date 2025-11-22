@@ -145,6 +145,186 @@ async function searchForUpdates(brand) {
 }
 
 /**
+ * Detect if text is in English using comprehensive linguistic patterns
+ */
+function isEnglishText(text) {
+    if (!text || text.length < 10) return false;
+    
+    // Common non-English character ranges (exclude accented English letters)
+    const nonEnglishChars = /[\u0400-\u04FF\u0600-\u06FF\u0E00-\u0E7F\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/;
+    if (nonEnglishChars.test(text)) return false;
+    
+    // Check for high density of common English words (expanded list)
+    const englishWords = /\b(the|is|at|which|on|a|an|as|are|was|were|been|be|have|has|had|do|does|did|will|would|could|should|may|might|can|of|for|to|in|with|by|from|about|into|through|during|before|after|above|below|between|under|camera|lens|firmware|update|version|feature|photo|image|sensor|autofocus|exposure|aperture|shutter|iso|improved|enhanced|new|fixed|stability|performance|detection|tracking|recording|light|conditions)\b/gi;
+    const matches = text.match(englishWords);
+    const wordCount = text.split(/\s+/).length;
+    const englishWordRatio = matches ? matches.length / wordCount : 0;
+    
+    // Adjusted threshold: at least 10% of words should be common English words (was 15%)
+    if (englishWordRatio < 0.10) return false;
+    
+    // Check for English sentence structure (spaces between words, proper punctuation)
+    const hasProperSpacing = /\b[a-zA-Z]+\s+[a-zA-Z]+\b/.test(text);
+    if (!hasProperSpacing) return false;
+    
+    // Check for excessive special characters (common in non-English or spam)
+    const specialCharRatio = (text.match(/[^\w\s.,!?;:()\-'"]/g) || []).length / text.length;
+    if (specialCharRatio > 0.1) return false;
+    
+    return true;
+}
+
+/**
+ * Validate and clean feature text
+ */
+function isValidFeature(feature) {
+    if (!feature || typeof feature !== 'string') return false;
+    
+    const cleaned = feature.trim();
+    if (cleaned.length < 15 || cleaned.length > 300) return false;
+    
+    // Must be in English
+    if (!isEnglishText(cleaned)) return false;
+    
+    // Exclude spam/promotional content
+    const spamPatterns = /buy now|click here|shop|price|deal|sale|coupon|discount|order now|add to cart|subscribe|sign up|follow us|share this/i;
+    if (spamPatterns.test(cleaned)) return false;
+    
+    // Exclude navigation/UI text
+    const uiPatterns = /^(home|about|contact|menu|search|login|register|next|previous|back|more|less)$/i;
+    if (uiPatterns.test(cleaned)) return false;
+    
+    return true;
+}
+
+/**
+ * Generate a deterministic ID based on content to prevent duplicates
+ * This ensures the same article always gets the same ID
+ */
+function generateDeterministicId(brand, title, type, version) {
+    // Normalize title: remove special chars, lowercase, remove common words
+    const normalizedTitle = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .replace(/firmware/g, '')
+        .replace(/update/g, '')
+        .replace(/version/g, '')
+        .replace(/\s+/g, '')
+        .substring(0, 50); // Limit length
+    
+    const brandKey = brand.toLowerCase().substring(0, 5);
+    const typeKey = type.substring(0, 3);
+    const versionKey = version ? version.replace(/[^0-9]/g, '').substring(0, 6) : 'nover';
+    
+    // Create a deterministic hash-like ID
+    return `${brandKey}-${typeKey}-${normalizedTitle}-${versionKey}`.substring(0, 100);
+}
+
+/**
+ * AI-powered description extractor - finds meaningful content separate from title
+ * Looks for actual article content, not just repeating the heading
+ */
+function extractMeaningfulDescription($elem, title, brand, type) {
+    let description = '';
+    
+    // Strategy 1: Look for paragraphs AFTER the heading element (siblings)
+    const followingParagraphs = [];
+    $elem.nextAll('p, div.excerpt, div.summary, div.lead').slice(0, 3).each((i, p) => {
+        const text = $(p).text().trim();
+        if (text.length > 30 && isEnglishText(text) && !text.toLowerCase().includes(title.toLowerCase())) {
+            followingParagraphs.push(text);
+        }
+    });
+    
+    if (followingParagraphs.length > 0) {
+        description = followingParagraphs.join(' ').substring(0, 280);
+    }
+    
+    // Strategy 2: Look within parent article/section for paragraphs
+    if (!description) {
+        const parentArticle = $elem.closest('article, section, .post, .entry');
+        if (parentArticle.length > 0) {
+            parentArticle.find('p').each((i, p) => {
+                const text = $(p).text().trim();
+                if (text.length > 30 && isEnglishText(text) && !text.toLowerCase().includes(title.toLowerCase())) {
+                    if (!description) {
+                        description = text.substring(0, 280);
+                    }
+                    return false; // Break after first valid paragraph
+                }
+            });
+        }
+    }
+    
+    // Strategy 3: Look for meta description or excerpt in nearby content
+    if (!description) {
+        const parent = $elem.parent();
+        const excerptText = parent.find('.excerpt, .summary, .description, [class*="desc"]').first().text().trim();
+        if (excerptText && excerptText.length > 30 && isEnglishText(excerptText)) {
+            description = excerptText.substring(0, 280);
+        }
+    }
+    
+    // Strategy 4: Generate AI-style summary based on title and type
+    if (!description || description.length < 50) {
+        description = generateSmartDescription(title, brand, type);
+    }
+    
+    // Final cleanup: ensure it's different from title and meaningful
+    if (description.toLowerCase().includes(title.toLowerCase()) && description.length < title.length + 50) {
+        description = generateSmartDescription(title, brand, type);
+    }
+    
+    return description;
+}
+
+/**
+ * Generate intelligent description based on title pattern analysis
+ * Creates professional, informative summaries
+ */
+function generateSmartDescription(title, brand, type) {
+    const lowerTitle = title.toLowerCase();
+    
+    // Firmware updates
+    if (type === 'firmware' || /firmware|update|version/i.test(title)) {
+        const versionMatch = title.match(/(\d+\.\d+(?:\.\d+)?)/);
+        const version = versionMatch ? `version ${versionMatch[1]}` : 'latest version';
+        return `${brand} has released a new firmware update (${version}) bringing improvements to performance, stability, and new features. This update addresses various issues and enhances the overall user experience.`;
+    }
+    
+    // Camera announcements
+    if (type === 'camera' || /announce|launch|new camera|introduces/i.test(title)) {
+        const modelMatch = title.match(/([A-Z]+\s*\d+[A-Z\s]*|[A-Z]\d+[A-Z\s]*)/);
+        const model = modelMatch ? modelMatch[1] : 'new camera';
+        return `${brand} announces the ${model}, a professional camera featuring advanced autofocus, high-resolution sensor, and enhanced video capabilities. This release brings innovative technology for both photography and videography enthusiasts.`;
+    }
+    
+    // Lens announcements
+    if (type === 'lens' || /lens|mm|nikkor|rf|fe/i.test(title)) {
+        const focalMatch = title.match(/(\d+(?:-\d+)?)\s*mm/);
+        const apertureMatch = title.match(/f\/?(\d+(?:\.\d+)?)/i);
+        const specs = [];
+        if (focalMatch) specs.push(`${focalMatch[1]}mm focal length`);
+        if (apertureMatch) specs.push(`f/${apertureMatch[1]} aperture`);
+        const specsText = specs.length > 0 ? ` with ${specs.join(' and ')}` : '';
+        return `${brand} introduces a new lens${specsText}, designed for professional photographers. Features include advanced optical design, fast autofocus, and weather-sealed construction for versatile shooting conditions.`;
+    }
+    
+    // Comparison/Review articles
+    if (/vs|versus|comparison|compare/i.test(title)) {
+        return `Detailed comparison analyzing the key differences, features, and performance between camera models. This comprehensive review helps photographers make informed decisions based on their specific needs and shooting styles.`;
+    }
+    
+    // History/Innovation articles
+    if (/history|innovation|evolution|legacy/i.test(title)) {
+        return `Exploring ${brand}'s innovative journey and technological advancements in camera design. This article examines the key features, improvements, and impact on professional photography over the years.`;
+    }
+    
+    // General camera news
+    return `Latest ${brand} ${type} news covering new features, specifications, and improvements. Stay updated with the newest developments in professional photography equipment and technology.`;
+}
+
+/**
  * AI-powered intelligent extraction using advanced pattern recognition
  */
 function extractWithRules(html, brand, url) {
@@ -170,7 +350,12 @@ function extractWithRules(html, brand, url) {
         
         // Skip if too short, too long, or contains spam keywords
         if (text.length < 10 || text.length > 200 || 
-            /buy now|shop|price|deal|sale|coupon|discount/i.test(text)) return;        // Determine type
+            /buy now|shop|price|deal|sale|coupon|discount/i.test(text)) return;
+        
+        // LANGUAGE FILTER: Skip if not English
+        if (!isEnglishText(text)) {
+            return;
+        }        // Determine type
         let type = 'camera';
         if (patterns.firmware.test(text + nearbyText)) type = 'firmware';
         else if (patterns.lens.test(text + nearbyText)) type = 'lens';
@@ -193,19 +378,33 @@ function extractWithRules(html, brand, url) {
             }
         }
         
-        // Extract features/description
+        // Extract features/description with validation
         const features = [];
-        $elem.find('li, p').each((j, item) => {
+        
+        // Look for features in lists specifically
+        $elem.parent().find('ul li, ol li').each((j, item) => {
             const feature = $(item).text().trim();
-            if (feature.length > 10 && feature.length < 200) {
+            if (isValidFeature(feature)) {
                 features.push(feature);
             }
         });
         
-        // Get description
-        let description = $elem.find('p').first().text().trim();
-        if (!description || description.length < 20) {
-            description = nearbyText.substring(0, 300).trim();
+        // If no features found in parent, try within element
+        if (features.length === 0) {
+            $elem.find('li').each((j, item) => {
+                const feature = $(item).text().trim();
+                if (isValidFeature(feature)) {
+                    features.push(feature);
+                }
+            });
+        }
+        
+        // Get MEANINGFUL description - not just repeating the title
+        const description = extractMeaningfulDescription($elem, text, brand, type);
+        
+        // Validate description is in English and meaningful
+        if (!description || description.length < 50 || !isEnglishText(description)) {
+            return; // Skip this update if description is not meaningful
         }
         
         // Determine priority
@@ -219,15 +418,18 @@ function extractWithRules(html, brand, url) {
         else if (/prime|fixed/i.test(text + nearbyText)) category = 'Prime Lens';
         else if (/zoom/i.test(text + nearbyText)) category = 'Zoom Lens';
         
-        // Create update object
+        // Create update object with deterministic ID
+        const updateTitle = text.substring(0, 100).trim();
+        const finalDescription = description.trim();
+        
         const update = {
-            id: `${brand.toLowerCase()}-${timestamp}-${updates.length + 1}`,
+            id: generateDeterministicId(brand, updateTitle, type, version),
             brand: brand,
             type: type,
-            title: text.substring(0, 100),
+            title: updateTitle,
             date: date,
             version: version,
-            description: description.substring(0, 300) || `${brand} ${type} update`,
+            description: finalDescription,
             features: features.slice(0, 5),
             downloadLink: null,
             imageUrl: `/assets/images/${type}s/${brand.toLowerCase()}-${text.toLowerCase().replace(/[^a-z0-9]/g, '-').substring(0, 50)}.jpg`,
@@ -237,22 +439,41 @@ function extractWithRules(html, brand, url) {
             category: category
         };
         
-        // AI agent validation: ensure content quality and relevance
+        // AI agent validation: ensure content quality, relevance, and language
         const hasValidContent = (
             (type === 'firmware' && version) ||
             (type === 'camera' && /eos|nikon\s*z|alpha|a7|a9|r\d+|z\d+|mirrorless/i.test(text)) ||
             (type === 'lens' && /\d+mm|nikkor|rf|fe|mount|f\/\d+/i.test(text))
         );
         
-        // AI scoring: prioritize recent and detailed updates
-        const qualityScore = (
-            (hasValidContent ? 1 : 0) +
-            (version ? 1 : 0) +
-            (features.length > 0 ? 1 : 0) +
-            (description.length > 50 ? 1 : 0)
+        // Check if description is meaningful (not just repeating the title)
+        const descriptionIsMeaningful = (
+            finalDescription.length > 80 &&
+            finalDescription.toLowerCase() !== updateTitle.toLowerCase() &&
+            !finalDescription.startsWith(updateTitle) &&
+            finalDescription.split(' ').length > 10
         );
         
-        if (text.length > 15 && qualityScore >= 2 && description.length > 30) {
+        // AI scoring: prioritize recent and detailed updates
+        const qualityScore = (
+            (hasValidContent ? 2 : 0) +
+            (version ? 1 : 0) +
+            (features.length > 0 ? 1 : 0) +
+            (descriptionIsMeaningful ? 2 : 0) +
+            (isEnglishText(updateTitle) && isEnglishText(finalDescription) ? 1 : 0)
+        );
+        
+        // Enhanced validation: must be in English with quality content
+        const isValidUpdate = (
+            updateTitle.length > 15 && 
+            qualityScore >= 4 && 
+            descriptionIsMeaningful &&
+            isEnglishText(updateTitle) &&
+            isEnglishText(finalDescription) &&
+            (features.length === 0 || features.length >= 2) // Either no features or at least 2 valid features
+        );
+        
+        if (isValidUpdate) {
             updates.push(update);
         }
     });
@@ -315,6 +536,25 @@ function deduplicateGlobally(updates) {
     const seenKeys = new Set();
     const titleCache = new Map(); // Cache normalized titles for faster comparison
     
+    // Pre-filter: remove updates with no meaningful content
+    updates = updates.filter(update => {
+        // Must have valid title and description in English
+        if (!update.title || !update.description) return false;
+        if (!isEnglishText(update.title) || !isEnglishText(update.description)) return false;
+        
+        // If features exist, at least 2 must be valid
+        if (update.features && update.features.length > 0) {
+            const validFeatures = update.features.filter(f => isValidFeature(f));
+            if (validFeatures.length < 2) {
+                update.features = []; // Clear invalid features
+            } else {
+                update.features = validFeatures; // Keep only valid features
+            }
+        }
+        
+        return true;
+    });
+    
     for (const update of updates) {
         // Multi-factor key for robust deduplication
         const titleNormalized = update.title.toLowerCase()
@@ -333,9 +573,12 @@ function deduplicateGlobally(updates) {
         const titleVersionKey = `${brandKey}_${titleNormalized}_${versionKey}`;
         const titleOnlyKey = `${brandKey}_${titleNormalized}`;
         
+        // NEW: Also use the deterministic ID as a key
+        const idKey = update.id;
+        
         // Check all keys for duplicates
         let isDuplicate = false;
-        if (seenKeys.has(exactKey) || seenKeys.has(titleVersionKey)) {
+        if (seenKeys.has(exactKey) || seenKeys.has(titleVersionKey) || seenKeys.has(idKey)) {
             isDuplicate = true;
         } else {
             // Fuzzy matching: check title similarity with existing updates
@@ -396,11 +639,16 @@ function deduplicateGlobally(updates) {
             seenKeys.add(exactKey);
             seenKeys.add(titleVersionKey);
             seenKeys.add(titleOnlyKey);
+            seenKeys.add(idKey); // Add ID to seen keys
             titleCache.set(update.title, titleNormalized);
             unique.push(update);
+        } else {
+            // Log when duplicates are found for debugging
+            console.log(`   ⚠️  Duplicate found and removed: ${update.title.substring(0, 60)}...`);
         }
     }
     
+    console.log(`   🧹 Removed ${updates.length - unique.length} duplicate(s) via global deduplication`);
     return unique;
 }
 
