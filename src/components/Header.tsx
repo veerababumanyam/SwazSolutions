@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot } from 'lucide-react';
+import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot, User, LogOut } from 'lucide-react';
 import { VisitorCounter } from './VisitorCounter';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Header: React.FC = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -10,6 +11,7 @@ export const Header: React.FC = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
+    const { user, logout } = useAuth();
 
     useEffect(() => {
         const handleScroll = () => {
@@ -91,11 +93,11 @@ export const Header: React.FC = () => {
                         {/* Desktop Navigation */}
                         <nav className="hidden md:flex items-center gap-1 bg-surface/50 rounded-2xl px-2 py-2 border border-border shadow-sm backdrop-blur-md">
                             <button
-                                onClick={() => scrollToSection('services')}
+                                onClick={() => scrollToSection('data-recovery')}
                                 className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-bold text-sm text-accent bg-accent/10 border border-accent/30 hover:bg-accent hover:text-white hover:border-accent hover:shadow-lg hover:shadow-accent/20 flex items-center gap-2 group"
                             >
                                 <Database className="w-4 h-4 transition-colors group-hover:text-white" />
-                                <span>Data Recovery Services</span>
+                                <span>Data Recovery</span>
                             </button>
 
                             <Link
@@ -164,13 +166,36 @@ export const Header: React.FC = () => {
                                 {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                             </button>
 
-                            <Link
-                                to="/studio"
-                                className="btn btn-primary px-5 md:px-6 py-2.5 rounded-xl text-sm hover-lift hidden sm:flex"
-                            >
-                                <Sparkles className="w-4 h-4 relative z-10" />
-                                <span className="relative z-10">Lyric Studio</span>
-                            </Link>
+                            {user ? (
+                                <div className="flex items-center gap-3 pl-3 border-l border-border">
+                                    <div className="hidden md:flex flex-col items-end">
+                                        <span className="text-sm font-bold text-foreground">{user.username}</span>
+                                        <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
+                                    </div>
+                                    {user.picture ? (
+                                        <img src={user.picture} alt={user.username} className="w-9 h-9 rounded-full border border-border" />
+                                    ) : (
+                                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                            <User className="w-5 h-5" />
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => logout()}
+                                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                                        title="Logout"
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <Link
+                                    to="/login"
+                                    className="hidden md:flex btn btn-primary text-sm"
+                                >
+                                    <User className="w-4 h-4" />
+                                    <span>Sign In</span>
+                                </Link>
+                            )}
 
                             {/* Mobile Menu Toggle */}
                             <button
@@ -235,15 +260,44 @@ export const Header: React.FC = () => {
                             <Info className="w-6 h-6" /> Contact Us
                         </button>
 
-                        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-6"></div>
+                        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-2"></div>
 
-                        <Link
-                            to="/studio"
-                            onClick={() => handleMobileNavClick()}
-                            className="btn btn-primary w-full justify-center py-4 text-lg rounded-2xl shadow-xl shadow-accent/20"
-                        >
-                            <Sparkles className="w-5 h-5" /> Lyric Studio
-                        </Link>
+                        {user ? (
+                            <div className="p-4 bg-surface/50 rounded-2xl border border-border">
+                                <div className="flex items-center gap-3 mb-4">
+                                    {user.picture ? (
+                                        <img src={user.picture} alt={user.username} className="w-10 h-10 rounded-full" />
+                                    ) : (
+                                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                            <User className="w-6 h-6" />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="font-bold text-foreground">{user.username}</p>
+                                        <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        logout();
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 p-3 bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20 transition-colors font-medium"
+                                >
+                                    <LogOut className="w-5 h-5" /> Sign Out
+                                </button>
+                            </div>
+                        ) : (
+                            <Link
+                                to="/login"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className="w-full flex items-center justify-center gap-2 p-4 bg-primary text-primary-foreground rounded-2xl hover:bg-primary/90 transition-colors font-bold text-lg"
+                            >
+                                <User className="w-6 h-6" /> Sign In
+                            </Link>
+                        )}
+
+                        <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-6"></div>
 
                         <div className="mt-8 p-6 bg-surface/50 rounded-2xl border border-border text-center">
                             <p className="text-xs text-muted font-medium">

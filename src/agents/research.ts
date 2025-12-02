@@ -1,7 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { RESEARCH_PROMPT_TEMPLATE, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
-import { retryWithBackoff } from "../utils";
+import { retryWithBackoff } from "../utils/helpers";
 
 /**
  * SIMPLIFIED RESEARCH AGENT
@@ -56,7 +56,7 @@ export const runResearchAgent = async (
     if (error instanceof Error && error.message === "API_KEY_MISSING") {
       throw error;
     }
-    const { wrapGenAIError } = await import("../utils");
+    const { wrapGenAIError } = await import("../utils/helpers");
     throw wrapGenAIError(error);
   }
 };

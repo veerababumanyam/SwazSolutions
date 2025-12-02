@@ -158,7 +158,7 @@ export const MusicSidebar: React.FC<MusicSidebarProps> = ({ isOpen, setIsOpen, c
                                     <HardDrive className="w-4 h-4" /> Load "MusicFiles" Folder
                                 </button>
                                 <p className="text-[10px] text-center text-muted mt-2 px-2">
-                                    Auto-discovery unavailable. Select your "data/MusicFiles" folder to play.
+                                    Auto-discovery unavailable. Select your "src/data/MusicFiles" folder to play.
                                 </p>
                             </div>
                         )}

@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Database file path
-const dbPath = process.env.DB_PATH || path.join(__dirname, '../../music.db');
+const dbPath = process.env.DB_PATH || path.join(__dirname, '../music.db');
 
 let db = null;
 
@@ -29,7 +29,9 @@ async function initializeDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       email TEXT UNIQUE,
-      password_hash TEXT NOT NULL,
+      password_hash TEXT,
+      role TEXT DEFAULT 'user',
+      google_id TEXT UNIQUE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -107,6 +109,31 @@ async function initializeDatabase() {
       console.log('✅ Added cover_path column to songs table');
     } catch (alterError) {
       console.error('❌ Failed to add cover_path column:', alterError);
+    }
+  }
+
+  // Migration: Add role to users if it doesn't exist
+  try {
+    db.exec("SELECT role FROM users LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'");
+      console.log('✅ Added role column to users table');
+    } catch (alterError) {
+      console.error('❌ Failed to add role column:', alterError);
+    }
+  }
+
+  // Migration: Add google_id to users if it doesn't exist
+  try {
+    db.exec("SELECT google_id FROM users LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE users ADD COLUMN google_id TEXT");
+      db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)");
+      console.log('✅ Added google_id column to users table');
+    } catch (alterError) {
+      console.error('❌ Failed to add google_id column:', alterError);
     }
   }
 

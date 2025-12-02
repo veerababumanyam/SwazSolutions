@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Initialize database
@@ -98,9 +99,12 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "blob:"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
+            imgSrc: ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com"],
+            connectSrc: ["'self'", "https://accounts.google.com", "https://oauth2.googleapis.com"],
+            frameSrc: ["'self'", "https://accounts.google.com", "https://accounts.google.com/gsi/"],
+            childSrc: ["'self'", "https://accounts.google.com"]
         },
     },
 }));
@@ -112,6 +116,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Database readiness check
 app.use((req, res, next) => {

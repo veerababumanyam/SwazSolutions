@@ -1,4 +1,4 @@
-import { GeneratedLyrics } from "./agents/types";
+import { GeneratedLyrics } from "../agents/types";
 
 /**
  * Token Budget Tracking

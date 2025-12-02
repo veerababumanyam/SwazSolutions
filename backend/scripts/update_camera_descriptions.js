@@ -7,13 +7,17 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../music.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../music.db');
 
 console.log('🔄 Updating Camera Updates with Meaningful Descriptions\n');
 console.log('=' .repeat(60));
 
 /**
  * Generate intelligent description based on title pattern analysis
+ * @param {string} title
+ * @param {string} brand
+ * @param {string} type
+ * @returns {string}
  */
 function generateSmartDescription(title, brand, type) {
     const lowerTitle = title.toLowerCase();
@@ -59,6 +63,9 @@ function generateSmartDescription(title, brand, type) {
 
 /**
  * Check if description is redundant (same as or very similar to title)
+ * @param {string} title
+ * @param {string} description
+ * @returns {boolean}
  */
 function isRedundant(title, description) {
     if (!description || description.length < 20) return true;
@@ -99,9 +106,9 @@ function isRedundant(title, description) {
     if (descLower.includes(titleLower) && cleanDesc.length < title.length + 50) return true;
     
     // Description is just title repeated or with brand name added
-    const titleWords = titleLower.split(/\s+/).filter(w => w.length > 3);
-    const descWords = descLower.split(/\s+/).filter(w => w.length > 3);
-    const commonWords = titleWords.filter(w => descWords.includes(w));
+    const titleWords = titleLower.split(/\s+/).filter((/** @type {string} */ w) => w.length > 3);
+    const descWords = descLower.split(/\s+/).filter((/** @type {string} */ w) => w.length > 3);
+    const commonWords = titleWords.filter((/** @type {string} */ w) => descWords.includes(w));
     const similarity = commonWords.length / Math.max(titleWords.length, 1);
     
     if (similarity > 0.8 && cleanDesc.length < 150) return true;
@@ -130,9 +137,10 @@ async function updateDescriptions() {
         }
         
         const columns = result[0].columns;
-        const allUpdates = result[0].values.map(row => {
+        const allUpdates = result[0].values.map((/** @type {any[]} */ row) => {
+            /** @type {Record<string, any>} */
             const update = {};
-            columns.forEach((col, idx) => {
+            columns.forEach((/** @type {string} */ col, /** @type {number} */ idx) => {
                 update[col] = row[idx];
             });
             return update;
@@ -181,7 +189,7 @@ async function updateDescriptions() {
         console.log('✅ Update completed!\n');
         
     } catch (error) {
-        console.error('❌ Error during update:', error.message);
+        console.error('❌ Error during update:', /** @type {Error} */ (error).message);
         process.exit(1);
     }
 }

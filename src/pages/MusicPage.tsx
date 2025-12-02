@@ -469,7 +469,7 @@ export const MusicPage: React.FC = () => {
                             {albums.length === 0 && (
                                 <div className="col-span-full text-center py-20 opacity-50">
                                     <Folder className="w-12 h-12 mx-auto mb-4 text-muted" />
-                                    <p className="text-secondary">No albums found in data/MusicFiles.</p>
+                                    <p className="text-secondary">No albums found in src/data/MusicFiles.</p>
                                 </div>
                             )}
                         </div>

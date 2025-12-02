@@ -2,10 +2,22 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
+const { OAuth2Client } = require('google-auth-library');
 const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 function createAuthRoutes(db) {
     const router = express.Router();
+
+    const setTokenCookie = (res, token) => {
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // Secure in production
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+    };
 
     // Register new user
     router.post('/register', async (req, res) => {
@@ -29,8 +41,8 @@ function createAuthRoutes(db) {
         }
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
         if (!passwordRegex.test(password)) {
-            return res.status(400).json({ 
-                error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)' 
+            return res.status(400).json({
+                error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
             });
         }
 
@@ -43,24 +55,30 @@ function createAuthRoutes(db) {
             const passwordHash = await bcrypt.hash(password, 10);
 
             const stmt = db.prepare(
-                'INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)'
+                'INSERT INTO users (username, password_hash, email, role) VALUES (?, ?, ?, ?)'
             );
 
-            const result = stmt.run(username, passwordHash, email || null);
+            stmt.run(username, passwordHash, email || null, 'user');
+
+            // Fetch user to get ID (reliable way)
+            const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 
             const token = jwt.sign(
-                { id: result.lastInsertRowid, username },
+                { id: user.id, username, role: 'user' },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
+
+            setTokenCookie(res, token);
 
             res.status(201).json({
                 message: 'User registered successfully',
                 token,
                 user: {
-                    id: result.lastInsertRowid,
+                    id: user.id,
                     username,
-                    email: email || null
+                    email: email || null,
+                    role: 'user'
                 }
             });
         } catch (error) {
@@ -88,6 +106,11 @@ function createAuthRoutes(db) {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
 
+            // If user has no password (e.g. Google user trying to login with password), fail
+            if (!user.password_hash) {
+                return res.status(401).json({ error: 'Please login with Google' });
+            }
+
             const validPassword = await bcrypt.compare(password, user.password_hash);
 
             if (!validPassword) {
@@ -95,10 +118,12 @@ function createAuthRoutes(db) {
             }
 
             const token = jwt.sign(
-                { id: user.id, username: user.username },
+                { id: user.id, username: user.username, role: user.role || 'user' },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
+
+            setTokenCookie(res, token);
 
             res.json({
                 message: 'Login successful',
@@ -106,7 +131,8 @@ function createAuthRoutes(db) {
                 user: {
                     id: user.id,
                     username: user.username,
-                    email: user.email
+                    email: user.email,
+                    role: user.role || 'user'
                 }
             });
         } catch (error) {
@@ -115,11 +141,101 @@ function createAuthRoutes(db) {
         }
     });
 
+    // Google Login
+    router.post('/google', async (req, res) => {
+        console.log('📧 Google OAuth request received');
+        const { credential } = req.body;
+
+        if (!credential) {
+            console.log('❌ No credential provided');
+            return res.status(400).json({ error: 'Google credential required' });
+        }
+
+        console.log('🔐 Verifying Google token...');
+        try {
+            // Verify Google Token
+            const ticket = await client.verifyIdToken({
+                idToken: credential,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            const payload = ticket.getPayload();
+            const { sub: googleId, email, name, picture } = payload;
+
+            // Check if user exists
+            let user = db.prepare('SELECT * FROM users WHERE google_id = ? OR email = ?').get(googleId, email);
+
+            if (user) {
+                // Update existing user if needed (e.g. link google_id if matched by email)
+                if (!user.google_id) {
+                    db.prepare('UPDATE users SET google_id = ?, role = ? WHERE id = ?').run(googleId, 'pro', user.id);
+                    user.role = 'pro'; // Upgrade to pro
+                }
+            } else {
+                // Create new user
+                // Generate a unique username from email or name
+                let baseUsername = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9]/g, '');
+                let username = baseUsername;
+                let counter = 1;
+
+                // Ensure username uniqueness
+                while (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) {
+                    username = `${baseUsername}${counter++}`;
+                }
+
+                const result = db.prepare(
+                    'INSERT INTO users (username, email, google_id, role, password_hash) VALUES (?, ?, ?, ?, ?)'
+                ).run(username, email, googleId, 'pro', 'GOOGLE_AUTH_USER_NO_PASSWORD'); // Placeholder for NOT NULL constraint
+
+                user = {
+                    id: result.lastInsertRowid,
+                    username,
+                    email,
+                    role: 'pro'
+                };
+            }
+
+            const token = jwt.sign(
+                { id: user.id, username: user.username, role: user.role || 'pro' },
+                JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+
+            setTokenCookie(res, token);
+
+            console.log(`✅ Google OAuth successful for user: ${user.username}`);
+            res.json({
+                message: 'Google login successful',
+                token,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role || 'pro',
+                    picture
+                }
+            });
+
+        } catch (error) {
+            console.error('❌ Google login error:', error.message);
+            console.error('Stack:', error.stack);
+            res.status(401).json({
+                error: 'Google authentication failed',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    });
+
+    // Logout
+    router.post('/logout', (req, res) => {
+        res.clearCookie('token');
+        res.json({ message: 'Logged out successfully' });
+    });
+
     // Get current user
     router.get('/me', authenticateToken, (req, res) => {
         try {
             const user = db.prepare(
-                'SELECT id, username, email, created_at FROM users WHERE id = ?'
+                'SELECT id, username, email, role, created_at FROM users WHERE id = ?'
             ).get(req.user.id);
 
             if (!user) {

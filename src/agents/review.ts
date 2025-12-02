@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTION_REVIEW, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { GeneratedLyrics, LanguageProfile, GenerationSettings } from "./types";
-import { cleanAndParseJSON, formatLyricsForDisplay } from "../utils";
+import { cleanAndParseJSON, formatLyricsForDisplay } from "../utils/helpers";
 
 const getRhymeDescription = (scheme: string): string => {
   if (scheme.includes("AABB") || scheme.includes("Couplet")) return "Couplets (AABB). Line 1-2 rhyme, 3-4 rhyme.";

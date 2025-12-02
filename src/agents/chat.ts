@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_INSTRUCTION_CHAT, SYSTEM_INSTRUCTION_PROMPT_ENGINEER, getModelToUse, AGENT_TEMPERATURES, AGENT_TOP_P, MODEL_FAST, DEFAULT_RHYME_SCHEME } from "./config";
 import { Message, PromptEnhancementResult, GenerationSettings, LanguageProfile } from "./types";
-import { wrapGenAIError } from "../utils";
+import { wrapGenAIError } from "../utils/helpers";
 import { AUTO_OPTION } from "./constants";
 
 // Define Part type locally to ensure type safety without depending on specific SDK exports

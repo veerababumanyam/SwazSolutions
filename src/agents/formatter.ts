@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTION_FORMATTER, getHQTags, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
-import { cleanAndParseJSON } from "../utils";
+import { cleanAndParseJSON } from "../utils/helpers";
 import { validateApiKey, validateLyricsLength } from "../utils/validation";
 
 export interface FormatterOutput {
@@ -96,7 +96,7 @@ export const runFormatterAgent = async (
 
   } catch (error) {
     console.error("Formatter Agent Error:", error);
-    const { wrapGenAIError } = await import("../utils");
+    const { wrapGenAIError } = await import("../utils/helpers");
     throw wrapGenAIError(error);
   }
 };

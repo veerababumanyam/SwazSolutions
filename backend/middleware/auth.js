@@ -11,7 +11,7 @@ if (process.env.ENABLE_AUTH === 'true' && (!JWT_SECRET || JWT_SECRET.length < 32
 
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = (authHeader && authHeader.split(' ')[1]) || req.cookies.token; // Bearer TOKEN or cookie
 
     if (!token) {
         return res.status(401).json({ error: 'Access token required' });
@@ -29,7 +29,7 @@ function authenticateToken(req, res, next) {
 // Optional auth - attaches user if token exists, but doesn't require it
 function optionalAuth(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = (authHeader && authHeader.split(' ')[1]) || req.cookies.token;
 
     if (token) {
         jwt.verify(token, JWT_SECRET, (err, user) => {

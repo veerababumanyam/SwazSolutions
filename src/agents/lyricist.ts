@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTION_LYRICIST, AGENT_TEMPERATURES, AGENT_TOP_P, SAFETY_SETTINGS } from "./config";
 import { GeneratedLyrics, LanguageProfile, EmotionAnalysis, GenerationSettings } from "./types";
-import { cleanAndParseJSON, formatLyricsForDisplay, wrapGenAIError, retryWithBackoff } from "../utils";
+import { cleanAndParseJSON, formatLyricsForDisplay, wrapGenAIError, retryWithBackoff } from "../utils/helpers";
 import { SCENARIO_KNOWLEDGE_BASE, INDIAN_LANGUAGES } from "./constants";
 
 const getRhymeDescription = (scheme: string): string => {

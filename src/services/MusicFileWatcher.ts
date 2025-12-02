@@ -78,13 +78,13 @@ export class MusicFileWatcher {
             // @ts-ignore - Check if Vite's import.meta.glob is available
             if (typeof import.meta !== 'undefined' && typeof import.meta.glob === 'function') {
                 // @ts-ignore - Using new query syntax instead of deprecated 'as'
-                audioFiles = import.meta.glob('/data/MusicFiles/**/*.{mp3,wav,ogg,m4a}', {
+                audioFiles = import.meta.glob('/src/data/MusicFiles/**/*.{mp3,wav,ogg,m4a}', {
                     eager: true,
                     query: '?url',
                     import: 'default'
                 });
                 // @ts-ignore
-                coverFiles = import.meta.glob('/data/MusicFiles/**/*.{jpg,png,jpeg,webp}', {
+                coverFiles = import.meta.glob('/src/data/MusicFiles/**/*.{jpg,png,jpeg,webp}', {
                     eager: true,
                     query: '?url',
                     import: 'default'
@@ -108,8 +108,8 @@ export class MusicFileWatcher {
                 // Here folderPath is parts.join('/'). So folderPath.split('/').pop() is the album.
 
                 const albumTitle = parts.length >= 3 ? parts[parts.length - 1] : 'Singles';
-                // Wait, /data/MusicFiles/Album/Song.mp3 -> parts: [, data, MusicFiles, Album, Song.mp3]
-                // folderPath: /data/MusicFiles/Album
+                // Wait, /src/data/MusicFiles/Album/Song.mp3 -> parts: [, src, data, MusicFiles, Album, Song.mp3]
+                // folderPath: /src/data/MusicFiles/Album
 
                 const title = fileName
                     .replace(/\.(mp3|wav|ogg|m4a)$/i, '')

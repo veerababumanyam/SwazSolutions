@@ -14,8 +14,12 @@ export const VisitorCounter: React.FC = () => {
                 let url = '/api/visitors';
                 let method = 'GET';
 
-                // If not counted in this session, increment
-                const response = await fetch('/api/visitor-count');
+                if (!hasCounted) {
+                    url = '/api/visitors/increment';
+                    method = 'POST';
+                }
+
+                const response = await fetch(url, { method });
 
                 // Check if response is OK and is JSON
                 if (!response.ok) {
@@ -33,6 +37,10 @@ export const VisitorCounter: React.FC = () => {
 
                 const data = await response.json();
                 setCount(data.count);
+                
+                if (!hasCounted) {
+                    sessionStorage.setItem('hasCountedVisitor', 'true');
+                }
             } catch (error) {
                 // Silently handle errors - visitor counter is non-critical
                 console.debug('Visitor counter unavailable:', error instanceof Error ? error.message : 'Unknown error');

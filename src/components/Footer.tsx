@@ -94,7 +94,7 @@ export const Footer: React.FC = () => {
                             <nav aria-label="Footer services navigation">
                                 <ul className="space-y-2.5 list-none">
                                     <li>
-                                        <a href="/#services" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">
+                                        <a href="/#data-recovery" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">
                                             <span className="w-1 h-1 rounded-full bg-accent/50 group-hover:bg-accent transition-colors"></span>
                                             Data Recovery
                                         </a>

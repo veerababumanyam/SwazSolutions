@@ -222,10 +222,10 @@ cd backend && npm install && cd ..
 
 ### 3. Add Your Music (Optional - for Music Player)
 
-Put your music files in `data/MusicFiles/`:
+Put your music files in `src/data/MusicFiles/`:
 
 ```
-data/MusicFiles/
+src/data/MusicFiles/
 ├── Album 1/
 │   ├── song1.mp3
 │   └── song2.mp3
@@ -389,7 +389,8 @@ swaz-solutions/
 ├── tsconfig.json                # TypeScript config
 ├── ecosystem.config.js          # PM2 configuration
 ├── .env                         # Environment variables
-├── music.db                     # SQLite database (auto-created)
+├── backend/
+│   ├── music.db                 # SQLite database (auto-created)
 └── README.md                    # This file
 ```
 
@@ -480,8 +481,8 @@ Edit `.env` file:
 ```bash
 PORT=3000
 JWT_SECRET=your-secret-key-minimum-32-characters
-MUSIC_DIR=./data/MusicFiles
-DB_PATH=./music.db
+MUSIC_DIR=./src/data/MusicFiles
+DB_PATH=./backend/music.db
 ```
 
 ## Deployment
@@ -539,7 +540,7 @@ npm start
 
 ```bash
 # Delete database to reset
-rm music.db
+rm backend/music.db
 
 # Restart server (will recreate database)
 npm start
@@ -549,7 +550,7 @@ npm start
 
 ```bash
 # Check music directory exists
-ls -la data/MusicFiles/
+ls -la src/data/MusicFiles/
 
 # Manually trigger scan
 curl -X POST http://localhost:3000/api/songs/scan

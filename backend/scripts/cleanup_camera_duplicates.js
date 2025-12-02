@@ -7,7 +7,7 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../music.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../music.db');
 
 console.log('🧹 Camera Updates Database Cleanup Tool\n');
 console.log('=' .repeat(60));
@@ -33,9 +33,10 @@ async function cleanup() {
         }
         
         const columns = result[0].columns;
-        const allUpdates = result[0].values.map(row => {
+        const allUpdates = result[0].values.map((/** @type {any[]} */ row) => {
+            /** @type {Record<string, any>} */
             const update = {};
-            columns.forEach((col, idx) => {
+            columns.forEach((/** @type {string} */ col, /** @type {number} */ idx) => {
                 update[col] = row[idx];
             });
             return update;
@@ -99,7 +100,7 @@ async function cleanup() {
         console.log('✅ Cleanup completed successfully!\n');
         
     } catch (error) {
-        console.error('❌ Error during cleanup:', error.message);
+        console.error('❌ Error during cleanup:', /** @type {Error} */ (error).message);
         process.exit(1);
     }
 }

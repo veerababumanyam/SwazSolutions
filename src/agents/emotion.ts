@@ -2,7 +2,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTION_EMOTION, getModelToUse, AGENT_TEMPERATURES, AGENT_TOP_P } from "./config";
 import { EmotionAnalysis } from "./types";
-import { cleanAndParseJSON, retryWithBackoff } from "../utils";
+import { cleanAndParseJSON, retryWithBackoff } from "../utils/helpers";
 
 /**
  * SIMPLIFIED EMOTION AGENT
@@ -79,7 +79,7 @@ export const runEmotionAgent = async (input: string, apiKey?: string, selectedMo
     if (error instanceof Error && error.message === "API_KEY_MISSING") {
       throw error;
     }
-    const { wrapGenAIError } = await import("../utils");
+    const { wrapGenAIError } = await import("../utils/helpers");
     throw wrapGenAIError(error);
   }
 };

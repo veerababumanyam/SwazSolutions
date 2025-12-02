@@ -36,6 +36,8 @@
   "devDependencies": {
     "@types/howler": "^2.2.12",
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.22",
     "concurrently": "^8.2.2",

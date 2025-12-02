@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => {
         '/music': {
           target: 'http://localhost:3000',
           changeOrigin: true
+        },
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true
         }
       },
       hmr: {
@@ -37,7 +41,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       }
     }
   };

@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useRef, useEffect, ReactNod
 import { io, Socket } from 'socket.io-client';
 import { Howl, Howler } from 'howler';
 import { Song, RepeatMode, Playlist, Album, EqualizerSettings, ApiSong, ApiAlbum } from '../types'; // Fixed import path
-import { api } from '../src/services/api';
+import { api } from '../services/api';
 
 interface MusicContextType {
     // Playback State
@@ -54,6 +54,8 @@ interface MusicContextType {
     playAlbum: (albumId: string, startIndex?: number) => void;
     toggleLike: (id: string) => void;
     addToQueue: (song: Song) => void;
+    setQueue: React.Dispatch<React.SetStateAction<Song[]>>;
+    playTrackByIndex: (index: number, list: Song[]) => void;
     clearError: () => void;
 
     // Data Actions
@@ -859,7 +861,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             theme, toggleTheme,
             recentlyPlayed, searchHistory, addSearchQuery, clearSearchHistory,
             play, pause, next, prev, seek, setVolume, toggleShuffle, toggleRepeat, playTrack, playPlaylist, playAlbum,
-            toggleLike, addToQueue, clearError, refreshLibrary, connectLocalLibrary,
+            toggleLike, addToQueue, setQueue, playTrackByIndex, clearError, refreshLibrary, connectLocalLibrary,
             createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById
         }}>
             {children}
