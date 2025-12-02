@@ -91,67 +91,117 @@ export const Header: React.FC = () => {
                         </Link>
 
                         {/* Desktop Navigation */}
-                        <nav className="hidden md:flex items-center gap-1 bg-surface/50 rounded-2xl px-2 py-2 border border-border shadow-sm backdrop-blur-md">
-                            <button
-                                onClick={() => scrollToSection('data-recovery')}
-                                className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-bold text-sm text-accent bg-accent/10 border border-accent/30 hover:bg-accent hover:text-white hover:border-accent hover:shadow-lg hover:shadow-accent/20 flex items-center gap-2 group"
-                            >
-                                <Database className="w-4 h-4 transition-colors group-hover:text-white" />
-                                <span>Data Recovery</span>
-                            </button>
+                        {user ? (
+                            <nav className="hidden md:flex items-center gap-1 bg-surface/50 rounded-2xl px-2 py-2 border border-border shadow-sm backdrop-blur-md">
+                                <Link
+                                    to="/music"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/music')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <Headphones className="w-4 h-4" />
+                                    <span>Music</span>
+                                </Link>
 
-                            <Link
-                                to="/music"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/music')
-                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                    }`}
-                            >
-                                <Headphones className="w-4 h-4" />
-                                <span>Music</span>
-                            </Link>
+                                <Link
+                                    to="/studio"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/studio')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <Music className="w-4 h-4" />
+                                    <span>Lyric Studio</span>
+                                </Link>
 
-                            <Link
-                                to="/studio"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/studio')
-                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                    }`}
-                            >
-                                <Music className="w-4 h-4" />
-                                <span>Lyric Studio</span>
-                            </Link>
+                                <Link
+                                    to="/news"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/news')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <Camera className="w-4 h-4" />
+                                    <span>News</span>
+                                </Link>
 
-                            <Link
-                                to="/news"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/news')
-                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                    }`}
-                            >
-                                <Camera className="w-4 h-4" />
-                                <span>News</span>
-                            </Link>
+                                <button
+                                    onClick={() => scrollToSection('data-recovery')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
+                                >
+                                    <Database className="w-4 h-4" />
+                                    <span>Recovery</span>
+                                </button>
 
-                            <Link
-                                to="/help"
-                                className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/help')
-                                    ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                    : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                    }`}
-                            >
-                                <HelpCircle className="w-4 h-4" />
-                                <span>Help</span>
-                            </Link>
+                                <Link
+                                    to="/help"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/help')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <HelpCircle className="w-4 h-4" />
+                                    <span>Help</span>
+                                </Link>
+                            </nav>
+                        ) : (
+                            <nav className="hidden md:flex items-center gap-1 bg-surface/50 rounded-2xl px-2 py-2 border border-border shadow-sm backdrop-blur-md">
+                                <button
+                                    onClick={() => scrollToSection('data-recovery')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-bold text-sm text-accent bg-accent/10 border border-accent/30 hover:bg-accent hover:text-white hover:border-accent hover:shadow-lg hover:shadow-accent/20 flex items-center gap-2 group"
+                                >
+                                    <Database className="w-4 h-4 transition-colors group-hover:text-white" />
+                                    <span>Data Recovery</span>
+                                </button>
 
-                            <button
-                                onClick={() => scrollToSection('contact')}
-                                className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
-                            >
-                                <Info className="w-4 h-4" />
-                                <span>Contact Us</span>
-                            </button>
-                        </nav>
+                                <button
+                                    onClick={() => scrollToSection('music')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
+                                >
+                                    <Headphones className="w-4 h-4" />
+                                    <span>Music Player</span>
+                                </button>
+
+                                <button
+                                    onClick={() => scrollToSection('studio')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
+                                >
+                                    <Music className="w-4 h-4" />
+                                    <span>Lyric Studio</span>
+                                </button>
+
+                                <Link
+                                    to="/news"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/news')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <Camera className="w-4 h-4" />
+                                    <span>News</span>
+                                </Link>
+
+                                <Link
+                                    to="/help"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/help')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <HelpCircle className="w-4 h-4" />
+                                    <span>Help</span>
+                                </Link>
+
+                                <button
+                                    onClick={() => scrollToSection('contact')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
+                                >
+                                    <Info className="w-4 h-4" />
+                                    <span>Contact Us</span>
+                                </button>
+                            </nav>
+                        )}
 
                         {/* CTA Button & Theme Toggle */}
                         <div className="flex items-center gap-3">
@@ -214,51 +264,94 @@ export const Header: React.FC = () => {
             {isMobileMenuOpen && (
                 <div className="fixed inset-0 bg-background/98 backdrop-blur-3xl z-40 md:hidden overflow-y-auto animate-fade-in flex flex-col pt-20">
                     <div className="flex-1 p-6 space-y-4">
-                        <button
-                            onClick={() => scrollToSection('services')}
-                            className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
-                        >
-                            <Database className="w-6 h-6" /> Data Recovery Services
-                        </button>
+                        {user ? (
+                            <>
+                                <Link
+                                    to="/music"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/music') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <Headphones className="w-6 h-6" /> Music
+                                </Link>
 
-                        <Link
-                            to="/music"
-                            onClick={() => handleMobileNavClick()}
-                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/music') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                        >
-                            <Headphones className="w-6 h-6" /> Music
-                        </Link>
+                                <Link
+                                    to="/studio"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/studio') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <Music className="w-6 h-6" /> Lyric Studio
+                                </Link>
 
-                        <Link
-                            to="/studio"
-                            onClick={() => handleMobileNavClick()}
-                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/studio') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                        >
-                            <Music className="w-6 h-6" /> Lyric Studio
-                        </Link>
+                                <Link
+                                    to="/news"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/news') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <Camera className="w-6 h-6" /> News
+                                </Link>
 
-                        <Link
-                            to="/news"
-                            onClick={() => handleMobileNavClick()}
-                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/news') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                        >
-                            <Camera className="w-6 h-6" /> News
-                        </Link>
+                                <button
+                                    onClick={() => scrollToSection('data-recovery')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                                >
+                                    <Database className="w-6 h-6" /> Data Recovery
+                                </button>
 
-                        <Link
-                            to="/help"
-                            onClick={() => handleMobileNavClick()}
-                            className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/help') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                        >
-                            <HelpCircle className="w-6 h-6" /> Help
-                        </Link>
+                                <Link
+                                    to="/help"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/help') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <HelpCircle className="w-6 h-6" /> Help
+                                </Link>
+                            </>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => scrollToSection('services')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                                >
+                                    <Database className="w-6 h-6" /> Data Recovery Services
+                                </button>
 
-                        <button
-                            onClick={() => scrollToSection('contact')}
-                            className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
-                        >
-                            <Info className="w-6 h-6" /> Contact Us
-                        </button>
+                                <button
+                                    onClick={() => scrollToSection('music')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                                >
+                                    <Headphones className="w-6 h-6" /> Music Player
+                                </button>
+
+                                <button
+                                    onClick={() => scrollToSection('studio')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                                >
+                                    <Music className="w-6 h-6" /> Lyric Studio
+                                </button>
+
+                                <Link
+                                    to="/news"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/news') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <Camera className="w-6 h-6" /> News
+                                </Link>
+
+                                <Link
+                                    to="/help"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/help') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <HelpCircle className="w-6 h-6" /> Help
+                                </Link>
+
+                                <button
+                                    onClick={() => scrollToSection('contact')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                                >
+                                    <Info className="w-6 h-6" /> Contact Us
+                                </button>
+                            </>
+                        )}
 
                         <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-2"></div>
 

@@ -806,7 +806,7 @@ export const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Feature 3: Copyright-Free Music - Gradient Card */}
-                <section className="py-32 bg-background relative overflow-hidden">
+                <section id="music" className="py-32 bg-background relative overflow-hidden scroll-mt-24">
                     <div className="absolute inset-0 bg-gradient-to-br from-accent-orange/5 to-accent/5"></div>
                     <div className="container mx-auto px-4 relative z-10">
                         <div className="max-w-7xl mx-auto">
@@ -893,7 +893,7 @@ export const LandingPage: React.FC = () => {
                 </section>
 
                 {/* Feature 4: Lyric Studio - Showcase Style */}
-                <section className="py-32 bg-surface relative overflow-hidden">
+                <section id="studio" className="py-32 bg-surface relative overflow-hidden scroll-mt-24">
                     <div className="container mx-auto px-4 relative z-10">
                         <div className="max-w-7xl mx-auto">
                             <div className="text-center mb-16 animate-fade-in">

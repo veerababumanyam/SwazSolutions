@@ -44,23 +44,17 @@ const App: React.FC = () => {
                       <Footer />
                     </>} />
                     <Route path="/studio" element={
-                      <ErrorBoundary>
-                        <ProtectedRoute>
-                          <LyricStudio />
-                        </ProtectedRoute>
-                      </ErrorBoundary>
+                      <ProtectedRoute>
+                        <LyricStudio />
+                      </ProtectedRoute>
                     } />
                     <Route path="/music" element={
-                      <ErrorBoundary>
-                        <ProtectedRoute>
-                          <MusicPage />
-                        </ProtectedRoute>
-                      </ErrorBoundary>
+                      <ProtectedRoute>
+                        <MusicPage />
+                      </ProtectedRoute>
                     } />
                     <Route path="/news" element={
-                      <ErrorBoundary>
-                        <CameraUpdatesPage />
-                      </ErrorBoundary>
+                      <CameraUpdatesPage />
                     } />
                     <Route path="/help" element={<>
                       <HelpPage />
