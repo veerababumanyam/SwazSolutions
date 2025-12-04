@@ -39,6 +39,18 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Skip WebSocket and socket.io requests - these should not be handled by service worker
+    if (url.pathname.startsWith('/socket.io') || 
+        url.pathname.includes('socket.io') ||
+        event.request.headers.get('Upgrade') === 'websocket') {
+        return;
+    }
+
+    // Skip Vite HMR (Hot Module Replacement) requests in development
+    if (url.pathname.includes('__vite') || url.pathname.includes('@vite') || url.pathname.includes('@fs')) {
+        return;
+    }
+
     // Skip non-GET requests (Cache API only supports GET)
     if (event.request.method !== 'GET') {
         return;

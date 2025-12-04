@@ -11,6 +11,7 @@ interface User {
 interface AuthContextType {
     user: User | null;
     loading: boolean;
+    isAuthenticated: boolean;
     login: (user: User) => void;
     logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
@@ -27,16 +28,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             // Get token from localStorage
             const token = localStorage.getItem('auth_token');
             
+            // Skip auth check if no token exists - avoids unnecessary 401 errors
+            if (!token) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+            
             const response = await fetch('/api/auth/me', {
                 credentials: 'include', // Include cookies
                 headers: {
-                    ...(token && { 'Authorization': `Bearer ${token}` })
+                    'Authorization': `Bearer ${token}`
                 }
             });
             if (response.ok) {
                 const data = await response.json();
                 setUser(data.user);
             } else {
+                // Token invalid or expired - clear it
+                localStorage.removeItem('auth_token');
                 setUser(null);
             }
         } catch (error) {
@@ -72,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, checkAuth }}>
+        <AuthContext.Provider value={{ user, loading, isAuthenticated: !!user, login, logout, checkAuth }}>
             {children}
         </AuthContext.Provider>
     );

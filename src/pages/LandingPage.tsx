@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Globe, Music, Heart, Wand2, CheckCircle, Activity, Lock, Phone, Server, FileWarning, FileCheck, Feather, Layers, FileCode, Play, Search, Palette, Mic2, Bot, Network, Brain, Radio, Camera, IdCard, QrCode, Users } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Globe, Music, Heart, Wand2, CheckCircle, Activity, Lock, Phone, Server, FileWarning, FileCheck, Feather, Layers, FileCode, Play, Search, Palette, Mic2, Bot, Network, Brain, Radio, Camera, IdCard, QrCode, Users, Share2, Download, Eye, BarChart3, Smartphone, Link2, Mail, UserCheck, Settings } from 'lucide-react';
 import { Schema, localBusinessSchema, dataRecoveryFAQSchema } from '../components/Schema';
 import { UnifiedContactForm } from '../components/UnifiedContactForm';
 
 export const LandingPage: React.FC = () => {
     const [activeHero, setActiveHero] = useState(0);
     const location = useLocation();
+    const navigate = useNavigate();
+    const { isAuthenticated } = useAuth();
 
     useEffect(() => {
-        const durations = [10000, 8000, 8000, 8000, 8000]; // Durations for each hero card (5 cards)
+        const durations = [5000, 5000, 5000, 5000, 5000]; // Durations for each hero card (5 cards) - 5s each
         const timeout = setTimeout(() => {
             setActiveHero((prev) => (prev + 1) % 5);
         }, durations[activeHero]);
@@ -146,8 +149,8 @@ export const LandingPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Card 2: Agentic AI Solutions - INTEGRATED FROM SEPARATE PAGE */}
-                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 1 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            {/* Card 5: Agentic AI Solutions - INTEGRATED FROM SEPARATE PAGE */}
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 4 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
@@ -251,8 +254,8 @@ export const LandingPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Card 3: Lyric Studio - GEN-AI Innovation */}
-                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 2 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            {/* Card 4: Lyric Studio - GEN-AI Innovation */}
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 3 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
@@ -351,8 +354,8 @@ export const LandingPage: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Card 4: Copyright-Free Music - STANDARDIZED */}
-                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 3 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            {/* Card 3: Copyright-Free Music - STANDARDIZED */}
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 2 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
@@ -468,118 +471,143 @@ export const LandingPage: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Card 5: vCard - Digital Business Card */}
-                        <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 4 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
-                            <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
-                                {/* Top-Right Badge - STANDARDIZED */}
-                                <div className="absolute top-0 right-0 p-0 md:p-8">
-                                    <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
-                                        <Users className="w-4 h-4" /> PROFESSIONAL NETWORKING
-                                    </div>
-                                </div>
-
-                                <div className="grid lg:grid-cols-2 gap-12 items-center mt-8 md:mt-0">
-                                    <div>
-                                        {/* Badge: Digital Identity (Above Title) */}
-                                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/5 border border-accent/30 mb-6">
-                                            <IdCard className="w-4 h-4 text-accent" />
-                                            <span className="text-xs font-bold text-accent uppercase tracking-wider">DIGITAL BUSINESS CARD</span>
+                            {/* Card 2: vCard - Digital Business Card */}
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 1 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                    {/* Top-Right Badge - STANDARDIZED */}
+                                    <div className="absolute top-0 right-0 p-0 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                            <Users className="w-4 h-4" /> PROFESSIONAL NETWORKING
                                         </div>
-
-                                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight">
-                                            Your Professional<br />
-                                            Identity, Digitized
-                                            {/* Brand Gradient Subheadline */}
-                                            <span className="text-transparent bg-clip-text bg-brand-gradient text-3xl md:text-4xl block mt-2 font-bold">Share Your Profile Instantly</span>
-                                        </h2>
-
-                                        <p className="text-lg text-secondary mb-8 leading-relaxed border-l-4 border-accent pl-4">
-                                            Create a stunning <strong>digital business card</strong> with QR codes, customizable themes, and instant vCard export. Perfect for networking events, conferences, and professional connections.
-                                        </p>
-
-                                        <div className="flex flex-wrap gap-3 mb-10">
-                                            {[{ icon: QrCode, label: 'QR Code' }, { icon: Palette, label: '12+ Themes' }, { icon: IdCard, label: 'vCard Export' }].map((f, i) => (
-                                                <div key={i} className="px-4 py-2 rounded-xl bg-surface border border-border text-sm font-semibold text-secondary flex items-center gap-2 shadow-sm hover:border-accent transition-colors cursor-default">
-                                                    <f.icon className="w-4 h-4 text-accent" /> {f.label}
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="flex flex-col sm:flex-row gap-4">
-                                            <Link to="/profile/dashboard" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
-                                                <IdCard className="w-5 h-5" /> Create Your vCard
-                                                <ArrowRight className="w-5 h-5" />
-                                            </Link>
-                                        </div>
-
-                                        <p className="mt-6 text-xs text-muted font-medium flex items-center gap-2">
-                                            <Shield className="w-4 h-4 text-emerald-500" /> Privacy-First • Customizable Themes • Analytics Dashboard
-                                        </p>
                                     </div>
 
-                                    <div className="space-y-6 relative">
-                                        {/* Background Glow */}
-                                        <div className="absolute -inset-4 bg-gradient-to-r from-accent/10 to-accent-orange/10 rounded-full blur-3xl animate-pulse"></div>
-
-                                        {/* vCard Preview Card */}
-                                        <div className="bg-surface/60 backdrop-blur-sm p-8 rounded-2xl border border-accent/20 shadow-lg relative">
-                                            <div className="flex items-center gap-4 mb-6">
-                                                <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 shadow-inner">
-                                                    <IdCard className="w-7 h-7 text-accent" />
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-lg text-primary">Digital Profile</div>
-                                                    <div className="text-sm text-secondary">Shareable & Scannable</div>
-                                                </div>
+                                    <div className="grid lg:grid-cols-2 gap-12 items-center mt-8 md:mt-0">
+                                        <div>
+                                            {/* Badge: Digital Identity (Above Title) */}
+                                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/5 border border-accent/30 mb-6">
+                                                <IdCard className="w-4 h-4 text-accent" />
+                                                <span className="text-xs font-bold text-accent uppercase tracking-wider">DIGITAL VISITING CARD</span>
                                             </div>
 
-                                            {/* Theme Color Swatches */}
-                                            <div className="mb-6">
-                                                <div className="text-xs font-bold text-secondary uppercase mb-3">12+ Professional Themes</div>
-                                                <div className="grid grid-cols-6 gap-2">
-                                                    {['#667EEA', '#F56565', '#48BB78', '#ED8936', '#9F7AEA', '#38B2AC', '#ECC94B', '#ED64A6', '#4299E1', '#FC8181', '#68D391', '#F6AD55'].map((color, i) => (
-                                                        <div
-                                                            key={i}
-                                                            className="w-8 h-8 rounded-lg border-2 border-white shadow-md hover:scale-110 transition-transform cursor-pointer"
-                                                            style={{ backgroundColor: color }}
-                                                            title={`Theme ${i + 1}`}
-                                                        ></div>
-                                                    ))}
-                                                </div>
+                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-4 leading-tight">
+                                                Your Digital<br />
+                                                Visiting Card
+                                                {/* Brand Gradient Subheadline */}
+                                                <span className="text-transparent bg-clip-text bg-brand-gradient text-2xl md:text-3xl block mt-2 font-bold">Share on WhatsApp, Instagram & More!</span>
+                                            </h2>
+
+                                            {/* Social Media Logos Strip */}
+                                            <div className="flex flex-wrap items-center gap-3 mb-6">
+                                                {['whatsapp', 'instagram', 'youtube', 'facebook', 'x', 'tiktok', 'linkedin', 'telegram'].map((platform) => (
+                                                    <div key={platform} className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-surface border border-border p-2 hover:border-accent hover:scale-110 transition-all shadow-sm">
+                                                        <img 
+                                                            src={`/assets/social-logos/${platform}.svg`} 
+                                                            alt={platform} 
+                                                            className="w-full h-full object-contain"
+                                                        />
+                                                    </div>
+                                                ))}
                                             </div>
 
-                                            <div className="grid grid-cols-3 gap-4 text-center">
-                                                <div className="bg-surface/80 p-3 rounded-xl">
-                                                    <div className="text-2xl font-black text-accent">QR</div>
-                                                    <div className="text-[10px] uppercase text-secondary font-bold">Scannable</div>
-                                                </div>
-                                                <div className="bg-surface/80 p-3 rounded-xl">
-                                                    <div className="text-2xl font-black text-accent">12+</div>
-                                                    <div className="text-[10px] uppercase text-secondary font-bold">Themes</div>
-                                                </div>
-                                                <div className="bg-surface/80 p-3 rounded-xl">
-                                                    <div className="text-2xl font-black text-accent">.vcf</div>
-                                                    <div className="text-[10px] uppercase text-secondary font-bold">Export</div>
-                                                </div>
+                                            <p className="text-lg text-secondary mb-6 leading-relaxed border-l-4 border-accent pl-4">
+                                                <strong>One link for all your contacts!</strong> Create your card, share via QR code or link. Add to phone contacts instantly.
+                                            </p>
+
+                                            <div className="flex flex-wrap gap-3 mb-8">
+                                                {[{ icon: QrCode, label: 'Scan & Save' }, { icon: Share2, label: 'Share Anywhere' }, { icon: Download, label: 'Add to Contacts' }].map((f, i) => (
+                                                    <div key={i} className="px-4 py-2 rounded-xl bg-surface border border-border text-sm font-semibold text-secondary flex items-center gap-2 shadow-sm hover:border-accent transition-colors cursor-default">
+                                                        <f.icon className="w-4 h-4 text-accent" /> {f.label}
+                                                    </div>
+                                                ))}
                                             </div>
+
+                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                <Link to={isAuthenticated ? "/profile/dashboard" : "/vcard"} className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
+                                                    <IdCard className="w-5 h-5" /> {isAuthenticated ? 'Manage Your vCard' : 'Create Your vCard'}
+                                                    <ArrowRight className="w-5 h-5" />
+                                                </Link>
+                                            </div>
+
+                                            <p className="mt-6 text-xs text-muted font-medium flex items-center gap-2">
+                                                <Shield className="w-4 h-4 text-emerald-500" /> Privacy-First • Customizable Themes • Analytics Dashboard
+                                            </p>
                                         </div>
 
-                                        {/* Features Grid */}
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
-                                                <div className="p-2 bg-accent/10 rounded-lg text-accent"><QrCode className="w-5 h-5" /></div>
-                                                <div>
-                                                    <div className="font-bold text-primary">Instant</div>
-                                                    <div className="text-[10px] uppercase text-secondary font-bold">Sharing</div>
+                                        <div className="space-y-6 relative">
+                                            {/* Background Glow */}
+                                            <div className="absolute -inset-4 bg-gradient-to-r from-accent/10 to-accent-orange/10 rounded-full blur-3xl animate-pulse"></div>
+
+                                            {/* vCard Preview Card */}
+                                            <div className="bg-surface/60 backdrop-blur-sm p-8 rounded-2xl border border-accent/20 shadow-lg relative">
+                                                <div className="flex items-center gap-4 mb-6">
+                                                    <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 shadow-inner">
+                                                        <IdCard className="w-7 h-7 text-accent" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-lg text-primary">Digital Visiting Card</div>
+                                                        <div className="text-sm text-secondary">Share with Anyone, Anywhere</div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Social Media Icons Row */}
+                                                <div className="mb-6">
+                                                    <div className="text-xs font-bold text-secondary uppercase mb-3">Connect on All Platforms</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {['whatsapp', 'instagram', 'youtube', 'facebook', 'linkedin', 'x'].map((platform) => (
+                                                            <div key={platform} className="w-10 h-10 rounded-lg bg-white border border-border p-2 hover:scale-110 transition-transform shadow-sm">
+                                                                <img src={`/assets/social-logos/${platform}.svg`} alt={platform} className="w-full h-full object-contain" />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Theme Color Swatches */}
+                                                <div className="mb-6">
+                                                    <div className="text-xs font-bold text-secondary uppercase mb-3">12+ Professional Themes</div>
+                                                    <div className="grid grid-cols-6 gap-2">
+                                                        {['#667EEA', '#F56565', '#48BB78', '#ED8936', '#9F7AEA', '#38B2AC', '#ECC94B', '#ED64A6', '#4299E1', '#FC8181', '#68D391', '#F6AD55'].map((color, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className="w-8 h-8 rounded-lg border-2 border-white shadow-md hover:scale-110 transition-transform cursor-pointer"
+                                                                style={{ backgroundColor: color }}
+                                                                title={`Theme ${i + 1}`}
+                                                            ></div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-3 gap-4 text-center">
+                                                    <div className="bg-surface/80 p-3 rounded-xl">
+                                                        <div className="text-2xl font-black text-accent">QR</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Scannable</div>
+                                                    </div>
+                                                    <div className="bg-surface/80 p-3 rounded-xl">
+                                                        <div className="text-2xl font-black text-accent">12+</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Themes</div>
+                                                    </div>
+                                                    <div className="bg-surface/80 p-3 rounded-xl">
+                                                        <div className="text-2xl font-black text-accent">.vcf</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Export</div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
-                                                <div className="p-2 bg-accent-orange/10 rounded-lg text-accent-orange"><Activity className="w-5 h-5" /></div>
-                                                <div>
-                                                    <div className="font-bold text-primary">Analytics</div>
-                                                    <div className="text-[10px] uppercase text-secondary font-bold">Track Views</div>
+
+                                            {/* Features Grid */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
+                                                    <div className="p-2 bg-accent/10 rounded-lg text-accent"><QrCode className="w-5 h-5" /></div>
+                                                    <div>
+                                                        <div className="font-bold text-primary">Instant</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Sharing</div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
+                                                    <div className="p-2 bg-accent-orange/10 rounded-lg text-accent-orange"><Activity className="w-5 h-5" /></div>
+                                                    <div>
+                                                        <div className="font-bold text-primary">Analytics</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Track Views</div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1127,68 +1155,94 @@ export const LandingPage: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-accent-orange/5"></div>
                     <div className="container mx-auto px-4 relative z-10">
                         <div className="max-w-7xl mx-auto">
-                            <div className="grid lg:grid-cols-2 gap-16 items-center">
-                                <div className="space-y-8 animate-fade-in">
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20">
-                                        <IdCard className="w-4 h-4 text-accent" />
-                                        <span className="text-xs font-bold text-accent uppercase tracking-wider">Digital Business Card</span>
-                                    </div>
-
-                                    <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-primary leading-tight">
-                                        Connect Instantly.<br />
-                                        <span className="text-gradient">Share Professionally.</span>
-                                    </h2>
-
-                                    <p className="text-xl text-secondary leading-relaxed">
-                                        Your digital identity, reimagined. Share your contact details instantly via QR code or link.
-                                        Choose from 12+ professional themes and track your profile visits with built-in analytics.
-                                    </p>
-
-                                    <div className="space-y-4">
-                                        {[
-                                            { icon: QrCode, text: 'Instant Sharing via QR Code - No app required' },
-                                            { icon: Palette, text: '12+ Professional Themes - Customizable colors' },
-                                            { icon: IdCard, text: 'One-Click vCard Export - Add to contacts instantly' }
-                                        ].map((item, i) => (
-                                            <div key={i} className="flex items-start gap-3">
-                                                <div className="p-2 bg-accent/10 rounded-lg mt-1">
-                                                    <item.icon className="w-5 h-5 text-accent" />
-                                                </div>
-                                                <p className="text-lg text-secondary">{item.text}</p>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <Link to="/profile/dashboard" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
-                                        <IdCard className="w-5 h-5" /> Create Your Digital Card
-                                    </Link>
+                            {/* Section Header */}
+                            <div className="text-center mb-16 animate-fade-in">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
+                                    <IdCard className="w-4 h-4 text-accent" />
+                                    <span className="text-xs font-bold text-accent uppercase tracking-wider">Virtual Visiting Card</span>
                                 </div>
+                                <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight">
+                                    Connect Instantly.<br />
+                                    <span className="text-gradient">Share Professionally.</span>
+                                </h2>
+                                <p className="text-xl text-secondary leading-relaxed max-w-3xl mx-auto">
+                                    Your digital identity, reimagined. Create stunning digital business cards with QR codes, 
+                                    customizable themes, and built-in analytics. Perfect for networking events, conferences, and professional connections.
+                                </p>
+                            </div>
 
-                                <div className="relative animate-slide-left">
-                                    <div className="glass-card p-8 rounded-3xl border border-border shadow-2xl bg-gradient-to-br from-surface to-accent/5">
-                                        <div className="flex items-center gap-4 mb-8">
-                                            <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
-                                                <QrCode className="w-8 h-8 text-accent" />
+                            {/* Features Grid */}
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+                                {[
+                                    { icon: QrCode, title: 'Instant QR Code Sharing', desc: 'Generate scannable QR codes that work on iOS & Android. No app required for recipients.' },
+                                    { icon: Palette, title: '12+ Professional Themes', desc: 'Choose from beautiful pre-designed themes or customize colors to match your brand.' },
+                                    { icon: Download, title: 'One-Click vCard Export', desc: 'Download your profile as a .vcf file. Recipients can save you to contacts instantly.' },
+                                    { icon: Share2, title: 'Multi-Channel Sharing', desc: 'Share via copy link, WhatsApp, or native system share. Reach anyone, anywhere.' },
+                                    { icon: BarChart3, title: 'Built-in Analytics', desc: 'Track profile views, vCard downloads, and share events. Know who\'s engaging.' },
+                                    { icon: Eye, title: 'Public Profile URL', desc: 'Get a custom URL like /u/yourname. Always accessible, always professional.' },
+                                    { icon: Link2, title: 'Social Media Links', desc: 'Add all your social profiles - Instagram, LinkedIn, Twitter, YouTube & more.' },
+                                    { icon: Smartphone, title: 'Mobile-First Design', desc: 'Optimized for mobile viewing. Lightning fast load times on any device.' },
+                                    { icon: Shield, title: 'Privacy Controls', desc: 'Choose what to show: email, phone, bio. Full control over your public presence.' },
+                                    { icon: UserCheck, title: 'Contact Information', desc: 'Display professional details: headline, company, website, and contact info.' },
+                                    { icon: Settings, title: 'Customizable Appearance', desc: 'Button styles, corner radius, shadows - fine-tune every visual detail.' },
+                                    { icon: Globe, title: 'SEO Optimized', desc: 'Opt-in to public indexing for search engine discoverability.' }
+                                ].map((feature, i) => (
+                                    <div key={i} className="glass-card p-6 rounded-2xl border border-border hover:border-accent/30 transition-all group">
+                                        <div className="p-3 bg-accent/10 rounded-xl w-fit mb-4 group-hover:bg-accent/20 transition-colors">
+                                            <feature.icon className="w-6 h-6 text-accent" />
+                                        </div>
+                                        <h3 className="font-bold text-lg text-primary mb-2">{feature.title}</h3>
+                                        <p className="text-sm text-secondary leading-relaxed">{feature.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Bottom CTA Card */}
+                            <div className="glass-card p-8 md:p-12 rounded-3xl border border-border shadow-2xl bg-gradient-to-br from-surface to-accent/5">
+                                <div className="grid lg:grid-cols-2 gap-12 items-center">
+                                    <div className="space-y-6">
+                                        <h3 className="text-3xl md:text-4xl font-black text-primary">
+                                            Ready to Go Digital?
+                                        </h3>
+                                        <p className="text-lg text-secondary leading-relaxed">
+                                            Join professionals who've upgraded their networking game. Create your virtual visiting card in minutes - 
+                                            completely free, no hidden costs.
+                                        </p>
+                                        <div className="flex flex-wrap gap-4">
+                                            <Link to="/login" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
+                                                <IdCard className="w-5 h-5" /> Create Your vCard
+                                                <ArrowRight className="w-5 h-5" />
+                                            </Link>
+                                        </div>
+                                        <p className="text-xs text-muted flex items-center gap-2">
+                                            <CheckCircle className="w-4 h-4 text-emerald-500" /> 100% Free • No Credit Card Required • Instant Setup
+                                        </p>
+                                    </div>
+
+                                    <div className="relative">
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center">
+                                                <QrCode className="w-7 h-7 text-accent" />
                                             </div>
                                             <div>
-                                                <div className="font-bold text-xl text-primary">Scan to Connect</div>
+                                                <div className="font-bold text-lg text-primary">Scan to Connect</div>
                                                 <div className="text-sm text-secondary">Works on iOS & Android</div>
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-center mb-8 p-8 bg-white rounded-2xl shadow-inner max-w-[280px] mx-auto">
-                                            <QrCode className="w-48 h-48 text-black" />
+                                        <div className="flex items-center justify-center mb-6 p-6 bg-white rounded-2xl shadow-inner max-w-[200px] mx-auto">
+                                            <QrCode className="w-32 h-32 text-black" />
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-3 gap-3">
                                             {[
                                                 { value: '12+', label: 'Themes' },
                                                 { value: '100%', label: 'Free' },
                                                 { value: '24/7', label: 'Online' }
                                             ].map((stat, i) => (
-                                                <div key={i} className="text-center p-4 bg-surface rounded-xl">
-                                                    <div className="text-3xl font-black text-accent">{stat.value}</div>
-                                                    <div className="text-xs text-secondary uppercase tracking-wide font-bold">{stat.label}</div>
+                                                <div key={i} className="text-center p-3 bg-surface rounded-xl">
+                                                    <div className="text-2xl font-black text-accent">{stat.value}</div>
+                                                    <div className="text-[10px] text-secondary uppercase tracking-wide font-bold">{stat.label}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -1210,7 +1264,7 @@ export const LandingPage: React.FC = () => {
                                 </div>
 
                                 <h2 className="text-4xl md:text-5xl font-black text-primary mb-6">
-                                    Daily Camera & ScannerFeeds
+                                    Daily Camera updates
                                 </h2>
 
                                 <p className="text-xl text-secondary leading-relaxed mb-8 max-w-2xl mx-auto">
@@ -1231,9 +1285,15 @@ export const LandingPage: React.FC = () => {
                                     ))}
                                 </div>
 
-                                <Link to="/news" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
+                                <button 
+                                    onClick={() => {
+                                        window.scrollTo(0, 0);
+                                        navigate('/news');
+                                    }}
+                                    className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex"
+                                >
                                     <Camera className="w-5 h-5" /> View Live Updates
-                                </Link>
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Music, Mic2, Camera, HelpCircle, Info, Home, Mail, Phone, MapPin, ExternalLink } from 'lucide-react';
+import { Music, Mic2, Camera, HelpCircle, Info, Home, Mail, Phone, MapPin, ExternalLink, IdCard } from 'lucide-react';
 
 export const Footer: React.FC = () => {
     const currentYear = new Date().getFullYear();
@@ -116,6 +116,12 @@ export const Footer: React.FC = () => {
                                             <span className="w-1 h-1 rounded-full bg-accent/50 group-hover:bg-accent transition-colors"></span>
                                             RAID Recovery
                                         </a>
+                                    </li>
+                                    <li>
+                                        <Link to="/login" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">
+                                            <IdCard className="w-3 h-3" />
+                                            Virtual Visiting Card
+                                        </Link>
                                     </li>
                                     <li>
                                         <Link to="/agentic-ai" className="text-sm text-secondary hover:text-accent transition-all duration-200 hover:translate-x-1 inline-flex items-center gap-2 group">

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { HelpCircle, Music, Database, Sparkles, ChevronRight, Search, Book, Zap, Globe, Shield, Clock, Phone, Mail, CheckCircle, FileText, Play, Download, Settings, Lock } from 'lucide-react';
+import { HelpCircle, Music, Database, Sparkles, ChevronRight, Search, Book, Zap, Globe, Shield, Clock, Phone, Mail, CheckCircle, FileText, Play, Download, Settings, Lock, IdCard, QrCode, Palette, Share2, BarChart3, Eye, UserCheck, Link2, Smartphone } from 'lucide-react';
 import { Schema } from '../components/Schema';
 
 export const HelpPage: React.FC = () => {
@@ -42,6 +42,22 @@ export const HelpPage: React.FC = () => {
                     '@type': 'Answer',
                     text: 'Lyric Studio supports 15+ languages including Telugu, Hindi, Tamil, Kannada, Malayalam, English, and more. Our Samskara Engine understands cultural context in each language.'
                 }
+            },
+            {
+                '@type': 'Question',
+                name: 'What is a Virtual Visiting Card (vCard)?',
+                acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'A Virtual Visiting Card is a digital business card that you can share via QR code or link. It includes your contact information, social links, and can be exported as a .vcf file for easy saving to contacts.'
+                }
+            },
+            {
+                '@type': 'Question',
+                name: 'How do I create a Virtual Visiting Card?',
+                acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Sign in to your account, navigate to the vCard section, and fill in your profile details. Choose from 12+ themes, add your social links, and share your unique profile URL or QR code.'
+                }
             }
         ]
     };
@@ -78,7 +94,15 @@ export const HelpPage: React.FC = () => {
                         </div>
 
                         {/* Quick Links */}
-                        <div className="grid md:grid-cols-2 gap-4 max-w-3xl mx-auto">
+                        <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                            <button
+                                onClick={() => document.getElementById('vcard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                className="glass-card p-6 rounded-2xl hover:-translate-y-1 transition-all border border-border hover:border-accent/30 group cursor-pointer"
+                            >
+                                <IdCard className="w-8 h-8 text-accent mb-3 mx-auto group-hover:scale-110 transition-transform" />
+                                <h3 className="font-bold text-primary mb-2">Virtual Visiting Card</h3>
+                                <p className="text-sm text-secondary">Create & share your digital business card</p>
+                            </button>
                             <button
                                 onClick={() => document.getElementById('lyric-studio')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                                 className="glass-card p-6 rounded-2xl hover:-translate-y-1 transition-all border border-border hover:border-accent/30 group cursor-pointer"
@@ -99,8 +123,220 @@ export const HelpPage: React.FC = () => {
                     </div>
                 </section>
 
+                {/* Virtual Visiting Card (vCard) Guide Section */}
+                <section id="vcard" className="py-20 bg-surface border-y border-border scroll-mt-20">
+                    <div className="container mx-auto px-4">
+                        <div className="max-w-6xl mx-auto">
+                            <div className="flex items-center gap-3 mb-12">
+                                <div className="p-3 bg-accent/10 rounded-xl">
+                                    <IdCard className="w-8 h-8 text-accent" />
+                                </div>
+                                <div>
+                                    <h2 className="text-3xl md:text-4xl font-black text-primary">Virtual Visiting Card Guide</h2>
+                                    <p className="text-secondary">Create and share your digital business card</p>
+                                </div>
+                            </div>
+
+                            {/* What is vCard */}
+                            <div className="glass-card p-8 rounded-3xl mb-8 bg-gradient-to-br from-accent/5 to-accent-orange/5 border-accent/20">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                                        <QrCode className="w-5 h-5 text-accent" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-2xl font-bold text-primary mb-4">What is a Virtual Visiting Card?</h3>
+                                        <p className="text-secondary mb-6">
+                                            A Virtual Visiting Card (vCard) is your digital business card that you can share instantly with anyone. 
+                                            Unlike traditional paper cards, your vCard is always up-to-date, accessible 24/7, and can be shared via 
+                                            QR code, link, WhatsApp, or downloaded as a contact file (.vcf).
+                                        </p>
+
+                                        <div className="grid md:grid-cols-3 gap-4">
+                                            {[
+                                                { icon: QrCode, title: 'QR Code Sharing', desc: 'Scan to instantly view your profile' },
+                                                { icon: Link2, title: 'Unique Profile URL', desc: 'Get your own /u/username link' },
+                                                { icon: Download, title: 'vCard Export', desc: 'Save to contacts with one tap' }
+                                            ].map((item, i) => (
+                                                <div key={i} className="bg-background/80 rounded-xl p-4 text-center">
+                                                    <item.icon className="w-6 h-6 text-accent mx-auto mb-2" />
+                                                    <p className="font-bold text-primary text-sm">{item.title}</p>
+                                                    <p className="text-xs text-secondary mt-1">{item.desc}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Getting Started with vCard */}
+                            <div className="glass-card p-8 rounded-3xl mb-8 bg-background/50">
+                                <div className="flex items-start gap-4 mb-4">
+                                    <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                                        <Play className="w-5 h-5 text-accent" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-primary mb-4">Getting Started</h3>
+                                        <ol className="space-y-4">
+                                            <li className="flex items-start gap-3">
+                                                <span className="w-6 h-6 rounded-full bg-accent text-white flex items-center justify-center text-sm font-bold flex-shrink-0">1</span>
+                                                <div>
+                                                    <p className="font-semibold text-primary">Sign In or Create Account</p>
+                                                    <p className="text-sm text-secondary mt-1">Click "Sign In" in the header and use Google Sign-In or create a local account</p>
+                                                </div>
+                                            </li>
+                                            <li className="flex items-start gap-3">
+                                                <span className="w-6 h-6 rounded-full bg-accent text-white flex items-center justify-center text-sm font-bold flex-shrink-0">2</span>
+                                                <div>
+                                                    <p className="font-semibold text-primary">Navigate to vCard Dashboard</p>
+                                                    <p className="text-sm text-secondary mt-1">Click "vCard" in the header or go to <Link to="/profile/dashboard" className="text-accent hover:underline">/profile/dashboard</Link></p>
+                                                </div>
+                                            </li>
+                                            <li className="flex items-start gap-3">
+                                                <span className="w-6 h-6 rounded-full bg-accent text-white flex items-center justify-center text-sm font-bold flex-shrink-0">3</span>
+                                                <div>
+                                                    <p className="font-semibold text-primary">Fill Your Profile Details</p>
+                                                    <p className="text-sm text-secondary mt-1">Add your display name, headline, bio, contact info, and social links</p>
+                                                </div>
+                                            </li>
+                                            <li className="flex items-start gap-3">
+                                                <span className="w-6 h-6 rounded-full bg-accent text-white flex items-center justify-center text-sm font-bold flex-shrink-0">4</span>
+                                                <div>
+                                                    <p className="font-semibold text-primary">Customize Your Theme</p>
+                                                    <p className="text-sm text-secondary mt-1">Choose from 12+ professional themes and customize colors to match your brand</p>
+                                                </div>
+                                            </li>
+                                            <li className="flex items-start gap-3">
+                                                <span className="w-6 h-6 rounded-full bg-accent text-white flex items-center justify-center text-sm font-bold flex-shrink-0">5</span>
+                                                <div>
+                                                    <p className="font-semibold text-primary">Publish & Share</p>
+                                                    <p className="text-sm text-secondary mt-1">Toggle "Publish Profile" to make it live, then share via QR code, link, or WhatsApp</p>
+                                                </div>
+                                            </li>
+                                        </ol>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* vCard Features */}
+                            <div className="glass-card p-8 rounded-3xl mb-8 bg-background/50">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-accent-orange/10 flex items-center justify-center flex-shrink-0">
+                                        <Sparkles className="w-5 h-5 text-accent-orange" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-2xl font-bold text-primary mb-4">Features Overview</h3>
+                                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                            {[
+                                                { icon: QrCode, title: 'QR Code Sharing', desc: 'Generate scannable QR codes that work on iOS & Android' },
+                                                { icon: Palette, title: '12+ Themes', desc: 'Professional pre-designed themes with customizable colors' },
+                                                { icon: Download, title: 'vCard Export', desc: 'One-click download as .vcf file for contacts' },
+                                                { icon: Share2, title: 'Multi-Channel Share', desc: 'Copy link, WhatsApp, or native system share' },
+                                                { icon: BarChart3, title: 'Analytics', desc: 'Track profile views, downloads, and share events' },
+                                                { icon: Eye, title: 'Public Profile URL', desc: 'Custom URL like /u/yourname for easy sharing' },
+                                                { icon: Link2, title: 'Social Links', desc: 'Add Instagram, LinkedIn, Twitter, YouTube & more' },
+                                                { icon: Smartphone, title: 'Mobile-First', desc: 'Optimized for mobile viewing on any device' },
+                                                { icon: Shield, title: 'Privacy Controls', desc: 'Choose what to show: email, phone, bio' },
+                                                { icon: UserCheck, title: 'Contact Info', desc: 'Display headline, company, website & contact details' },
+                                                { icon: Settings, title: 'Appearance', desc: 'Button styles, corners, shadows - customize everything' },
+                                                { icon: Globe, title: 'SEO Optimized', desc: 'Opt-in to public indexing for discoverability' }
+                                            ].map((feature, i) => (
+                                                <div key={i} className="flex items-start gap-3 p-3 bg-surface rounded-xl">
+                                                    <div className="p-2 bg-accent/10 rounded-lg flex-shrink-0">
+                                                        <feature.icon className="w-4 h-4 text-accent" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-primary text-sm">{feature.title}</p>
+                                                        <p className="text-xs text-secondary mt-0.5">{feature.desc}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sharing Options */}
+                            <div className="glass-card p-8 rounded-3xl mb-8 bg-background/50">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                                        <Share2 className="w-5 h-5 text-accent" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-2xl font-bold text-primary mb-4">Sharing Your vCard</h3>
+                                        <p className="text-secondary mb-6">
+                                            Multiple ways to share your digital business card with contacts:
+                                        </p>
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            <div className="bg-surface p-6 rounded-2xl border border-border">
+                                                <h4 className="font-bold text-primary mb-3 flex items-center gap-2">
+                                                    <QrCode className="w-5 h-5 text-accent" />
+                                                    QR Code
+                                                </h4>
+                                                <p className="text-sm text-secondary mb-3">
+                                                    Show your QR code at networking events, conferences, or meetings. 
+                                                    Recipients can scan with any smartphone camera.
+                                                </p>
+                                                <ul className="text-xs text-muted space-y-1">
+                                                    <li>• Works on iOS & Android</li>
+                                                    <li>• No app required to scan</li>
+                                                    <li>• Download as PNG for printing</li>
+                                                </ul>
+                                            </div>
+                                            <div className="bg-surface p-6 rounded-2xl border border-border">
+                                                <h4 className="font-bold text-primary mb-3 flex items-center gap-2">
+                                                    <Link2 className="w-5 h-5 text-accent" />
+                                                    Profile Link
+                                                </h4>
+                                                <p className="text-sm text-secondary mb-3">
+                                                    Copy your unique profile URL and share via email, text, or social media.
+                                                    Works in email signatures too!
+                                                </p>
+                                                <ul className="text-xs text-muted space-y-1">
+                                                    <li>• Format: swaz.com/u/yourname</li>
+                                                    <li>• One-click copy to clipboard</li>
+                                                    <li>• Share via WhatsApp or system share</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Customization Tips */}
+                            <div className="glass-card p-8 rounded-3xl bg-background/50">
+                                <div className="flex items-start gap-4">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                                        <Book className="w-5 h-5 text-emerald-500" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-2xl font-bold text-primary mb-4">Tips for a Great vCard</h3>
+                                        <div className="grid md:grid-cols-2 gap-4">
+                                            {[
+                                                { tip: 'Use a Professional Photo', desc: 'Upload a clear, high-quality headshot for your avatar' },
+                                                { tip: 'Write a Compelling Headline', desc: 'Summarize what you do in one line (e.g., "Full-Stack Developer | React Expert")' },
+                                                { tip: 'Add Key Social Links', desc: 'Include LinkedIn, GitHub, or portfolio - whatever is most relevant' },
+                                                { tip: 'Choose a Matching Theme', desc: 'Pick colors that align with your personal or company brand' },
+                                                { tip: 'Keep Bio Concise', desc: '2-3 sentences about what you do and your expertise' },
+                                                { tip: 'Review Privacy Settings', desc: 'Only show contact info you want to be public' }
+                                            ].map((item, i) => (
+                                                <div key={i} className="flex items-start gap-3 p-4 bg-surface rounded-xl">
+                                                    <ChevronRight className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <p className="font-bold text-primary">{item.tip}</p>
+                                                        <p className="text-sm text-secondary mt-1">{item.desc}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 {/* Lyric Studio Guide Section */}
-                <section id="lyric-studio" className="py-20 bg-surface border-y border-border scroll-mt-20">
+                <section id="lyric-studio" className="py-20 bg-background scroll-mt-20">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
                             <div className="flex items-center gap-3 mb-12">
@@ -401,7 +637,7 @@ export const HelpPage: React.FC = () => {
                 </section>
 
                 {/* Data Recovery Services Section */}
-                <section id="data-recovery" className="py-20 bg-background scroll-mt-20">
+                <section id="data-recovery" className="py-20 bg-surface border-y border-border scroll-mt-20">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
                             <div className="flex items-center gap-3 mb-12">
@@ -520,7 +756,7 @@ export const HelpPage: React.FC = () => {
                 </section>
 
                 {/* General Help & FAQs */}
-                <section id="general-help" className="py-20 bg-surface border-t border-border">
+                <section id="general-help" className="py-20 bg-background">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
                             <div className="text-center mb-12">
@@ -630,10 +866,14 @@ export const HelpPage: React.FC = () => {
                             <div className="bg-brand-gradient rounded-3xl p-8 md:p-12 text-white text-center">
                                 <h3 className="text-2xl md:text-3xl font-bold mb-4">Ready to Get Started?</h3>
                                 <p className="text-white/90 mb-6 max-w-2xl mx-auto">
-                                    Whether you need to create amazing lyrics or recover critical data, we're here to help.
+                                    Whether you need to create a digital business card, generate amazing lyrics, or recover critical data, we're here to help.
                                 </p>
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                    <Link to="/studio" className="btn bg-white text-primary hover:bg-white/90 px-8 py-3 rounded-xl shadow-xl inline-flex items-center justify-center gap-2">
+                                    <Link to="/login" className="btn bg-white text-primary hover:bg-white/90 px-8 py-3 rounded-xl shadow-xl inline-flex items-center justify-center gap-2">
+                                        <IdCard className="w-5 h-5" />
+                                        Create Your vCard
+                                    </Link>
+                                    <Link to="/studio" className="btn bg-white/10 text-white hover:bg-white/20 border-2 border-white/30 px-8 py-3 rounded-xl inline-flex items-center justify-center gap-2">
                                         <Music className="w-5 h-5" />
                                         Try Lyric Studio
                                     </Link>

@@ -93,6 +93,25 @@ export const Header: React.FC = () => {
                         {/* Desktop Navigation */}
                         {user ? (
                             <nav className="hidden md:flex items-center gap-1 bg-surface/50 rounded-2xl px-2 py-2 border border-border shadow-sm backdrop-blur-md">
+                                <button
+                                    onClick={() => scrollToSection('data-recovery')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-bold text-sm text-accent bg-accent/10 border border-accent/30 hover:bg-accent hover:text-white hover:border-accent hover:shadow-lg hover:shadow-accent/20 flex items-center gap-2 group"
+                                >
+                                    <Database className="w-4 h-4 transition-colors group-hover:text-white" />
+                                    <span>Data Recovery</span>
+                                </button>
+
+                                <Link
+                                    to="/profile/dashboard"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <IdCard className="w-4 h-4" />
+                                    <span>vCard</span>
+                                </Link>
+
                                 <Link
                                     to="/music"
                                     className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/music')
@@ -115,46 +134,13 @@ export const Header: React.FC = () => {
                                     <span>Lyric Studio</span>
                                 </Link>
 
-                                <Link
-                                    to="/profile/dashboard"
-                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                        }`}
-                                >
-                                    <IdCard className="w-4 h-4" />
-                                    <span>vCard</span>
-                                </Link>
-
-                                <Link
-                                    to="/news"
-                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/news')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                        }`}
-                                >
-                                    <Camera className="w-4 h-4" />
-                                    <span>News</span>
-                                </Link>
-
                                 <button
-                                    onClick={() => scrollToSection('data-recovery')}
+                                    onClick={() => scrollToSection('contact')}
                                     className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
                                 >
-                                    <Database className="w-4 h-4" />
-                                    <span>Recovery</span>
+                                    <Info className="w-4 h-4" />
+                                    <span>Contact</span>
                                 </button>
-
-                                <Link
-                                    to="/help"
-                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/help')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                        }`}
-                                >
-                                    <HelpCircle className="w-4 h-4" />
-                                    <span>Help</span>
-                                </Link>
                             </nav>
                         ) : (
                             <nav className="hidden md:flex items-center gap-1 bg-surface/50 rounded-2xl px-2 py-2 border border-border shadow-sm backdrop-blur-md">
@@ -164,6 +150,14 @@ export const Header: React.FC = () => {
                                 >
                                     <Database className="w-4 h-4 transition-colors group-hover:text-white" />
                                     <span>Data Recovery</span>
+                                </button>
+
+                                <button
+                                    onClick={() => scrollToSection('vcard')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
+                                >
+                                    <IdCard className="w-4 h-4" />
+                                    <span>vCard</span>
                                 </button>
 
                                 <button
@@ -193,23 +187,12 @@ export const Header: React.FC = () => {
                                     <span>News</span>
                                 </Link>
 
-                                <Link
-                                    to="/help"
-                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/help')
-                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
-                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
-                                        }`}
-                                >
-                                    <HelpCircle className="w-4 h-4" />
-                                    <span>Help</span>
-                                </Link>
-
                                 <button
                                     onClick={() => scrollToSection('contact')}
                                     className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
                                 >
                                     <Info className="w-4 h-4" />
-                                    <span>Contact Us</span>
+                                    <span>Contact</span>
                                 </button>
                             </nav>
                         )}
@@ -277,6 +260,21 @@ export const Header: React.FC = () => {
                     <div className="flex-1 p-6 space-y-4">
                         {user ? (
                             <>
+                                <button
+                                    onClick={() => scrollToSection('data-recovery')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-accent bg-accent/10 border border-accent/20 text-left transition-all"
+                                >
+                                    <Database className="w-6 h-6" /> Data Recovery
+                                </button>
+
+                                <Link
+                                    to="/profile/dashboard"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <IdCard className="w-6 h-6" /> vCard
+                                </Link>
+
                                 <Link
                                     to="/music"
                                     onClick={() => handleMobileNavClick()}
@@ -293,44 +291,27 @@ export const Header: React.FC = () => {
                                     <Music className="w-6 h-6" /> Lyric Studio
                                 </Link>
 
-                                <Link
-                                    to="/news"
-                                    onClick={() => handleMobileNavClick()}
-                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/news') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                                >
-                                    <Camera className="w-6 h-6" /> News
-                                </Link>
-
-                                <Link
-                                    to="/profile/dashboard"
-                                    onClick={() => handleMobileNavClick()}
-                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                                >
-                                    <IdCard className="w-6 h-6" /> vCard
-                                </Link>
-
                                 <button
-                                    onClick={() => scrollToSection('data-recovery')}
+                                    onClick={() => scrollToSection('contact')}
                                     className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
                                 >
-                                    <Database className="w-6 h-6" /> Data Recovery
+                                    <Info className="w-6 h-6" /> Contact
                                 </button>
-
-                                <Link
-                                    to="/help"
-                                    onClick={() => handleMobileNavClick()}
-                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/help') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                                >
-                                    <HelpCircle className="w-6 h-6" /> Help
-                                </Link>
                             </>
                         ) : (
                             <>
                                 <button
-                                    onClick={() => scrollToSection('services')}
+                                    onClick={() => scrollToSection('data-recovery')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-accent bg-accent/10 border border-accent/20 text-left transition-all"
+                                >
+                                    <Database className="w-6 h-6" /> Data Recovery
+                                </button>
+
+                                <button
+                                    onClick={() => scrollToSection('vcard')}
                                     className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
                                 >
-                                    <Database className="w-6 h-6" /> Data Recovery Services
+                                    <IdCard className="w-6 h-6" /> Digital vCard
                                 </button>
 
                                 <button
@@ -355,19 +336,11 @@ export const Header: React.FC = () => {
                                     <Camera className="w-6 h-6" /> News
                                 </Link>
 
-                                <Link
-                                    to="/help"
-                                    onClick={() => handleMobileNavClick()}
-                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/help') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
-                                >
-                                    <HelpCircle className="w-6 h-6" /> Help
-                                </Link>
-
                                 <button
                                     onClick={() => scrollToSection('contact')}
                                     className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
                                 >
-                                    <Info className="w-6 h-6" /> Contact Us
+                                    <Info className="w-6 h-6" /> Contact
                                 </button>
                             </>
                         )}
