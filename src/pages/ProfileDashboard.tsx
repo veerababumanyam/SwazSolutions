@@ -463,6 +463,7 @@ export const ProfileDashboard: React.FC = () => {
                   profile={profile}
                   links={links}
                   appearance={appearance}
+                  profileUrl={profile.username ? `${window.location.origin}/u/${encodeURIComponent(profile.username)}` : undefined}
                 />
               </div>
             </div>

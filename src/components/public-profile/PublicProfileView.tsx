@@ -1,10 +1,13 @@
 // PublicProfileView Component
 // Renders the public profile with appearance settings matching MobilePreview exactly
 // This ensures visual consistency between editor preview and public profile
+// Features: Modern icon-based links, action bar for QR/Share/vCard, mobile-first design
 
 import React, { useCallback } from 'react';
-import { Mail, Phone, Globe, Briefcase, Building2, Download, QrCode, Share2 } from 'lucide-react';
+import { Mail, Phone, Globe, Briefcase, Building2, Download, Share2, ExternalLink } from 'lucide-react';
 import { getOptimalTextColor, getOptimalSecondaryTextColor, isLightColor } from '../../utils/wcagValidator';
+import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
+import { ProfileQRCode } from './ProfileQRCode';
 
 // Header background settings for Visual themes (hero-photo style)
 export interface HeaderBackgroundSettings {
@@ -81,8 +84,9 @@ interface PublicProfileViewProps {
   profile: ProfileData;
   links: SocialLink[];
   appearance?: AppearanceSettings | null;
+  /** URL to the public profile for QR code generation */
+  profileUrl?: string;
   onDownloadVCard?: () => void;
-  onViewQR?: () => void;
   onShare?: () => void;
 }
 
@@ -142,8 +146,8 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   profile,
   links,
   appearance,
+  profileUrl,
   onDownloadVCard,
-  onViewQR,
   onShare,
 }) => {
   const settings = appearance || defaultAppearance;
@@ -539,47 +543,162 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
     }
   };
 
-  // Render action buttons (vCard download, QR code, Share)
+  // Render action section with inline QR code and action buttons
   const renderActionButtons = () => {
-    if (!onDownloadVCard && !onViewQR && !onShare) return null;
+    const hasActions = onDownloadVCard || onShare || profileUrl;
+    if (!hasActions) return null;
 
     return (
-      <div className="flex justify-center gap-3 my-4">
-        {onDownloadVCard && (
-          <button
-            onClick={onDownloadVCard}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-transform hover:scale-105"
-            style={getButtonStyle()}
-            title="Add to Contacts"
-          >
-            <Download className="w-4 h-4" />
-            <span className="text-sm font-medium">Save Contact</span>
-          </button>
-        )}
-        {onViewQR && (
-          <button
-            onClick={onViewQR}
-            className="flex items-center justify-center w-10 h-10 rounded-full transition-transform hover:scale-110"
-            style={{ 
-              backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-            }}
-            title="View QR Code"
-          >
-            <QrCode className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-          </button>
-        )}
-        {onShare && (
-          <button
-            onClick={onShare}
-            className="flex items-center justify-center w-10 h-10 rounded-full transition-transform hover:scale-110"
-            style={{ 
-              backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-            }}
-            title="Share Profile"
-          >
-            <Share2 className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-          </button>
-        )}
+      <div className="my-6">
+        {/* Modern Action Bar */}
+        <div 
+          className="rounded-2xl p-4 sm:p-5 backdrop-blur-sm"
+          style={{ 
+            backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
+            border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)'}`
+          }}
+        >
+          {/* Inline QR Code - Scannable Size */}
+          {profileUrl && (
+            <div className="flex justify-center mb-4">
+              <ProfileQRCode
+                profileUrl={profileUrl}
+                size={140}
+                bgColor={wcagColors.isLight ? '#FFFFFF' : '#FFFFFF'}
+                fgColor="#000000"
+                showLabel={true}
+                labelText="Scan to connect"
+                labelColor={wcagColors.bioColor}
+              />
+            </div>
+          )}
+
+          {/* Action Buttons Row */}
+          <div className={`grid gap-3 ${onShare && onDownloadVCard ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {/* Share */}
+            {onShare && (
+              <button
+                onClick={onShare}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105"
+                style={{ 
+                  backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'
+                }}
+              >
+                <div 
+                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${settings.buttonColor}20` }}
+                >
+                  <Share2 className="w-6 h-6" style={{ color: settings.buttonColor }} />
+                </div>
+                <span className="text-xs font-medium" style={{ color: wcagColors.nameColor }}>
+                  Share
+                </span>
+              </button>
+            )}
+
+            {/* Save Contact (vCard) */}
+            {onDownloadVCard && (
+              <button
+                onClick={onDownloadVCard}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105"
+                style={{ 
+                  backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'
+                }}
+              >
+                <div 
+                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${settings.buttonColor}20` }}
+                >
+                  <Download className="w-6 h-6" style={{ color: settings.buttonColor }} />
+                </div>
+                <span className="text-xs font-medium text-center" style={{ color: wcagColors.nameColor }}>
+                  Save to Phone
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render links as elegant icon cards with labels
+  const renderLinks = () => {
+    if (links.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-lg opacity-60" style={{ color: wcagColors.bioColor }}>
+            No links available
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4 pb-8">
+        {/* Section Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
+          <span className="text-xs font-medium uppercase tracking-wider opacity-60" style={{ color: wcagColors.nameColor }}>
+            Links
+          </span>
+          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
+        </div>
+
+        {/* Links Grid - Modern Icon Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {links.map((link) => {
+            const platform = detectPlatformFromUrl(link.url);
+            const logoSrc = link.customLogo || platform?.logo || DEFAULT_LOGO;
+            const displayName = link.displayLabel || platform?.name || link.platform || 'Link';
+
+            return (
+              <a
+                key={link.id}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all hover:scale-105 hover:shadow-lg"
+                style={{ 
+                  backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
+                  border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'}`
+                }}
+              >
+                {/* Icon Container */}
+                <div 
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
+                  style={{ 
+                    backgroundColor: `${settings.buttonColor}15`,
+                    border: `1px solid ${settings.buttonColor}25`
+                  }}
+                >
+                  <img
+                    src={logoSrc}
+                    alt={displayName}
+                    className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_LOGO;
+                    }}
+                  />
+                </div>
+
+                {/* Label */}
+                <span 
+                  className="text-sm font-medium text-center line-clamp-2"
+                  style={{ color: wcagColors.nameColor }}
+                >
+                  {displayName}
+                </span>
+
+                {/* External Link Indicator */}
+                <ExternalLink 
+                  className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity absolute top-2 right-2" 
+                  style={{ color: wcagColors.nameColor }}
+                />
+              </a>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -755,61 +874,8 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
           {/* Action Buttons */}
           {renderActionButtons()}
 
-          {/* Links */}
-          <div className="space-y-3 pb-8">
-            {links.map((link) => (
-              <a
-                key={link.id}
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block p-4 flex items-center gap-4 transition-transform hover:scale-[1.02]"
-                style={getButtonStyle()}
-              >
-                {/* Link Thumbnail */}
-                {link.customLogo ? (
-                  <img
-                    src={link.customLogo}
-                    alt=""
-                    className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg object-cover flex-shrink-0"
-                    style={{ borderRadius: `${Math.max(settings.cornerRadius - 4, 0)}px` }}
-                  />
-                ) : (
-                  <div 
-                    className="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center font-bold text-lg flex-shrink-0"
-                    style={{ 
-                      backgroundColor: settings.buttonStyle === 'solid' ? 'rgba(255,255,255,0.2)' : settings.buttonColor,
-                      color: settings.buttonStyle === 'solid' ? settings.textColor : '#FFFFFF',
-                      borderRadius: `${Math.max(settings.cornerRadius - 4, 0)}px` 
-                    }}
-                  >
-                    {(link.displayLabel || link.platform || '?')[0].toUpperCase()}
-                  </div>
-                )}
-                
-                {/* Link Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="text-base sm:text-lg font-medium truncate">
-                    {link.displayLabel || link.platform || 'Link'}
-                  </div>
-                </div>
-
-                {/* Arrow Icon */}
-                <div className="opacity-60 flex-shrink-0">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </a>
-            ))}
-          </div>
-
-          {/* Empty State */}
-          {links.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              <p className="text-lg">No links available</p>
-            </div>
-          )}
+          {/* Links as Icon Cards */}
+          {renderLinks()}
 
           {/* Footer Section */}
           <div className="py-8 text-center">

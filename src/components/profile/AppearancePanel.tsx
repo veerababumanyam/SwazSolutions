@@ -36,6 +36,8 @@ import { Theme, ThemeHeaderBackground, ThemeCategory, THEME_CATEGORY_META } from
 import themeService from '../../services/themeService';
 import AIThemeModal from '../appearance/AIThemeModal';
 import { FontSelector } from '../theme/FontSelector';
+import { ImageCropper } from '../common/ImageCropper';
+import { CropResult } from '../../utils/cropImage';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -174,6 +176,11 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<ThemeCategoryFilter>('all');
   const [applyingTheme, setApplyingTheme] = useState<number | null>(null);
 
+  // Banner cropper state
+  const [bannerCropperOpen, setBannerCropperOpen] = useState(false);
+  const [bannerCropperImage, setBannerCropperImage] = useState<string>('');
+  const [bannerUploading, setBannerUploading] = useState(false);
+
   // Fetch system themes on mount
   useEffect(() => {
     const fetchThemes = async () => {
@@ -296,7 +303,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
       label: 'Typography',
       shortLabel: 'Text',
       icon: <Type className="w-5 h-5" />,
-      description: 'Text & Buttons'
+      description: 'Fonts & Icon Styling'
     },
     {
       id: 'branding' as TabType,
@@ -353,6 +360,68 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
       setIsGeneratingAI(false);
     }
   }, [profileData, settings, onChange, generateAIColors]);
+
+  // Handle banner image selection - opens cropper
+  const handleBannerFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (max 10MB for banner)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Banner image must be less than 10MB');
+      return;
+    }
+
+    // Read file and open cropper
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setBannerCropperImage(base64);
+      setBannerCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset input
+    e.target.value = '';
+  }, []);
+
+  // Handle cropped banner upload
+  const handleBannerCropComplete = useCallback(async (result: CropResult) => {
+    setBannerUploading(true);
+    try {
+      // Upload to server
+      const response = await fetch('/api/uploads/background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ image: result.base64 })
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+
+      // Update settings with uploaded image URL
+      onChange({
+        ...settings,
+        bannerSettings: {
+          mode: 'image',
+          color: settings.bannerSettings?.color || settings.buttonColor,
+          derivedFromWallpaper: false,
+          image: data.url,
+        }
+      });
+    } catch (error) {
+      console.error('Failed to upload banner:', error);
+      alert('Failed to upload banner image. Please try again.');
+    } finally {
+      setBannerUploading(false);
+      setBannerCropperOpen(false);
+      setBannerCropperImage('');
+    }
+  }, [settings, onChange]);
 
   // ============================================================================
   // PRESET DATA
@@ -1083,66 +1152,30 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
                       )}
 
                       {/* Upload banner image button */}
-                      <label className="flex items-center justify-center gap-2 w-full py-3 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors min-h-[48px]">
-                        <Image className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {settings.bannerSettings?.image ? 'Change Banner Image' : 'Upload Banner Image'}
-                        </span>
+                      <label className={`flex items-center justify-center gap-2 w-full py-3 px-4 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors min-h-[48px] ${bannerUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+                        {bannerUploading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 text-gray-500 dark:text-gray-400 animate-spin" />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Image className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              {settings.bannerSettings?.image ? 'Change Banner Image' : 'Upload Banner Image'}
+                            </span>
+                          </>
+                        )}
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-
-                            // Validate file size (max 2MB for banner)
-                            if (file.size > 2 * 1024 * 1024) {
-                              alert('Banner image must be less than 2MB');
-                              return;
-                            }
-
-                            try {
-                              // Convert to base64
-                              const reader = new FileReader();
-                              reader.onload = async (event) => {
-                                const base64 = event.target?.result as string;
-
-                                // Upload to server
-                                const response = await fetch('/api/uploads/background', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  credentials: 'include',
-                                  body: JSON.stringify({ image: base64 })
-                                });
-
-                                if (!response.ok) {
-                                  throw new Error('Upload failed');
-                                }
-
-                                const data = await response.json();
-
-                                // Update settings with uploaded image URL
-                                onChange({
-                                  ...settings,
-                                  bannerSettings: {
-                                    mode: 'image',
-                                    color: settings.bannerSettings?.color || settings.buttonColor,
-                                    derivedFromWallpaper: false,
-                                    image: data.url,
-                                  }
-                                });
-                              };
-                              reader.readAsDataURL(file);
-                            } catch (error) {
-                              console.error('Failed to upload banner:', error);
-                              alert('Failed to upload banner image. Please try again.');
-                            }
-                          }}
+                          disabled={bannerUploading}
+                          onChange={handleBannerFileSelect}
                         />
                       </label>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Recommended: 1920×400px, max 2MB. JPG, PNG, or WebP.
+                        Recommended: 1920×400px, max 10MB. JPG, PNG, or WebP. You can crop and adjust after selecting.
                       </p>
                     </div>
                   )}
@@ -1226,7 +1259,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
         );
 
       // ========================================================================
-      // TYPOGRAPHY TAB - Text + Buttons (combined)
+      // TYPOGRAPHY TAB - Font Settings only (links displayed as icons)
       // ========================================================================
       case 'typography':
         return (
@@ -1251,126 +1284,55 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
               </div>
             </CollapsibleSection>
 
-            {/* Button Style Section */}
-            <CollapsibleSection title="Button Style" defaultOpen={true}>
-              {/* Button style options - responsive grid */}
-              <div className="grid grid-cols-3 gap-3">
-                {(['solid', 'glass', 'outline'] as const).map((style) => (
-                  <button
-                    key={style}
-                    onClick={() => onChange({ ...settings, buttonStyle: style })}
-                    className={`relative p-4 rounded-xl border-2 transition-all min-h-[80px] ${settings.buttonStyle === style
-                      ? 'border-purple-500 dark:border-purple-400'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                      }`}
-                  >
+            {/* Info about icon-based links */}
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl border border-purple-200 dark:border-purple-800">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center flex-shrink-0">
+                  <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                    Modern Icon-Based Links
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Your social links are displayed as elegant icons with labels for a cleaner, 
+                    more intuitive design. Click any icon to visit the link.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Accent Color for Icons */}
+            <CollapsibleSection title="Icon Accent Color" defaultOpen={true}>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Customize the accent color used for icon backgrounds and highlights
+              </p>
+              <ColorPickerInput
+                label="Accent Color"
+                value={settings.buttonColor}
+                onChange={(color) => onChange({ ...settings, buttonColor: color })}
+              />
+              
+              {/* Preview of icon style */}
+              <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Icon Preview</p>
+                <div className="flex gap-3 justify-center">
+                  {['instagram', 'linkedin', 'github'].map((icon) => (
                     <div
-                      className={`h-10 rounded-lg flex items-center justify-center text-sm font-medium ${style === 'solid'
-                        ? 'bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200'
-                        : style === 'glass'
-                          ? 'bg-gray-200/50 dark:bg-gray-700/50 backdrop-blur text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600'
-                          : 'bg-transparent border-2 border-gray-400 dark:border-gray-500 text-gray-700 dark:text-gray-200'
-                        }`}
+                      key={icon}
+                      className="w-12 h-12 rounded-xl flex items-center justify-center transition-transform hover:scale-110"
+                      style={{ 
+                        backgroundColor: `${settings.buttonColor}15`,
+                        border: `1px solid ${settings.buttonColor}30`
+                      }}
                     >
-                      {style.charAt(0).toUpperCase() + style.slice(1)}
-                    </div>
-                    {style === 'glass' && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <Zap className="w-3 h-3 text-yellow-900" />
-                      </span>
-                    )}
-                    {settings.buttonStyle === style && (
-                      <div className="absolute top-2 right-2">
-                        <Check className="w-4 h-4 text-purple-500" />
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Corner Radius */}
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Corner Radius: {settings.cornerRadius}px
-                </label>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 w-12">Square</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="24"
-                    value={settings.cornerRadius}
-                    onChange={(e) => onChange({ ...settings, cornerRadius: parseInt(e.target.value) })}
-                    className="flex-1 h-3 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                  />
-                  <span className="text-xs text-gray-500 dark:text-gray-400 w-12 text-right">Round</span>
-                </div>
-                {/* Visual preview of corner radius */}
-                <div className="mt-3 flex justify-center">
-                  <div
-                    className="w-20 h-12 bg-purple-500 transition-all"
-                    style={{ borderRadius: `${settings.cornerRadius}px` }}
-                  />
-                </div>
-              </div>
-
-              {/* Shadows */}
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Shadow Style
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {(['none', 'subtle', 'strong', 'hard'] as const).map((shadow) => (
-                    <button
-                      key={shadow}
-                      onClick={() => onChange({ ...settings, shadowStyle: shadow })}
-                      className={`p-3 rounded-xl border-2 transition-all min-h-[72px] ${settings.shadowStyle === shadow
-                        ? 'border-purple-500 dark:border-purple-400'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                    >
-                      <div
-                        className="h-8 bg-gray-300 dark:bg-gray-600 rounded-lg mx-auto w-full max-w-[60px]"
-                        style={{
-                          boxShadow: shadow === 'none' ? 'none' :
-                            shadow === 'subtle' ? '0 2px 8px rgba(0,0,0,0.1)' :
-                              shadow === 'strong' ? '0 4px 16px rgba(0,0,0,0.2)' :
-                                '4px 4px 0 rgba(0,0,0,0.8)',
-                        }}
+                      <img
+                        src={`/assets/social-logos/${icon}.svg`}
+                        alt={icon}
+                        className="w-6 h-6"
                       />
-                      <span className="text-xs text-gray-600 dark:text-gray-400 mt-2 block text-center capitalize">
-                        {shadow}
-                      </span>
-                    </button>
+                    </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Button Colors - with override warning */}
-              <div className="mt-4">
-                {appliedTheme && (
-                  <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs text-blue-700 dark:text-blue-300">
-                      ✏️ Button color changes will customize the <strong>{appliedTheme.name}</strong> theme
-                    </p>
-                  </div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <ColorPickerInput
-                    label="Button color"
-                    value={settings.buttonColor}
-                    onChange={(color) => onChange({ ...settings, buttonColor: color })}
-                  />
-                  <ColorPickerInput
-                    label="Button text color"
-                    value={settings.textColor}
-                    onChange={(color) => onChange({ ...settings, textColor: color })}
-                  />
-                  <ColorPickerInput
-                    label="Shadow color"
-                    value={settings.shadowColor}
-                    onChange={(color) => onChange({ ...settings, shadowColor: color })}
-                  />
                 </div>
               </div>
             </CollapsibleSection>
@@ -1557,6 +1519,20 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
           setShowAIModal(false);
         }}
         apiKey={import.meta.env.VITE_GEMINI_API_KEY || ''}
+      />
+
+      {/* Banner Image Cropper Modal */}
+      <ImageCropper
+        imageSrc={bannerCropperImage}
+        isOpen={bannerCropperOpen}
+        onClose={() => {
+          setBannerCropperOpen(false);
+          setBannerCropperImage('');
+        }}
+        onCropComplete={handleBannerCropComplete}
+        aspectRatio="banner"
+        title="Crop Banner Image"
+        cropShape="rect"
       />
     </div>
   );

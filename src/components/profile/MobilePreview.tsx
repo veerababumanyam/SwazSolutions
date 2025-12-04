@@ -1,9 +1,12 @@
 // MobilePreview Component
 // Shows a live preview of the public profile on a mobile device frame with appearance settings
+// Features: Modern icon-based links, action bar for QR/Share/vCard, mobile-first design
 
 import React, { useState, useCallback } from 'react';
-import { Mail, Phone, Globe, ExternalLink, Copy, Check, Share2, Eye, Briefcase, Building2 } from 'lucide-react';
+import { Mail, Phone, Globe, ExternalLink, Copy, Check, Share2, Eye, Briefcase, Building2, Download } from 'lucide-react';
 import { getOptimalTextColor, getOptimalSecondaryTextColor, isLightColor } from '../../utils/wcagValidator';
+import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
+import { ProfileQRCode } from '../public-profile/ProfileQRCode';
 
 // Header background settings for Visual themes (hero-photo style)
 export interface HeaderBackgroundSettings {
@@ -87,6 +90,8 @@ interface MobilePreviewProps {
   profile: ProfileData;
   links: SocialLink[];
   appearance?: AppearanceSettings;
+  /** URL to the public profile for QR code generation */
+  profileUrl?: string;
   onPreview?: () => void;
   onShare?: () => void;
 }
@@ -102,9 +107,12 @@ const FEATURED_PLATFORMS = [
   { name: 'TikTok', icon: 'tiktok', pattern: 'tiktok.com' },
   { name: 'Apple Music', icon: 'apple-music', pattern: 'music.apple.com' },
   { name: 'Spotify', icon: 'spotify', pattern: 'spotify.com' },
+  { name: 'LinkedIn', icon: 'linkedin', pattern: 'linkedin.com' },
+  { name: 'GitHub', icon: 'github', pattern: 'github.com' },
+  { name: 'Telegram', icon: 'telegram', pattern: 't.me' },
 ];
 
-export const MobilePreview: React.FC<MobilePreviewProps> = ({ profile, links, appearance, onPreview, onShare }) => {
+export const MobilePreview: React.FC<MobilePreviewProps> = ({ profile, links, appearance, profileUrl, onPreview, onShare }) => {
   // State for share button feedback
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -722,56 +730,128 @@ export const MobilePreview: React.FC<MobilePreviewProps> = ({ profile, links, ap
                   </div>
                 )}
 
-                {/* Links */}
-                <div className="space-y-2 flex-1">
-                  {links.map((link) => (
-                    <div
-                      key={link.id}
-                      className="p-3 flex items-center gap-3 transition-transform hover:scale-[1.02]"
-                      style={getButtonStyle()}
-                    >
-                      {/* Link Thumbnail */}
-                      {link.customLogo ? (
-                        <img
-                          src={link.customLogo}
-                          alt=""
-                          className="w-10 h-10 rounded-lg object-cover"
-                          style={{ borderRadius: `${Math.max(settings.cornerRadius - 4, 0)}px` }}
-                        />
-                      ) : (
-                        <div 
-                          className="w-10 h-10 flex items-center justify-center font-bold"
-                          style={{ 
-                            backgroundColor: settings.buttonStyle === 'solid' ? 'rgba(255,255,255,0.2)' : settings.buttonColor,
-                            color: settings.buttonStyle === 'solid' ? settings.textColor : '#FFFFFF',
-                            borderRadius: `${Math.max(settings.cornerRadius - 4, 0)}px` 
-                          }}
-                        >
-                          {(link.displayLabel || link.platform || '?')[0].toUpperCase()}
-                        </div>
-                      )}
-                      
-                      {/* Link Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">
-                          {link.displayLabel || link.platform || 'Link'}
-                        </div>
-                      </div>
-
-                      {/* Arrow Icon */}
-                      <div className="opacity-60">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </div>
+                {/* Action Bar - QR, Share, Save Contact */}
+                <div 
+                  className="rounded-xl p-3 mb-4"
+                  style={{ 
+                    backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
+                    border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'}`
+                  }}
+                >
+                  {/* Inline QR Code */}
+                  {profileUrl && (
+                    <div className="flex justify-center mb-3">
+                      <ProfileQRCode
+                        profileUrl={profileUrl}
+                        size={80}
+                        bgColor="#FFFFFF"
+                        fgColor="#000000"
+                        showLabel={true}
+                        labelText="Scan to connect"
+                        labelColor={wcagColors.bioColor}
+                        className="scale-90"
+                      />
                     </div>
-                  ))}
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div 
+                      className="flex flex-col items-center gap-1.5 p-2 rounded-lg"
+                      style={{ backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)' }}
+                    >
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: `${settings.buttonColor}20` }}
+                      >
+                        <Share2 className="w-4 h-4" style={{ color: settings.buttonColor }} />
+                      </div>
+                      <span className="text-[9px] font-medium" style={{ color: wcagColors.nameColor }}>Share</span>
+                    </div>
+                    <div 
+                      className="flex flex-col items-center gap-1.5 p-2 rounded-lg"
+                      style={{ backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)' }}
+                    >
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: `${settings.buttonColor}20` }}
+                      >
+                        <Download className="w-4 h-4" style={{ color: settings.buttonColor }} />
+                      </div>
+                      <span className="text-[9px] font-medium text-center" style={{ color: wcagColors.nameColor }}>Save</span>
+                    </div>
+                  </div>
                 </div>
+
+                {/* Links as Icon Cards */}
+                {links.length > 0 && (
+                  <div className="flex-1">
+                    {/* Section Divider */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}15` }} />
+                      <span className="text-[9px] font-medium uppercase tracking-wider opacity-50" style={{ color: wcagColors.nameColor }}>
+                        Links
+                      </span>
+                      <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}15` }} />
+                    </div>
+                    
+                    {/* Icon Grid */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {links.map((link) => {
+                        const platform = detectPlatformFromUrl(link.url);
+                        const logoSrc = link.customLogo || platform?.logo || DEFAULT_LOGO;
+                        const displayName = link.displayLabel || platform?.name || link.platform || 'Link';
+
+                        return (
+                          <div
+                            key={link.id}
+                            className="flex flex-col items-center gap-1.5 p-2 rounded-xl transition-transform hover:scale-105"
+                            style={{ 
+                              backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)',
+                              border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)'}`
+                            }}
+                          >
+                            <div 
+                              className="w-10 h-10 rounded-lg flex items-center justify-center"
+                              style={{ 
+                                backgroundColor: `${settings.buttonColor}12`,
+                                border: `1px solid ${settings.buttonColor}20`
+                              }}
+                            >
+                              <img
+                                src={logoSrc}
+                                alt={displayName}
+                                className="w-6 h-6 object-contain"
+                                onError={(e) => {
+                                  e.currentTarget.src = DEFAULT_LOGO;
+                                }}
+                              />
+                            </div>
+                            <span 
+                              className="text-[9px] font-medium text-center line-clamp-1 w-full"
+                              style={{ color: wcagColors.nameColor }}
+                            >
+                              {displayName}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {/* Empty State */}
                 {links.length === 0 && (
-                  <div className="text-center py-8 text-gray-400 text-sm flex-1 flex items-center justify-center">
-                    Your links will appear here
+                  <div className="text-center py-6 flex-1 flex flex-col items-center justify-center">
+                    <div 
+                      className="w-12 h-12 rounded-full flex items-center justify-center mb-2"
+                      style={{ backgroundColor: `${settings.buttonColor}15` }}
+                    >
+                      <ExternalLink className="w-6 h-6" style={{ color: settings.buttonColor }} />
+                    </div>
+                    <p className="text-xs opacity-50" style={{ color: wcagColors.nameColor }}>
+                      Add links to see them here
+                    </p>
                   </div>
                 )}
 

@@ -2,12 +2,12 @@
 // Single comprehensive page for all profile management: info, photo/logo, links, appearance, QR code
 // Virtual Invitation Card - all features in one place
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User, Image, Link2, Palette, QrCode, Eye, Share2, Download,
-  Save, ChevronDown, ChevronUp, Check, X, Camera, Globe, Lock,
-  Mail, Phone, Briefcase, Building2, FileText, ExternalLink
+  Cloud, ChevronDown, ChevronUp, Check, X, Camera, Globe, Lock,
+  Mail, Phone, Briefcase, Building2, FileText, ExternalLink, CheckCircle, AlertCircle, Loader2
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useToast } from '../contexts/ToastContext';
@@ -18,6 +18,8 @@ import { AddLinkModal } from '../components/profile/AddLinkModal';
 import { AppearancePanel } from '../components/profile/AppearancePanel';
 import { getQRCodeDataURL } from '../services/qrCodeService';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../constants/platforms';
+import { ImageCropper, AspectRatioPreset } from '../components/common/ImageCropper';
+import { CropResult } from '../utils/cropImage';
 
 // Tab types for different sections
 type TabType = 'info' | 'media' | 'links' | 'appearance' | 'qr';
@@ -90,6 +92,12 @@ export const UnifiedProfileEditor: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Auto-save state
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingChangesRef = useRef<Partial<ProfileData> | null>(null);
+
   // Username validation
   const [usernameChecking, setUsernameChecking] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
@@ -100,6 +108,11 @@ export const UnifiedProfileEditor: React.FC = () => {
   const [uploading, setUploading] = useState<'avatar' | 'logo' | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Image cropper state
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [cropperImage, setCropperImage] = useState<string>('');
+  const [cropperType, setCropperType] = useState<'avatar' | 'logo'>('avatar');
 
   // Links state
   const [links, setLinks] = useState<SocialLink[]>([]);
@@ -246,10 +259,14 @@ export const UnifiedProfileEditor: React.FC = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    const newValue = type === 'checkbox' ? checked : value;
+    
+    const newFormData = {
+      ...formData,
+      [name]: newValue,
+    };
+    
+    setFormData(newFormData);
     setHasChanges(true);
 
     // Clear field error
@@ -258,6 +275,14 @@ export const UnifiedProfileEditor: React.FC = () => {
         const { [name]: removed, ...rest } = prev;
         return rest;
       });
+    }
+
+    // For checkboxes (toggles), save immediately
+    // For text fields, use debounced auto-save
+    if (type === 'checkbox' && exists) {
+      performAutoSave(newFormData);
+    } else if (exists) {
+      scheduleAutoSave(newFormData);
     }
   };
 
@@ -293,6 +318,61 @@ export const UnifiedProfileEditor: React.FC = () => {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
+
+  // Debounced auto-save function for profile info
+  const performAutoSave = useCallback(async (dataToSave: Partial<ProfileData>) => {
+    // Skip auto-save if profile doesn't exist yet (need explicit create)
+    if (!exists) return;
+    
+    // Basic validation before auto-save
+    if (!dataToSave.displayName?.trim()) return;
+    if (dataToSave.publicEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dataToSave.publicEmail)) return;
+    if (dataToSave.companyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dataToSave.companyEmail)) return;
+    if (dataToSave.website && dataToSave.website.length > 0 && !/^https?:\/\/.+/.test(dataToSave.website)) return;
+    if (dataToSave.bio && dataToSave.bio.length > 500) return;
+
+    setAutoSaveStatus('saving');
+    try {
+      await updateProfile(dataToSave);
+      setAutoSaveStatus('saved');
+      setLastSaveTime(new Date());
+      setHasChanges(false);
+      // Reset to idle after 2 seconds
+      setTimeout(() => setAutoSaveStatus('idle'), 2000);
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+      setAutoSaveStatus('error');
+      // Keep error state visible longer
+      setTimeout(() => setAutoSaveStatus('idle'), 5000);
+    }
+  }, [exists, updateProfile]);
+
+  // Schedule auto-save with debouncing
+  const scheduleAutoSave = useCallback((newFormData: Partial<ProfileData>) => {
+    pendingChangesRef.current = newFormData;
+    
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Schedule new auto-save after 1 second of inactivity
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      if (pendingChangesRef.current) {
+        performAutoSave(pendingChangesRef.current);
+        pendingChangesRef.current = null;
+      }
+    }, 1000);
+  }, [performAutoSave]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSave = async () => {
     if (!validateForm()) {
@@ -332,30 +412,45 @@ export const UnifiedProfileEditor: React.FC = () => {
       return;
     }
 
+    // Read file and open cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setCropperImage(base64);
+      setCropperType(type);
+      setCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle cropped image upload
+  const handleCroppedImageUpload = async (result: CropResult) => {
+    const type = cropperType;
     setUploading(type);
     try {
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        const response = await authFetch(`/api/uploads/${type}`, {
-          method: 'POST',
-          body: JSON.stringify({ image: base64 })
-        });
+      const response = await authFetch(`/api/uploads/${type}`, {
+        method: 'POST',
+        body: JSON.stringify({ image: result.base64 })
+      });
 
-        if (!response.ok) throw new Error('Upload failed');
-        const data = await response.json();
+      if (!response.ok) throw new Error('Upload failed');
+      const data = await response.json();
 
-        if (type === 'avatar') setAvatarUrl(data.url);
-        else setLogoUrl(data.url);
+      if (type === 'avatar') setAvatarUrl(data.url);
+      else setLogoUrl(data.url);
 
-        showToast(`${type === 'avatar' ? 'Photo' : 'Logo'} uploaded successfully!`, 'success');
-      };
-      reader.readAsDataURL(file);
+      showToast(`${type === 'avatar' ? 'Photo' : 'Logo'} uploaded successfully!`, 'success');
     } catch (error) {
       console.error(`Error uploading ${type}:`, error);
       showToast(`Failed to upload ${type}`, 'error');
     } finally {
       setUploading(null);
+      // Clear file input
+      if (type === 'avatar' && avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      } else if (logoInputRef.current) {
+        logoInputRef.current.value = '';
+      }
     }
   };
 
@@ -592,22 +687,66 @@ export const UnifiedProfileEditor: React.FC = () => {
                 </button>
               )}
 
-              {/* Save Button */}
-              <button
-                onClick={handleSave}
-                disabled={saving || (!hasChanges && exists)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${hasChanges || !exists
-                  ? 'btn btn-primary'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed'
-                  }`}
-              >
-                {saving ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Save className="w-5 h-5" />
-                )}
-                <span className="hidden sm:inline">{exists ? 'Save' : 'Create'}</span>
-              </button>
+              {/* Auto-save Status / Create Button */}
+              {exists ? (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm">
+                  {autoSaveStatus === 'saving' && (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-accent" />
+                      <span className="text-secondary hidden sm:inline">Saving...</span>
+                    </>
+                  )}
+                  {autoSaveStatus === 'saved' && (
+                    <>
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      <span className="text-emerald-600 dark:text-emerald-400 hidden sm:inline">Saved</span>
+                    </>
+                  )}
+                  {autoSaveStatus === 'error' && (
+                    <>
+                      <AlertCircle className="w-4 h-4 text-red-500" />
+                      <span className="text-red-600 dark:text-red-400 hidden sm:inline">Save failed</span>
+                      <button
+                        onClick={() => pendingChangesRef.current && performAutoSave(pendingChangesRef.current)}
+                        className="text-xs text-accent hover:underline"
+                      >
+                        Retry
+                      </button>
+                    </>
+                  )}
+                  {autoSaveStatus === 'idle' && lastSaveTime && (
+                    <>
+                      <Cloud className="w-4 h-4 text-secondary" />
+                      <span className="text-secondary hidden sm:inline">All changes saved</span>
+                    </>
+                  )}
+                  {autoSaveStatus === 'idle' && !lastSaveTime && !hasChanges && (
+                    <>
+                      <Cloud className="w-4 h-4 text-secondary" />
+                      <span className="text-secondary hidden sm:inline">Up to date</span>
+                    </>
+                  )}
+                  {autoSaveStatus === 'idle' && hasChanges && (
+                    <>
+                      <Cloud className="w-4 h-4 text-amber-500" />
+                      <span className="text-amber-600 dark:text-amber-400 hidden sm:inline">Unsaved changes</span>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors btn btn-primary"
+                >
+                  {saving ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-5 h-5" />
+                  )}
+                  <span className="hidden sm:inline">Create Profile</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -1287,6 +1426,7 @@ export const UnifiedProfileEditor: React.FC = () => {
                 }}
                 links={sortedLinks}
                 appearance={appearance}
+                profileUrl={formData.username ? `${window.location.origin}/u/${encodeURIComponent(formData.username)}` : undefined}
               />
             </div>
           </div>
@@ -1305,6 +1445,26 @@ export const UnifiedProfileEditor: React.FC = () => {
           />
         )
       }
+
+      {/* Image Cropper Modal */}
+      <ImageCropper
+        imageSrc={cropperImage}
+        isOpen={cropperOpen}
+        onClose={() => {
+          setCropperOpen(false);
+          setCropperImage('');
+          // Clear file input
+          if (cropperType === 'avatar' && avatarInputRef.current) {
+            avatarInputRef.current.value = '';
+          } else if (logoInputRef.current) {
+            logoInputRef.current.value = '';
+          }
+        }}
+        onCropComplete={handleCroppedImageUpload}
+        aspectRatio={cropperType === 'avatar' ? 'avatar' : 'logo'}
+        title={cropperType === 'avatar' ? 'Crop Profile Photo' : 'Crop Logo'}
+        cropShape={cropperType === 'avatar' ? 'round' : 'rect'}
+      />
     </div >
   );
 };

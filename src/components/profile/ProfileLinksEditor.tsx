@@ -689,6 +689,7 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
             }}
             links={sortedLinks}
             appearance={appearance}
+            profileUrl={profile.username ? `${window.location.origin}/u/${encodeURIComponent(profile.username)}` : undefined}
           />
         </div>
       </div>

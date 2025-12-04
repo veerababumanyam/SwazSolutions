@@ -6,7 +6,6 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { profileService, PublicProfileResponse } from '../services/profileService';
 import PublicProfileView from '../components/public-profile/PublicProfileView';
-import QRCodeModal from '../components/profile/QRCodeModal';
 
 interface PublicProfileProps { }
 
@@ -15,7 +14,6 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<PublicProfileResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -66,19 +64,17 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
     }
   };
 
-  // Handle QR code display
-  const handleViewQR = () => {
-    setShowQRModal(true);
-  };
-
   // Handle share
   const handleShare = async () => {
     if (!profile) return;
 
+    // Use clean public URL format without hash, properly encoded
+    const publicUrl = `${window.location.origin}/u/${encodeURIComponent(profile.username)}`;
+
     const shareData = {
       title: `${profile.displayName}'s Profile`,
       text: profile.headline || `Check out ${profile.displayName}'s profile`,
-      url: window.location.href,
+      url: publicUrl,
     };
 
     if (navigator.share) {
@@ -86,16 +82,17 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
         await navigator.share(shareData);
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
-          copyToClipboard();
+          copyToClipboard(publicUrl);
         }
       }
     } else {
-      copyToClipboard();
+      copyToClipboard(publicUrl);
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(window.location.href);
+  const copyToClipboard = (url?: string) => {
+    const publicUrl = url || `${window.location.origin}/u/${encodeURIComponent(profile?.username || '')}`;
+    navigator.clipboard.writeText(publicUrl);
     alert('Profile link copied to clipboard!');
   };
 
@@ -178,16 +175,9 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
         profile={profileData}
         links={allLinks}
         appearance={profile.appearance}
+        profileUrl={`${window.location.origin}/u/${encodeURIComponent(profile.username)}`}
         onDownloadVCard={handleDownloadVCard}
-        onViewQR={handleViewQR}
         onShare={handleShare}
-      />
-
-      {/* QR Code Modal */}
-      <QRCodeModal
-        isOpen={showQRModal}
-        onClose={() => setShowQRModal(false)}
-        username={profile.username}
       />
     </>
   );

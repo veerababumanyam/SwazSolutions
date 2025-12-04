@@ -11,6 +11,8 @@ import {
   type Platform,
   type PlatformCategory 
 } from '../../constants/platforms';
+import { ImageCropper } from '../common/ImageCropper';
+import { CropResult } from '../../utils/cropImage';
 
 interface AddLinkModalProps {
   isOpen: boolean;
@@ -41,6 +43,10 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Logo cropper state
+  const [logoCropperOpen, setLogoCropperOpen] = useState(false);
+  const [logoCropperImage, setLogoCropperImage] = useState<string>('');
+
   const platformsByCategory = getPlatformsByCategory();
 
   useEffect(() => {
@@ -60,9 +66,9 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (500KB max)
-    if (file.size > 500 * 1024) {
-      setError('Logo must be less than 500KB');
+    // Validate file size (2MB max - higher to allow cropping)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo must be less than 2MB');
       return;
     }
 
@@ -73,44 +79,50 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({
       return;
     }
 
-    setUploadingLogo(true);
     setError('');
 
+    // Read file and open cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setLogoCropperImage(base64);
+      setLogoCropperOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    // Reset file input
+    e.target.value = '';
+  };
+
+  // Handle cropped logo upload
+  const handleLogoCropComplete = async (result: CropResult) => {
+    setUploadingLogo(true);
+    setCustomLogoPreview(result.base64);
+
     try {
-      // Read file as base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = reader.result as string;
-        setCustomLogoPreview(base64);
+      const response = await fetch('/api/uploads/social-logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ image: result.base64 }),
+      });
 
-        // Upload to server for processing
-        try {
-          const response = await fetch('/api/uploads/social-logo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ image: base64 }),
-          });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Upload failed');
+      }
 
-          if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Upload failed');
-          }
-
-          const data = await response.json();
-          setCustomLogo(data.url);
-          setViewMode('form');
-        } catch (err) {
-          console.error('Upload error:', err);
-          setError(err instanceof Error ? err.message : 'Failed to upload logo');
-          setCustomLogoPreview(null);
-        }
-        setUploadingLogo(false);
-      };
-      reader.readAsDataURL(file);
+      const data = await response.json();
+      setCustomLogo(data.url);
+      setViewMode('form');
     } catch (err) {
-      setError('Failed to read file');
+      console.error('Upload error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload logo');
+      setCustomLogoPreview(null);
+    } finally {
       setUploadingLogo(false);
+      setLogoCropperOpen(false);
+      setLogoCropperImage('');
     }
   };
 
@@ -450,8 +462,8 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <p className="text-gray-700 dark:text-gray-300 font-medium">Click to upload logo</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, GIF, WebP, or SVG (max 500KB)</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">Logo will be resized to 512×512 and converted to WebP</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">JPG, PNG, GIF, WebP, or SVG (max 2MB)</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">You can crop and adjust after selecting</p>
                   </div>
                 )}
               </div>
@@ -474,6 +486,20 @@ export const AddLinkModal: React.FC<AddLinkModalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Logo Cropper Modal */}
+      <ImageCropper
+        imageSrc={logoCropperImage}
+        isOpen={logoCropperOpen}
+        onClose={() => {
+          setLogoCropperOpen(false);
+          setLogoCropperImage('');
+        }}
+        onCropComplete={handleLogoCropComplete}
+        aspectRatio="logo"
+        title="Crop Logo"
+        cropShape="rect"
+      />
     </div>
   );
 };
