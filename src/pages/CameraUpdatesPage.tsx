@@ -154,8 +154,7 @@ export const CameraUpdatesPage: React.FC = () => {
   // Fetch updates from API
   const fetchUpdates = async () => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${API_URL}/api/camera-updates`);
+      const response = await fetch('/api/camera-updates');
       
       if (!response.ok) {
         throw new Error('Failed to fetch camera updates');
@@ -187,8 +186,7 @@ export const CameraUpdatesPage: React.FC = () => {
   const refreshUpdates = async () => {
     setIsRefreshing(true);
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${API_URL}/api/camera-updates/refresh`, {
+      const response = await fetch('/api/camera-updates/refresh', {
         method: 'POST'
       });
       

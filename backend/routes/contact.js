@@ -19,11 +19,7 @@ function createContactRoutes(db) {
         },
         standardHeaders: true,
         legacyHeaders: false,
-        skipSuccessfulRequests: false, // Count all attempts, not just successful ones
-        // Use IP-based rate limiting
-        keyGenerator: (req) => {
-            return req.ip || req.connection.remoteAddress;
-        }
+        skipSuccessfulRequests: false // Count all attempts, not just successful ones
     });
 
     // Stricter rate limit for initial validation (prevents spam bots)

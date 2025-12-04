@@ -1,7 +1,5 @@
-// API Base URL - automatically detects if running through backend or Vite dev server
-const API_BASE_URL = import.meta.env.VITE_API_URL 
-    ? `${import.meta.env.VITE_API_URL}/api`
-    : (import.meta.env.PROD ? '/api' : 'http://localhost:3000/api');
+// API Base URL - use relative paths for Vite proxy in development
+const API_BASE_URL = '/api';
 
 // Helper function to get auth token
 const getAuthToken = (): string | null => {
@@ -112,8 +110,8 @@ export const songsAPI = {
 
     // Get song URL for audio player
     getSongUrl(filePath: string): string {
-        const baseUrl = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:3000');
-        return `${baseUrl}${filePath}`;
+        // Use relative path for Vite proxy
+        return filePath;
     },
 };
 

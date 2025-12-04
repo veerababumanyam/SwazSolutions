@@ -19,6 +19,30 @@ function createAuthRoutes(db) {
         });
     };
 
+    // Helper function to auto-create a basic profile for new users
+    const ensureProfileExists = (userId, username, displayName) => {
+        try {
+            // Check if profile already exists
+            const existing = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(userId);
+            if (existing) {
+                return existing;
+            }
+
+            // Create a basic profile with minimal info (user can edit later)
+            const result = db.prepare(
+                `INSERT INTO profiles (user_id, username, display_name, published, created_at, updated_at)
+                 VALUES (?, ?, ?, 0, datetime('now'), datetime('now'))`
+            ).run(userId, username, displayName || username);
+
+            console.log(`✅ Auto-created profile for user ${username} (ID: ${userId})`);
+            return { id: result.lastInsertRowid };
+        } catch (error) {
+            // If profile creation fails (e.g., username conflict), log but don't fail auth
+            console.error(`⚠️ Failed to auto-create profile for user ${username}:`, error.message);
+            return null;
+        }
+    };
+
     // Register new user
     router.post('/register', async (req, res) => {
         const { username, password, email } = req.body;
@@ -70,6 +94,9 @@ function createAuthRoutes(db) {
             );
 
             setTokenCookie(res, token);
+
+            // Auto-create a basic profile for the new user
+            ensureProfileExists(user.id, username, username);
 
             res.status(201).json({
                 message: 'User registered successfully',
@@ -202,6 +229,9 @@ function createAuthRoutes(db) {
 
             setTokenCookie(res, token);
 
+            // Auto-create profile for Google users (using Google display name)
+            ensureProfileExists(user.id, user.username, name || user.username);
+
             console.log(`✅ Google OAuth successful for user: ${user.username}`);
             res.json({
                 message: 'Google login successful',
@@ -242,7 +272,13 @@ function createAuthRoutes(db) {
                 return res.status(404).json({ error: 'User not found' });
             }
 
-            res.json({ user });
+            // Check if user has a profile
+            const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.user.id);
+
+            res.json({ 
+                user,
+                hasProfile: !!profile
+            });
         } catch (error) {
             console.error('Get user error:', error);
             res.status(500).json({ error: 'Failed to get user' });

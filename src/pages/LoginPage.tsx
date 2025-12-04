@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -7,6 +7,7 @@ import { Music, Mail, Lock, ArrowRight } from 'lucide-react';
 declare global {
     interface Window {
         google: any;
+        handleGoogleCredentialResponse?: (response: any) => void;
     }
 }
 
@@ -14,41 +15,18 @@ export const LoginPage: React.FC = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [googleLoaded, setGoogleLoaded] = useState(false);
     const { login } = useAuth();
     const { showToast } = useToast();
     const navigate = useNavigate();
     const location = useLocation();
+    const googleButtonRef = useRef<HTMLDivElement>(null);
+    const initializedRef = useRef(false);
 
     const from = location.state?.from?.pathname || '/studio';
 
-    useEffect(() => {
-        // Initialize Google Sign-In
-        const initializeGoogleSignIn = () => {
-            if (window.google) {
-                window.google.accounts.id.initialize({
-                    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "YOUR_GOOGLE_CLIENT_ID_HERE",
-                    callback: handleGoogleCallback
-                });
-                window.google.accounts.id.renderButton(
-                    document.getElementById("googleSignInDiv"),
-                    { theme: "outline", size: "large", width: "100%" }
-                );
-            }
-        };
-
-        const script = document.createElement('script');
-        script.src = "https://accounts.google.com/gsi/client";
-        script.async = true;
-        script.defer = true;
-        script.onload = initializeGoogleSignIn;
-        document.body.appendChild(script);
-
-        return () => {
-            document.body.removeChild(script);
-        };
-    }, []);
-
-    const handleGoogleCallback = async (response: any) => {
+    // Memoized callback to handle Google response
+    const handleGoogleCallback = useCallback(async (response: any) => {
         setIsLoading(true);
         try {
             const res = await fetch('/api/auth/google', {
@@ -62,6 +40,9 @@ export const LoginPage: React.FC = () => {
             const data = await res.json();
 
             if (res.ok) {
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                }
                 login(data.user);
                 showToast('Successfully logged in with Google!', 'success');
                 navigate(from, { replace: true });
@@ -73,7 +54,75 @@ export const LoginPage: React.FC = () => {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [login, showToast, navigate, from]);
+
+    useEffect(() => {
+        // Set up global callback
+        window.handleGoogleCredentialResponse = handleGoogleCallback;
+
+        return () => {
+            delete window.handleGoogleCredentialResponse;
+        };
+    }, [handleGoogleCallback]);
+
+    useEffect(() => {
+        // Check if script already exists
+        const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+        
+        const initializeGoogleSignIn = () => {
+            if (window.google && googleButtonRef.current && !initializedRef.current) {
+                try {
+                    window.google.accounts.id.initialize({
+                        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
+                        callback: (response: any) => {
+                            if (window.handleGoogleCredentialResponse) {
+                                window.handleGoogleCredentialResponse(response);
+                            }
+                        },
+                        auto_select: false,
+                        cancel_on_tap_outside: true,
+                    });
+                    
+                    window.google.accounts.id.renderButton(
+                        googleButtonRef.current,
+                        { 
+                            theme: "outline", 
+                            size: "large", 
+                            width: 280,
+                            text: "signin_with",
+                            shape: "rectangular"
+                        }
+                    );
+                    initializedRef.current = true;
+                    setGoogleLoaded(true);
+                } catch (error) {
+                    console.error('Error initializing Google Sign-In:', error);
+                }
+            }
+        };
+
+        if (existingScript) {
+            // Script already loaded, just initialize
+            if (window.google) {
+                initializeGoogleSignIn();
+            } else {
+                existingScript.addEventListener('load', initializeGoogleSignIn);
+            }
+        } else {
+            // Load the script
+            const script = document.createElement('script');
+            script.src = "https://accounts.google.com/gsi/client";
+            script.async = true;
+            script.defer = true;
+            script.onload = initializeGoogleSignIn;
+            script.onerror = () => console.error('Failed to load Google Sign-In script');
+            document.head.appendChild(script);
+        }
+
+        return () => {
+            initializedRef.current = false;
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -91,6 +140,10 @@ export const LoginPage: React.FC = () => {
             const data = await res.json();
 
             if (res.ok) {
+                // Store token in localStorage
+                if (data.token) {
+                    localStorage.setItem('auth_token', data.token);
+                }
                 login(data.user);
                 showToast('Successfully logged in!', 'success');
                 navigate(from, { replace: true });
@@ -118,7 +171,7 @@ export const LoginPage: React.FC = () => {
                 </div>
 
                 <div className="space-y-4 mb-6">
-                    <div id="googleSignInDiv" className="w-full flex justify-center"></div>
+                    <div ref={googleButtonRef} className="w-full flex justify-center"></div>
                 </div>
 
                 <div className="relative mb-6">

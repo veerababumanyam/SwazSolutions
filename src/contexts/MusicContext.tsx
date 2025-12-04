@@ -38,6 +38,9 @@ interface MusicContextType {
     prev: () => void;
     seek: (time: number) => void;
     setVolume: (vol: number) => void;
+    toggleShuffle: () => void;
+    toggleRepeat: () => void;
+
     // Theme
     theme: 'light' | 'dark';
     toggleTheme: () => void;
@@ -49,6 +52,8 @@ interface MusicContextType {
     searchHistory: string[];
     addSearchQuery: (query: string) => void;
     clearSearchHistory: () => void;
+    removeFromSearchHistory: (query: string) => void;
+
     playTrack: (song: Song) => void;
     playPlaylist: (playlistId: string, startIndex?: number) => void;
     playAlbum: (albumId: string, startIndex?: number) => void;
@@ -247,8 +252,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             // Then fetch songs from API
             const { songs } = await api.songs.list({ limit: 1000 });
             const albumsData = await api.songs.getAlbums();
-
-            const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
             // Convert API response to Song format
             const formattedSongs: Song[] = songs.map((s: ApiSong) => ({
@@ -531,6 +534,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setSearchHistory([]);
     };
 
+    const removeFromSearchHistory = (query: string) => {
+        setSearchHistory(prev => prev.filter(q => q !== query));
+    };
+
     // --- Playback Logic ---
 
     // Timer for progress update
@@ -713,9 +720,9 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const next = () => {
         if (queue.length === 0) return;
-        
+
         let nextIndex;
-        
+
         if (isShuffling) {
             // Smart Shuffle Logic
             const recentHistory = history.slice(-10);
@@ -859,7 +866,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             library, albums, playlists, isScanning, lastScanTime,
             analyser: analyserNode, equalizer, setEqualizer,
             theme, toggleTheme,
-            recentlyPlayed, searchHistory, addSearchQuery, clearSearchHistory,
+            recentlyPlayed, searchHistory, addSearchQuery, clearSearchHistory, removeFromSearchHistory,
             play, pause, next, prev, seek, setVolume, toggleShuffle, toggleRepeat, playTrack, playPlaylist, playAlbum,
             toggleLike, addToQueue, setQueue, playTrackByIndex, clearError, refreshLibrary, connectLocalLibrary,
             createPlaylist, deletePlaylist, renamePlaylist, addSongToPlaylist, removeSongFromPlaylist, moveSongInPlaylist, getSongById

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Globe, Music, Heart, Wand2, CheckCircle, Activity, Lock, Phone, Server, FileWarning, FileCheck, Feather, Layers, FileCode, Play, Search, Palette, Mic2, Bot, Network, Brain, Radio, Camera } from 'lucide-react';
+import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Globe, Music, Heart, Wand2, CheckCircle, Activity, Lock, Phone, Server, FileWarning, FileCheck, Feather, Layers, FileCode, Play, Search, Palette, Mic2, Bot, Network, Brain, Radio, Camera, IdCard, QrCode, Users } from 'lucide-react';
 import { Schema, localBusinessSchema, dataRecoveryFAQSchema } from '../components/Schema';
 import { UnifiedContactForm } from '../components/UnifiedContactForm';
 
@@ -9,9 +9,9 @@ export const LandingPage: React.FC = () => {
     const location = useLocation();
 
     useEffect(() => {
-        const durations = [10000, 8000, 8000, 8000]; // Durations for each hero card (4 cards)
+        const durations = [10000, 8000, 8000, 8000, 8000]; // Durations for each hero card (5 cards)
         const timeout = setTimeout(() => {
-            setActiveHero((prev) => (prev + 1) % 4);
+            setActiveHero((prev) => (prev + 1) % 5);
         }, durations[activeHero]);
         return () => clearTimeout(timeout);
     }, [activeHero]);
@@ -419,10 +419,10 @@ export const LandingPage: React.FC = () => {
                                                 {/* Animated Soundwave */}
                                                 <div className="flex items-center justify-center gap-1 h-20 mb-6">
                                                     {[...Array(12)].map((_, i) => (
-                                                        <div 
-                                                            key={i} 
-                                                            className="frequency-bar" 
-                                                            style={{ 
+                                                        <div
+                                                            key={i}
+                                                            className="frequency-bar"
+                                                            style={{
                                                                 height: `${30 + Math.random() * 70}%`,
                                                                 animationDelay: `${i * 0.1}s`,
                                                                 animation: `music-wave-${(i % 5) + 1} 0.8s ease-in-out infinite`
@@ -470,9 +470,127 @@ export const LandingPage: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* Card 5: vCard - Digital Business Card */}
+                        <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 4 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                {/* Top-Right Badge - STANDARDIZED */}
+                                <div className="absolute top-0 right-0 p-0 md:p-8">
+                                    <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                        <Users className="w-4 h-4" /> PROFESSIONAL NETWORKING
+                                    </div>
+                                </div>
+
+                                <div className="grid lg:grid-cols-2 gap-12 items-center mt-8 md:mt-0">
+                                    <div>
+                                        {/* Badge: Digital Identity (Above Title) */}
+                                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/5 border border-accent/30 mb-6">
+                                            <IdCard className="w-4 h-4 text-accent" />
+                                            <span className="text-xs font-bold text-accent uppercase tracking-wider">DIGITAL BUSINESS CARD</span>
+                                        </div>
+
+                                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight">
+                                            Your Professional<br />
+                                            Identity, Digitized
+                                            {/* Brand Gradient Subheadline */}
+                                            <span className="text-transparent bg-clip-text bg-brand-gradient text-3xl md:text-4xl block mt-2 font-bold">Share Your Profile Instantly</span>
+                                        </h2>
+
+                                        <p className="text-lg text-secondary mb-8 leading-relaxed border-l-4 border-accent pl-4">
+                                            Create a stunning <strong>digital business card</strong> with QR codes, customizable themes, and instant vCard export. Perfect for networking events, conferences, and professional connections.
+                                        </p>
+
+                                        <div className="flex flex-wrap gap-3 mb-10">
+                                            {[{ icon: QrCode, label: 'QR Code' }, { icon: Palette, label: '12+ Themes' }, { icon: IdCard, label: 'vCard Export' }].map((f, i) => (
+                                                <div key={i} className="px-4 py-2 rounded-xl bg-surface border border-border text-sm font-semibold text-secondary flex items-center gap-2 shadow-sm hover:border-accent transition-colors cursor-default">
+                                                    <f.icon className="w-4 h-4 text-accent" /> {f.label}
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <Link to="/profile/dashboard" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
+                                                <IdCard className="w-5 h-5" /> Create Your vCard
+                                                <ArrowRight className="w-5 h-5" />
+                                            </Link>
+                                        </div>
+
+                                        <p className="mt-6 text-xs text-muted font-medium flex items-center gap-2">
+                                            <Shield className="w-4 h-4 text-emerald-500" /> Privacy-First • Customizable Themes • Analytics Dashboard
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-6 relative">
+                                        {/* Background Glow */}
+                                        <div className="absolute -inset-4 bg-gradient-to-r from-accent/10 to-accent-orange/10 rounded-full blur-3xl animate-pulse"></div>
+
+                                        {/* vCard Preview Card */}
+                                        <div className="bg-surface/60 backdrop-blur-sm p-8 rounded-2xl border border-accent/20 shadow-lg relative">
+                                            <div className="flex items-center gap-4 mb-6">
+                                                <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 shadow-inner">
+                                                    <IdCard className="w-7 h-7 text-accent" />
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-lg text-primary">Digital Profile</div>
+                                                    <div className="text-sm text-secondary">Shareable & Scannable</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Theme Color Swatches */}
+                                            <div className="mb-6">
+                                                <div className="text-xs font-bold text-secondary uppercase mb-3">12+ Professional Themes</div>
+                                                <div className="grid grid-cols-6 gap-2">
+                                                    {['#667EEA', '#F56565', '#48BB78', '#ED8936', '#9F7AEA', '#38B2AC', '#ECC94B', '#ED64A6', '#4299E1', '#FC8181', '#68D391', '#F6AD55'].map((color, i) => (
+                                                        <div
+                                                            key={i}
+                                                            className="w-8 h-8 rounded-lg border-2 border-white shadow-md hover:scale-110 transition-transform cursor-pointer"
+                                                            style={{ backgroundColor: color }}
+                                                            title={`Theme ${i + 1}`}
+                                                        ></div>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-4 text-center">
+                                                <div className="bg-surface/80 p-3 rounded-xl">
+                                                    <div className="text-2xl font-black text-accent">QR</div>
+                                                    <div className="text-[10px] uppercase text-secondary font-bold">Scannable</div>
+                                                </div>
+                                                <div className="bg-surface/80 p-3 rounded-xl">
+                                                    <div className="text-2xl font-black text-accent">12+</div>
+                                                    <div className="text-[10px] uppercase text-secondary font-bold">Themes</div>
+                                                </div>
+                                                <div className="bg-surface/80 p-3 rounded-xl">
+                                                    <div className="text-2xl font-black text-accent">.vcf</div>
+                                                    <div className="text-[10px] uppercase text-secondary font-bold">Export</div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Features Grid */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
+                                                <div className="p-2 bg-accent/10 rounded-lg text-accent"><QrCode className="w-5 h-5" /></div>
+                                                <div>
+                                                    <div className="font-bold text-primary">Instant</div>
+                                                    <div className="text-[10px] uppercase text-secondary font-bold">Sharing</div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
+                                                <div className="p-2 bg-accent-orange/10 rounded-lg text-accent-orange"><Activity className="w-5 h-5" /></div>
+                                                <div>
+                                                    <div className="font-bold text-primary">Analytics</div>
+                                                    <div className="text-[10px] uppercase text-secondary font-bold">Track Views</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Carousel Indicators */}
                         <div className="flex justify-center gap-3 mt-8">
-                            {[0, 1, 2, 3].map((idx) => (
+                            {[0, 1, 2, 3, 4].map((idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => setActiveHero(idx)}
@@ -485,7 +603,7 @@ export const LandingPage: React.FC = () => {
                 </section>
 
                 {/* FEATURE SECTIONS - Modern Apple/Vercel Style */}
-                
+
                 {/* Feature 1: Data Recovery - Comprehensive Section */}
                 <section id="data-recovery" className="py-32 bg-background relative overflow-hidden scroll-mt-24">
                     <div className="absolute inset-0 bg-gradient-to-b from-accent/5 to-transparent"></div>
@@ -498,19 +616,19 @@ export const LandingPage: React.FC = () => {
                                         <HardDrive className="w-4 h-4 text-accent" />
                                         <span className="text-xs font-bold text-accent uppercase tracking-wider">Emergency Data Recovery</span>
                                     </div>
-                                    
+
                                     <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-primary leading-tight">
                                         Your Data.<br />
                                         <span className="text-gradient">Always Recoverable.</span>
                                     </h2>
-                                    
+
                                     <p className="text-xl text-secondary leading-relaxed">
-                                        From crashed hard drives to ransomware attacks, we recover what others can't. 
+                                        From crashed hard drives to ransomware attacks, we recover what others can't.
                                         With a 98% success rate and ISO-certified cleanroom facilities, your critical data is in expert hands.
                                     </p>
 
                                     <div className="flex flex-wrap gap-4">
-                                        <button 
+                                        <button
                                             onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
                                             className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift"
                                         >
@@ -600,7 +718,7 @@ export const LandingPage: React.FC = () => {
                                         desc: 'Your data is encrypted onto a transfer drive and shipped back to you via priority courier.'
                                     }
                                 ].map((process, i) => (
-                                    <div key={i} className="glass-card p-8 rounded-3xl border border-border hover:-translate-y-2 transition-all group animate-slide-up" style={{animationDelay: `${i * 0.1}s`}}>
+                                    <div key={i} className="glass-card p-8 rounded-3xl border border-border hover:-translate-y-2 transition-all group animate-slide-up" style={{ animationDelay: `${i * 0.1}s` }}>
                                         <div className="relative mb-6">
                                             <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto group-hover:bg-accent group-hover:scale-110 transition-all">
                                                 <process.icon className="w-8 h-8 text-accent group-hover:text-white" />
@@ -668,20 +786,20 @@ export const LandingPage: React.FC = () => {
                                         <Sparkles className="w-4 h-4 text-accent" />
                                         <span className="text-xs font-bold text-accent uppercase tracking-wider">Our Mission</span>
                                     </div>
-                                    
+
                                     <h3 className="text-4xl md:text-5xl font-black text-primary leading-tight">
                                         Restoring the Past.<br />
                                         <span className="text-gradient">Powering the Future.</span>
                                     </h3>
-                                    
+
                                     <p className="text-lg text-secondary leading-relaxed">
-                                        Founded by a coalition of forensic data engineers and AI researchers, Swaz Solutions was built on a single premise: 
+                                        Founded by a coalition of forensic data engineers and AI researchers, Swaz Solutions was built on a single premise:
                                         <strong> Technology should serve humanity's most critical needs.</strong>
                                     </p>
-                                    
+
                                     <p className="text-secondary leading-relaxed">
-                                        We operate at the intersection of hardware precision and software intelligence. Whether it's a RAID array 
-                                        holding a decade of corporate history or a creator looking for the perfect culturally-aware lyric, 
+                                        We operate at the intersection of hardware precision and software intelligence. Whether it's a RAID array
+                                        holding a decade of corporate history or a creator looking for the perfect culturally-aware lyric,
                                         we bring enterprise-grade rigor to every challenge.
                                     </p>
 
@@ -693,7 +811,7 @@ export const LandingPage: React.FC = () => {
                                             <div>
                                                 <h4 className="font-bold text-primary mb-2">Research First Approach</h4>
                                                 <p className="text-sm text-secondary leading-relaxed">
-                                                    We invest 30% of revenue back into R&D, developing proprietary head-swap tools 
+                                                    We invest 30% of revenue back into R&D, developing proprietary head-swap tools
                                                     and fine-tuning our Large Language Models.
                                                 </p>
                                             </div>
@@ -734,7 +852,7 @@ export const LandingPage: React.FC = () => {
                                             </div>
                                             <span className="text-xs font-mono text-white/50">autonomous_agent.py</span>
                                         </div>
-                                        
+
                                         <div className="font-mono text-sm space-y-4">
                                             <div><span className="text-accent-orange">class</span> <span className="text-white">EnterpriseAgent</span>:</div>
                                             <div className="pl-4">
@@ -767,14 +885,14 @@ export const LandingPage: React.FC = () => {
                                         <Bot className="w-4 h-4 text-accent" />
                                         <span className="text-xs font-bold text-accent uppercase tracking-wider">Agentic AI Development</span>
                                     </div>
-                                    
+
                                     <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-primary leading-tight">
                                         AI That Thinks.<br />
                                         <span className="text-gradient">Decides. Acts.</span>
                                     </h2>
-                                    
+
                                     <p className="text-xl text-secondary leading-relaxed">
-                                        Build autonomous AI agents that orchestrate complex workflows, make intelligent decisions, 
+                                        Build autonomous AI agents that orchestrate complex workflows, make intelligent decisions,
                                         and execute tasks end-to-end. Enterprise-grade security with multi-agent collaboration.
                                     </p>
 
@@ -793,7 +911,7 @@ export const LandingPage: React.FC = () => {
                                         ))}
                                     </div>
 
-                                    <button 
+                                    <button
                                         onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
                                         className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift"
                                     >
@@ -816,14 +934,14 @@ export const LandingPage: React.FC = () => {
                                         <Music className="w-4 h-4 text-accent-orange" />
                                         <span className="text-xs font-bold text-accent-orange uppercase tracking-wider">Copyright-Free Music</span>
                                     </div>
-                                    
+
                                     <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-primary leading-tight">
                                         Stream Fearlessly.<br />
                                         <span className="text-gradient">Create Freely.</span>
                                     </h2>
-                                    
+
                                     <p className="text-xl text-secondary leading-relaxed">
-                                        Original music for content creators. Zero copyright claims. Zero strikes. 
+                                        Original music for content creators. Zero copyright claims. Zero strikes.
                                         Perfect for YouTube, Twitch, podcasts, and commercial projects.
                                     </p>
 
@@ -861,10 +979,10 @@ export const LandingPage: React.FC = () => {
 
                                         <div className="flex items-center justify-center gap-2 h-32 mb-8">
                                             {[...Array(12)].map((_, i) => (
-                                                <div 
-                                                    key={i} 
+                                                <div
+                                                    key={i}
                                                     className="w-2 bg-brand-gradient rounded-full"
-                                                    style={{ 
+                                                    style={{
                                                         height: `${30 + Math.random() * 70}%`,
                                                         animation: `music-wave-${(i % 5) + 1} 0.8s ease-in-out infinite`,
                                                         animationDelay: `${i * 0.1}s`
@@ -901,14 +1019,14 @@ export const LandingPage: React.FC = () => {
                                     <Sparkles className="w-4 h-4 text-accent" />
                                     <span className="text-xs font-bold text-accent uppercase tracking-wider">GEN-AI Lyric Studio</span>
                                 </div>
-                                
+
                                 <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-primary leading-tight mb-6">
                                     Write Hit Songs in<br />
                                     <span className="text-gradient">Seconds, Not Days.</span>
                                 </h2>
-                                
+
                                 <p className="text-xl text-secondary leading-relaxed max-w-3xl mx-auto">
-                                    The world's first AI lyric generator with cultural intelligence. 
+                                    The world's first AI lyric generator with cultural intelligence.
                                     Generate production-ready lyrics in 15+ languages with Suno.com & Udio support.
                                 </p>
                             </div>
@@ -935,7 +1053,7 @@ export const LandingPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="glass-card p-8 rounded-3xl border border-border hover:-translate-y-2 transition-all animate-slide-up" style={{animationDelay: '0.1s'}}>
+                                <div className="glass-card p-8 rounded-3xl border border-border hover:-translate-y-2 transition-all animate-slide-up" style={{ animationDelay: '0.1s' }}>
                                     <div className="flex items-start gap-4 mb-6">
                                         <div className="p-3 bg-accent/10 rounded-xl">
                                             <Wand2 className="w-8 h-8 text-accent" />
@@ -966,7 +1084,7 @@ export const LandingPage: React.FC = () => {
                                             <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
                                             <span className="text-xs font-mono text-white/50 ml-auto">suno_export.txt</span>
                                         </div>
-                                        
+
                                         <div className="font-mono text-sm space-y-3 text-white/90">
                                             <div className="text-accent-orange">// Style Prompt</div>
                                             <div className="bg-white/5 p-3 rounded text-emerald-400 border border-white/10">
@@ -989,11 +1107,11 @@ export const LandingPage: React.FC = () => {
                                         <div>
                                             <h3 className="text-2xl font-bold text-white mb-4">Built for Suno.com & Udio</h3>
                                             <p className="text-white/70 mb-6">
-                                                Copy and paste directly into your favorite music generator. 
+                                                Copy and paste directly into your favorite music generator.
                                                 All formatting done automatically.
                                             </p>
                                         </div>
-                                        
+
                                         <Link to="/studio" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
                                             <Play className="w-5 h-5" /> Open Lyric Studio
                                         </Link>
@@ -1004,7 +1122,84 @@ export const LandingPage: React.FC = () => {
                     </div>
                 </section>
 
-                {/* Feature 5: Camera Updates - Simple Card */}
+                {/* Feature 5: vCard - Digital Business Card */}
+                <section id="vcard" className="py-32 bg-background relative overflow-hidden scroll-mt-24">
+                    <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-accent-orange/5"></div>
+                    <div className="container mx-auto px-4 relative z-10">
+                        <div className="max-w-7xl mx-auto">
+                            <div className="grid lg:grid-cols-2 gap-16 items-center">
+                                <div className="space-y-8 animate-fade-in">
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20">
+                                        <IdCard className="w-4 h-4 text-accent" />
+                                        <span className="text-xs font-bold text-accent uppercase tracking-wider">Digital Business Card</span>
+                                    </div>
+
+                                    <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-primary leading-tight">
+                                        Connect Instantly.<br />
+                                        <span className="text-gradient">Share Professionally.</span>
+                                    </h2>
+
+                                    <p className="text-xl text-secondary leading-relaxed">
+                                        Your digital identity, reimagined. Share your contact details instantly via QR code or link.
+                                        Choose from 12+ professional themes and track your profile visits with built-in analytics.
+                                    </p>
+
+                                    <div className="space-y-4">
+                                        {[
+                                            { icon: QrCode, text: 'Instant Sharing via QR Code - No app required' },
+                                            { icon: Palette, text: '12+ Professional Themes - Customizable colors' },
+                                            { icon: IdCard, text: 'One-Click vCard Export - Add to contacts instantly' }
+                                        ].map((item, i) => (
+                                            <div key={i} className="flex items-start gap-3">
+                                                <div className="p-2 bg-accent/10 rounded-lg mt-1">
+                                                    <item.icon className="w-5 h-5 text-accent" />
+                                                </div>
+                                                <p className="text-lg text-secondary">{item.text}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <Link to="/profile/dashboard" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
+                                        <IdCard className="w-5 h-5" /> Create Your Digital Card
+                                    </Link>
+                                </div>
+
+                                <div className="relative animate-slide-left">
+                                    <div className="glass-card p-8 rounded-3xl border border-border shadow-2xl bg-gradient-to-br from-surface to-accent/5">
+                                        <div className="flex items-center gap-4 mb-8">
+                                            <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
+                                                <QrCode className="w-8 h-8 text-accent" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-xl text-primary">Scan to Connect</div>
+                                                <div className="text-sm text-secondary">Works on iOS & Android</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-center mb-8 p-8 bg-white rounded-2xl shadow-inner max-w-[280px] mx-auto">
+                                            <QrCode className="w-48 h-48 text-black" />
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-4">
+                                            {[
+                                                { value: '12+', label: 'Themes' },
+                                                { value: '100%', label: 'Free' },
+                                                { value: '24/7', label: 'Online' }
+                                            ].map((stat, i) => (
+                                                <div key={i} className="text-center p-4 bg-surface rounded-xl">
+                                                    <div className="text-3xl font-black text-accent">{stat.value}</div>
+                                                    <div className="text-xs text-secondary uppercase tracking-wide font-bold">{stat.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Feature 6: Camera Updates - Simple Card */}
                 <section className="py-32 bg-background relative overflow-hidden">
                     <div className="container mx-auto px-4 relative z-10">
                         <div className="max-w-5xl mx-auto">
@@ -1013,13 +1208,13 @@ export const LandingPage: React.FC = () => {
                                     <Camera className="w-4 h-4 text-accent" />
                                     <span className="text-xs font-bold text-accent uppercase tracking-wider">Live Updates</span>
                                 </div>
-                                
+
                                 <h2 className="text-4xl md:text-5xl font-black text-primary mb-6">
-                                    Daily Camera & Scanner Feeds
+                                    Daily Camera & ScannerFeeds
                                 </h2>
-                                
+
                                 <p className="text-xl text-secondary leading-relaxed mb-8 max-w-2xl mx-auto">
-                                    Real-time updates from multiple locations worldwide. Equipment reviews, 
+                                    Real-time updates from multiple locations worldwide. Equipment reviews,
                                     photography news, and live scanner feeds updated daily.
                                 </p>
 

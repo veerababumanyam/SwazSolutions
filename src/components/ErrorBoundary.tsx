@@ -25,13 +25,6 @@ export class ErrorBoundary extends React.Component<Props, State> {
     errorInfo: null
   };
 
-  readonly props!: Props;
-
-  setState!: (
-    state: Partial<State> | ((prevState: State) => Partial<State>),
-    callback?: () => void
-  ) => void;
-
   static getDerivedStateFromError(error: Error): State {
     return {
       hasError: true,
@@ -42,17 +35,17 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo
     });
-    
+
     // Call optional error callback
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-    
+
     // Log to external service (optional)
     this.logErrorToService(error, errorInfo);
   }
@@ -97,15 +90,15 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="w-8 h-8 text-red-600" />
             </div>
-            
+
             <h1 className="text-2xl font-bold text-primary mb-2">
               Oops! Something went wrong
             </h1>
-            
+
             <p className="text-secondary mb-6">
               We encountered an unexpected error. Don't worry, your data is safe.
             </p>
-            
+
             {/* Error Details (Development Only) */}
             {process.env.NODE_ENV === 'development' && this.state.error && (
               <details className="mb-6 text-left">
@@ -122,7 +115,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 </div>
               </details>
             )}
-            
+
             {/* Action Buttons */}
             <div className="flex flex-col gap-3">
               <button
@@ -132,7 +125,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 <RefreshCw className="w-4 h-4" />
                 Try Again
               </button>
-              
+
               <button
                 onClick={this.handleReload}
                 className="btn w-full py-3 rounded-xl font-bold text-secondary hover:text-primary border border-border hover:border-accent flex items-center justify-center gap-2"
@@ -140,7 +133,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
                 <RefreshCw className="w-4 h-4" />
                 Reload Page
               </button>
-              
+
               <button
                 onClick={this.handleGoHome}
                 className="text-sm text-secondary hover:text-primary underline flex items-center justify-center gap-1"

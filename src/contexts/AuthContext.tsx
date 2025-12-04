@@ -24,7 +24,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const checkAuth = async () => {
         try {
-            const response = await fetch('/api/auth/me');
+            // Get token from localStorage
+            const token = localStorage.getItem('auth_token');
+            
+            const response = await fetch('/api/auth/me', {
+                credentials: 'include', // Include cookies
+                headers: {
+                    ...(token && { 'Authorization': `Bearer ${token}` })
+                }
+            });
             if (response.ok) {
                 const data = await response.json();
                 setUser(data.user);
@@ -49,7 +57,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const logout = async () => {
         try {
-            await fetch('/api/auth/logout', { method: 'POST' });
+            await fetch('/api/auth/logout', { 
+                method: 'POST',
+                credentials: 'include'
+            });
+            // Clear local storage token
+            localStorage.removeItem('auth_token');
             setUser(null);
             // Optional: Redirect to home or login page
             window.location.href = '/';

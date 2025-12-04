@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { LyricSidebar } from '../components/LyricSidebar';
 import { ChatInput } from '../components/ChatInput';
-import { AgentStatus, LanguageProfile, GenerationSettings, SavedSong, GeneratedLyrics, ComplianceReport } from '../agents/types';
+import { AgentStatus, LanguageProfile, GenerationSettings, SavedSong, GeneratedLyrics, ComplianceReport, Message } from '../agents/types';
 import { Menu, Send, Sliders, Loader, ChevronLeft, Bot, Sparkles, Terminal, Play, Trash2, Copy, RotateCcw, Music } from 'lucide-react';
 import { runLyricGenerationWorkflow } from '../agents/orchestrator';
 import { AUTO_OPTION } from '../agents/constants';
@@ -126,12 +126,20 @@ export const LyricStudio: React.FC = () => {
         if (window.innerWidth < 1024) setShowResultOnMobile(false);
 
         try {
+            // Convert ChatMessage to Message for orchestrator (ai -> model)
+            const convertedHistory: Message[] = messages
+                .filter(m => m.role !== 'log')
+                .map(m => ({
+                    role: m.role === 'ai' ? 'model' as const : 'user' as const,
+                    content: m.content
+                }));
+
             const result = await runLyricGenerationWorkflow(
                 userText,
                 languageSettings,
                 generationSettings,
                 apiKey,
-                messages, // Pass chat history to Prompt Engineer Agent
+                convertedHistory,
                 (step) => {
                     setAgentStatus({
                         active: true,

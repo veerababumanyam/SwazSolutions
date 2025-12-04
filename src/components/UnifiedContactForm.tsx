@@ -102,7 +102,7 @@ export const UnifiedContactForm: React.FC<UnifiedContactFormProps> = ({
         setSubmitMessage('');
 
         try {
-            const response = await fetch('http://localhost:3000/api/contact/submit-ticket', {
+            const response = await fetch('/api/contact/submit-ticket', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -147,7 +147,7 @@ export const UnifiedContactForm: React.FC<UnifiedContactFormProps> = ({
         setSubmitMessage('');
 
         try {
-            const response = await fetch('http://localhost:3000/api/contact/agentic-ai-inquiry', {
+            const response = await fetch('/api/contact/agentic-ai-inquiry', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

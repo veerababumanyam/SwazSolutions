@@ -72,6 +72,7 @@ export interface Song {
     liked?: boolean;
     lyrics?: string; // Path to .lrc file or raw text
     equalizer?: EqualizerSettings;
+    genre?: string;
 }
 
 export interface EqualizerSettings {

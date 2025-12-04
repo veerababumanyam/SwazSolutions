@@ -259,8 +259,8 @@ A user wants to make their profile discoverable through search engines (Google) 
 #### AI Theme Generation
 
 - **FR-036**: System MUST provide "Generate AI Theme" feature that creates unique themes based on user inputs
-- **FR-037**: System MUST accept optional AI theme inputs: keywords (e.g., "professional", "creative"), brand colors (hex codes), mood/vibe
-- **FR-038**: System MUST generate AI themes within 10 seconds and show loading state during generation
+- **FR-037**: System MUST accept optional AI theme inputs with validation: keywords (max 10 words, alphanumeric), brand colors (1-3 valid hex codes), mood/vibe (predefined list: professional, creative, minimal, bold, elegant, modern)
+- **FR-038**: System MUST generate AI themes within 10 seconds (server-side processing timeout) and show loading state during generation
 - **FR-039**: System MUST allow users to preview, regenerate, or refine AI-generated themes before applying
 - **FR-040**: System MUST save AI-generated themes to user's "My Themes" collection for future reuse
 - **FR-040a**: System MUST treat each AI theme generation as independent (no learning from past preferences or user history)
@@ -296,11 +296,11 @@ A user wants to make their profile discoverable through search engines (Google) 
 
 - **User**: Represents an authenticated user of the platform who can create and manage their public profile. Attributes include: userId, username, displayName, email (private), authentication credentials, account creation date, subscription/plan status.
 
-- **PublicProfile**: Represents the public-facing profile information for a user. Attributes include: profileId, userId (foreign key), username (unique), displayName, firstName, lastName, avatarImageUrl, headline, company, bio, profileTags[], publicEmail, publicPhone, website, socialProfiles[], languages[], pronouns, timezone, contactPreferences, publishedStatus (boolean), indexingOptIn (boolean), createdAt, updatedAt.
+- **PublicProfile**: Represents the public-facing profile information for a user. Attributes include: profileId, userId (foreign key), username (unique), displayName, firstName, lastName, avatarImageUrl, headline, company, bio, profileTags[], publicEmail, publicPhone, website, socialProfiles[] (references SocialProfile), customLinks[] (references CustomLink), languages[], pronouns, timezone, contactPreferences, publishedStatus (boolean), indexingOptIn (boolean), createdAt, updatedAt.
 
-- **SocialProfile**: Represents a single social media or external link. Attributes include: network (LinkedIn, Twitter, GitHub, Instagram, Facebook, TikTok, YouTube, etc.), profileUrl or handle, displayOrder, isPublic (boolean), isFeatured (boolean, top 5 only), logoUrl (auto-detected from logo store or user-uploaded), createdAt.
+- **SocialProfile**: Represents a featured social media link (max 5 per profile). Attributes include: socialProfileId, profileId (foreign key), platform_name (LinkedIn, Twitter, GitHub, Instagram, Facebook, TikTok, YouTube, etc.), platform_url, logoUrl (auto-detected from logo store or user-uploaded), displayOrder (1-5), isPublic (boolean), createdAt. **Implementation Note**: Stored in `social_profiles` table in database.
 
-- **CustomLink**: Represents a custom link beyond the top 5 featured social profiles. Attributes include: linkId, userId (foreign key), linkTitle, linkUrl, customLogoUrl (optional, user-uploaded PNG/SVG max 500KB), displayOrder, isPublic (boolean), createdAt, updatedAt.
+- **CustomLink**: Represents additional custom links beyond the top 5 featured social profiles (unlimited). Attributes include: linkId, profileId (foreign key), linkTitle, linkUrl, customLogoUrl (optional, user-uploaded PNG/SVG max 500KB), displayOrder, isPublic (boolean), createdAt, updatedAt. **Implementation Note**: Stored in `custom_links` table in database, separate from social_profiles to enforce the 5-featured-link constraint at database level.
 
 - **Theme**: Represents a visual theme configuration for a profile. Attributes include: themeId, userId (foreign key, nullable for system themes), themeName, themeType (system, custom, ai-generated), colors (JSON: background, primary, accent, text), typography (JSON: fontFamily, sizes), layout (JSON: spacing, cardStyle), backgroundImage (URL or pattern ID), logoUrl, isActive (boolean), createdAt.
 

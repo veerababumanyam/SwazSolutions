@@ -12,11 +12,16 @@ import { CameraUpdatesPage } from './pages/CameraUpdatesPage';
 import { HelpPage } from './pages/HelpPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ProfileDashboard } from './pages/ProfileDashboard';
+import { PublicProfile } from './pages/PublicProfile';
+import { ProfileAnalytics } from './pages/ProfileAnalytics';
+import { UnifiedProfileEditor } from './pages/UnifiedProfileEditor';
 import { MusicProvider } from './contexts/MusicContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { PublicRoute } from './components/PublicRoute';
 
 const App: React.FC = () => {
   return (
@@ -60,6 +65,28 @@ const App: React.FC = () => {
                       <HelpPage />
                       <Footer />
                     </>} />
+                    
+                    {/* Virtual Profile Routes - Unified Edit Profile */}
+                    <Route path="/profile/edit" element={
+                      <ProtectedRoute>
+                        <UnifiedProfileEditor />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/profile/dashboard" element={
+                      <ProtectedRoute>
+                        <ProfileDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/profile/analytics" element={
+                      <ProtectedRoute>
+                        <ProfileAnalytics />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/u/:username" element={
+                      <PublicRoute>
+                        <PublicProfile />
+                      </PublicRoute>
+                    } />
                   </Routes>
                 </div>
               </ErrorBoundary>

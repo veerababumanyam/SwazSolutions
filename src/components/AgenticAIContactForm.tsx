@@ -63,7 +63,7 @@ export const AgenticAIContactForm: React.FC<AgenticAIContactFormProps> = ({ clas
         setSubmitMessage('');
 
         try {
-            const response = await fetch('http://localhost:3000/api/contact/agentic-ai-inquiry', {
+            const response = await fetch('/api/contact/agentic-ai-inquiry', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

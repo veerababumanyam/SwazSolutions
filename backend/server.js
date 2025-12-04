@@ -18,6 +18,16 @@ const createVisitorRoutes = require('./routes/visitors');
 const createContactRoutes = require('./routes/contact');
 const { router: cameraUpdatesRouter, init: initCameraRoutes, saveUpdatesToDb } = require('./routes/cameraUpdates');
 
+// Virtual Profile routes
+const publicProfilesRouter = require('./routes/publicProfiles');
+const profilesRouter = require('./routes/profiles');
+const socialLinksRouter = require('./routes/social-links');
+const themesRouter = require('./routes/themes');
+const qrCodesRouter = require('./routes/qr-codes');
+const vcardsRouter = require('./routes/vcards');
+const analyticsRouter = require('./routes/analytics');
+const uploadsRouter = require('./routes/uploads');
+
 const http = require('http');
 const { Server } = require('socket.io');
 
@@ -114,8 +124,8 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 // Database readiness check
@@ -166,6 +176,16 @@ app.use('/api/playlists', apiLimiter, createPlaylistRoutes(db));
 app.use('/api/visitors', apiLimiter, createVisitorRoutes(db));
 app.use('/api/contact', createContactRoutes(db)); // Contact has its own rate limiter
 app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter);
+
+// Virtual Profile routes
+app.use('/api/public', publicProfilesRouter); // No auth required - includes public profile
+app.use('/api/public/profile', vcardsRouter); // vCard downloads (mounted at /api/public/profile/:username/vcard)
+app.use('/api/profiles', apiLimiter, profilesRouter); // Auth required - profile CRUD
+app.use('/api/profiles', apiLimiter, socialLinksRouter); // Auth required - social links (mounted under /api/profiles)
+app.use('/api/themes', themesRouter); // System themes public, custom themes auth
+app.use('/api/qr-codes', apiLimiter, qrCodesRouter); // Auth required - QR generation
+app.use('/api/analytics', apiLimiter, analyticsRouter); // Auth required - analytics
+app.use('/api/uploads', apiLimiter, uploadsRouter); // Auth required - file uploads
 
 // Health check
 app.get('/api/health', (req, res) => {

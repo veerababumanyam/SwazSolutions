@@ -256,6 +256,101 @@ npm start
 - **Music Player:** http://localhost:3000/#/music
 - **Network:** http://YOUR_IP:3000 (share with others!)
 
+## 🔐 Authentication
+
+The application supports two authentication methods: **Google OAuth** and **Local User Authentication**.
+
+### Google OAuth Login
+
+Users can sign in with their Google account for seamless authentication:
+1. Click "Sign in with Google" on the login page
+2. Authorize the application
+3. You'll be automatically logged in with `pro` role
+
+> **Note:** Google OAuth requires proper configuration in `.env` file with valid `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+
+### Local User Authentication
+
+For local development and testing, you can create local user accounts or use pre-seeded test users.
+
+#### Seeding Test Users
+
+Run the following command to create test users:
+
+```bash
+node backend/scripts/seed-test-users.js
+```
+
+#### Updating Test Profiles with Mock Data
+
+To populate test user profiles with realistic sample data:
+
+```bash
+node backend/scripts/update-test-profiles.js
+```
+
+This will update the profiles with:
+- Display names, headlines, and bios
+- Contact information (email, phone)
+- Company and website details
+- Published status enabled
+
+#### Test User Credentials
+
+| User Type | Email | Password | Role | Capabilities |
+|-----------|-------|----------|------|--------------|
+| **Admin** | `admin@swaz.com` | `Admin123!` | `admin` | Full access, user management |
+| **Pro User** | `pro@swaz.com` | `ProUser123!` | `pro` | All features, priority support |
+| **Standard User** | `user@swaz.com` | `TestUser123!` | `user` | Basic features |
+
+#### Public Profile URLs (after running update-test-profiles.js)
+
+| User | Public Profile URL |
+|------|-------------------|
+| Admin | http://localhost:5173/u/admin |
+| Pro User (Sarah Johnson) | http://localhost:5173/u/prouser |
+| Test User (Alex Chen) | http://localhost:5173/u/testuser |
+
+#### User Roles
+
+| Role | Description | Access Level |
+|------|-------------|--------------|
+| `admin` | Administrator | Full system access |
+| `pro` | Professional/Premium User | All features enabled |
+| `user` | Standard User | Basic features |
+
+#### Register New Users
+
+Users can register new accounts via:
+- **UI:** Click "Sign Up" and fill in the registration form
+- **API:** `POST /api/auth/register` with `username`, `password`, and optional `email`
+
+**Password Requirements:**
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character (`@$!%*?&`)
+
+### Authentication Endpoints
+
+| Endpoint | Method | Description | Auth Required |
+|----------|--------|-------------|---------------|
+| `/api/auth/register` | POST | Register new user | No |
+| `/api/auth/login` | POST | Login with username/password | No |
+| `/api/auth/google` | POST | Google OAuth login | No |
+| `/api/auth/logout` | POST | Logout (clears session) | Yes |
+| `/api/auth/me` | GET | Get current user info | Yes |
+
+### Protected Routes
+
+The following features require authentication:
+- Profile creation and editing (`/profile/*`)
+- Playlist management
+- vCard generation and download
+- QR code generation
+- Analytics dashboard
+
 ## 📁 Project Structure
 
 ```

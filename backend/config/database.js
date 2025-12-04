@@ -137,6 +137,365 @@ async function initializeDatabase() {
     }
   }
 
+  // ========================================
+  // VIRTUAL PROFILE FEATURE TABLES (T001-T009)
+  // ========================================
+
+  // T001: Profiles table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      username TEXT UNIQUE NOT NULL,
+      display_name TEXT NOT NULL,
+      first_name TEXT,
+      last_name TEXT,
+      avatar_url TEXT,
+      headline TEXT,
+      company TEXT,
+      bio TEXT,
+      profile_tags TEXT,
+      public_email TEXT,
+      public_phone TEXT,
+      website TEXT,
+      languages TEXT,
+      pronouns TEXT,
+      timezone TEXT,
+      contact_preferences TEXT,
+      published INTEGER DEFAULT 0,
+      indexing_opt_in INTEGER DEFAULT 0,
+      active_theme_id INTEGER,
+      background_image_url TEXT,
+      logo_url TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_profiles_username ON profiles(username);
+    CREATE INDEX IF NOT EXISTS idx_profiles_user_id ON profiles(user_id);
+    CREATE INDEX IF NOT EXISTS idx_profiles_published ON profiles(published) WHERE published = 1;
+  `);
+
+  // T002: Social profiles table (featured links, max 5)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS social_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      platform_name TEXT NOT NULL,
+      platform_url TEXT NOT NULL,
+      logo_url TEXT NOT NULL,
+      display_order INTEGER NOT NULL,
+      is_featured INTEGER DEFAULT 1,
+      is_public INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+      CHECK (display_order <= 5 OR is_featured = 0)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_social_profiles_profile ON social_profiles(profile_id);
+  `);
+
+  // T003: Custom links table (unlimited additional links)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS custom_links (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      link_title TEXT NOT NULL,
+      link_url TEXT NOT NULL,
+      custom_logo_url TEXT,
+      display_order INTEGER NOT NULL,
+      is_public INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_custom_links_profile ON custom_links(profile_id);
+  `);
+
+  // T004: Themes table
+  // Migration: Update schema to align with API routes
+  // - Rename theme_name -> name
+  // - Add is_system column (replaces theme_type for system/custom designation)
+  // - Change user_id -> profile_id (references profiles table)
+
+  try {
+    const tableExists = db.exec(`
+      SELECT name FROM sqlite_master WHERE type='table' AND name='themes'
+    `);
+
+    if (tableExists && tableExists.length > 0 && tableExists[0].values.length > 0) {
+      // Table exists, check if migration is needed
+      const tableInfo = db.exec("PRAGMA table_info(themes)");
+      if (tableInfo && tableInfo.length > 0) {
+        const columns = tableInfo[0].values.map(row => row[1]);
+        const hasOldSchema = columns.includes('theme_name') || columns.includes('user_id');
+        const hasNewSchema = columns.includes('name') && columns.includes('profile_id') && columns.includes('is_system');
+
+        if (hasOldSchema && !hasNewSchema) {
+          console.log('🔄 Migrating themes table to new schema...');
+
+          // Create new table with correct schema
+          db.run(`
+            CREATE TABLE themes_new (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              profile_id INTEGER,
+              name TEXT NOT NULL,
+              category TEXT,
+              colors TEXT NOT NULL,
+              typography TEXT NOT NULL,
+              layout TEXT NOT NULL,
+              avatar TEXT NOT NULL,
+              background_image_url TEXT,
+              logo_url TEXT,
+              preview_image_url TEXT,
+              is_system INTEGER DEFAULT 0,
+              is_active INTEGER DEFAULT 0,
+              is_public INTEGER DEFAULT 0,
+              created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+            )
+          `);
+
+          // Migrate data if any exists
+          try {
+            // Map user_id to profile_id and convert theme_type to is_system
+            db.run(`
+              INSERT INTO themes_new (
+                id, profile_id, name, category, colors, typography, layout, avatar,
+                background_image_url, logo_url, preview_image_url, is_system, is_active, is_public,
+                created_at, updated_at
+              )
+              SELECT 
+                t.id,
+                p.id as profile_id,
+                t.theme_name as name,
+                t.category,
+                t.colors,
+                t.typography,
+                t.layout,
+                t.avatar,
+                t.background_image_url,
+                t.logo_url,
+                t.preview_image_url,
+                CASE WHEN t.theme_type = 'system' THEN 1 ELSE 0 END as is_system,
+                t.is_active,
+                t.is_public,
+                t.created_at,
+                t.updated_at
+              FROM themes t
+              LEFT JOIN profiles p ON t.user_id = p.user_id
+            `);
+          } catch (migrateError) {
+            console.log('No existing theme data to migrate or migration not needed');
+          }
+
+          // Drop old table and rename new one
+          db.run('DROP TABLE themes');
+          db.run('ALTER TABLE themes_new RENAME TO themes');
+
+          console.log('✅ Themes table migration completed');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking themes table:', error);
+  }
+
+  // Create themes table with new schema
+  db.run(`
+    CREATE TABLE IF NOT EXISTS themes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER,
+      name TEXT NOT NULL,
+      category TEXT,
+      colors TEXT NOT NULL,
+      typography TEXT NOT NULL,
+      layout TEXT NOT NULL,
+      avatar TEXT NOT NULL,
+      background_image_url TEXT,
+      logo_url TEXT,
+      preview_image_url TEXT,
+      is_system INTEGER DEFAULT 0,
+      is_active INTEGER DEFAULT 0,
+      is_public INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create indexes
+  db.run('CREATE INDEX IF NOT EXISTS idx_themes_system ON themes(is_system)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_themes_profile ON themes(profile_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_themes_category ON themes(category)');
+
+  // T005: Profile views analytics table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS profile_views (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      viewer_ip_hash TEXT NOT NULL,
+      referrer TEXT,
+      device_type TEXT,
+      location_country TEXT,
+      location_city TEXT,
+      viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_profile_views_profile ON profile_views(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_profile_views_date ON profile_views(viewed_at);
+  `);
+
+  // T006: Share events table (T140 - updated schema)
+  // Migration: Update schema to match new API (share_method + platform instead of share_channel)
+  try {
+    const tableExists = db.exec(`
+      SELECT name FROM sqlite_master WHERE type='table' AND name='share_events'
+    `);
+
+    if (tableExists && tableExists.length > 0 && tableExists[0].values.length > 0) {
+      const tableInfo = db.exec("PRAGMA table_info(share_events)");
+      if (tableInfo && tableInfo.length > 0) {
+        const columns = tableInfo[0].values.map(row => row[1]);
+        const hasOldSchema = columns.includes('share_channel') || columns.includes('shared_at');
+        const hasNewSchema = columns.includes('share_method') && columns.includes('created_at');
+
+        if (hasOldSchema || !hasNewSchema) {
+          console.log('🔄 Migrating share_events table to new schema...');
+          db.run('DROP TABLE share_events');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking share_events schema:', error);
+  }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS share_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      share_method TEXT NOT NULL,
+      platform TEXT,
+      ip_hash TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_share_events_profile ON share_events(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_share_events_method ON share_events(share_method);
+  `);
+
+  // T007: vCard downloads table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS vcard_downloads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      device_type TEXT,
+      ip_hash TEXT,
+      downloaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_vcard_downloads_profile ON vcard_downloads(profile_id);
+  `);
+
+  // T008: Analytics summary table (daily aggregation)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS analytics_summary (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      total_views INTEGER DEFAULT 0,
+      unique_visitors INTEGER DEFAULT 0,
+      vcard_downloads INTEGER DEFAULT 0,
+      share_count INTEGER DEFAULT 0,
+      qr_scans INTEGER DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+      UNIQUE(profile_id, date)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_analytics_summary_profile ON analytics_summary(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_analytics_summary_date ON analytics_summary(date);
+  `);
+
+  // T009: QR codes cache table
+  // Migration: Drop old schema and create new schema with cache_key, qr_data, and format
+  // This migration is safe because QR codes are cached data and can be regenerated
+  try {
+    // Check if table exists using exec
+    const tableExists = db.exec(`
+      SELECT name FROM sqlite_master WHERE type='table' AND name='qr_codes'
+    `);
+
+    if (tableExists && tableExists.length > 0 && tableExists[0].values.length > 0) {
+      // Check if old schema exists (has profile_url column)
+      const tableInfo = db.exec("PRAGMA table_info(qr_codes)");
+      if (tableInfo && tableInfo.length > 0) {
+        const columns = tableInfo[0].values.map(row => row[1]); // column name is at index 1
+        const hasOldSchema = columns.includes('profile_url');
+        const hasNewSchema = columns.includes('cache_key');
+
+        if (hasOldSchema || !hasNewSchema) {
+          console.log('🔄 Migrating qr_codes table to new schema...');
+          db.run('DROP TABLE qr_codes');
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Migration check error:', err.message);
+  }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS qr_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      cache_key TEXT NOT NULL,
+      qr_data TEXT NOT NULL,
+      format TEXT NOT NULL,
+      generated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+      UNIQUE(profile_id, cache_key)
+    )
+  `);
+
+  db.run('CREATE INDEX IF NOT EXISTS idx_qr_codes_profile ON qr_codes(profile_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_qr_codes_cache ON qr_codes(cache_key)');
+
+  // T038a: Username history table (for 90-day redirects)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS username_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL,
+      old_username TEXT NOT NULL,
+      new_username TEXT NOT NULL,
+      changed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      expires_at DATETIME NOT NULL,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_username_history_old ON username_history(old_username);
+    CREATE INDEX IF NOT EXISTS idx_username_history_expires ON username_history(expires_at);
+  `);
+
+  // T010: Additional performance indexes
+  db.run(`
+    -- Composite indexes for common queries
+    CREATE INDEX IF NOT EXISTS idx_profiles_published_username ON profiles(published, username) WHERE published = 1;
+    CREATE INDEX IF NOT EXISTS idx_profiles_indexing_published ON profiles(indexing_opt_in, published) WHERE published = 1 AND indexing_opt_in = 1;
+    CREATE INDEX IF NOT EXISTS idx_social_profiles_featured ON social_profiles(profile_id, is_featured, display_order);
+    CREATE INDEX IF NOT EXISTS idx_profile_views_date ON profile_views(profile_id, viewed_at);
+    CREATE INDEX IF NOT EXISTS idx_share_events_date ON share_events(profile_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_vcard_downloads_date ON vcard_downloads(profile_id, downloaded_at);
+  `);
+
+  console.log('✅ Virtual Profile tables and indexes created/verified');
+
   // Create camera_updates table
   db.run(`
     CREATE TABLE IF NOT EXISTS camera_updates (
@@ -245,37 +604,60 @@ const dbWrapper = {
     return {
       run: (...params) => {
         if (!db) throw new Error('Database not initialized');
-        db.run(sql, params);
-        saveDatabase();
-        // sql.js doesn't have a direct lastInsertRowid, simulate it
-        const lastRowIdResult = db.exec('SELECT last_insert_rowid() as id');
-        const lastInsertRowid = lastRowIdResult.length > 0 && lastRowIdResult[0].values.length > 0 ? lastRowIdResult[0].values[0][0] : 0;
-        return { lastInsertRowid: lastInsertRowid, changes: 1 };
+        try {
+          // Create a prepared statement with sql.js
+          const stmt = db.prepare(sql);
+          stmt.bind(params);
+          stmt.step();
+          stmt.free();
+
+          // Get last inserted row id BEFORE saving (must be immediate)
+          const lastIdStmt = db.prepare('SELECT last_insert_rowid() as id');
+          lastIdStmt.step();
+          const lastInsertRowid = lastIdStmt.getAsObject().id;
+          lastIdStmt.free();
+
+          saveDatabase();
+          return { lastInsertRowid: lastInsertRowid, changes: 1 };
+        } catch (error) {
+          console.error('Database run error:', error.message);
+          console.error('SQL:', sql);
+          console.error('Params:', params);
+          throw error;
+        }
       },
       get: (...params) => {
         if (!db) return null;
-        const result = db.exec(sql, params);
-        if (result.length === 0) return null;
-        const row = result[0];
-        if (row.values.length === 0) return null;
-        const obj = {};
-        row.columns.forEach((col, idx) => {
-          obj[col] = row.values[0][idx];
-        });
-        return obj;
+        try {
+          const stmt = db.prepare(sql);
+          stmt.bind(params);
+          if (stmt.step()) {
+            const row = stmt.getAsObject();
+            stmt.free();
+            return row;
+          }
+          stmt.free();
+          return null;
+        } catch (error) {
+          console.error('Database get error:', error);
+          return null;
+        }
       },
       all: (...params) => {
         if (!db) return [];
-        const result = db.exec(sql, params);
-        if (result.length === 0) return [];
-        const row = result[0];
-        return row.values.map(values => {
-          const obj = {};
-          row.columns.forEach((col, idx) => {
-            obj[col] = values[idx];
-          });
-          return obj;
-        });
+        try {
+          const stmt = db.prepare(sql);
+          stmt.bind(params);
+          const results = [];
+          while (stmt.step()) {
+            results.push(stmt.getAsObject());
+          }
+          stmt.free();
+          return results;
+        } catch (error) {
+          console.error('Database all error:', error);
+          return [];
+        }
       }
     };
   },
