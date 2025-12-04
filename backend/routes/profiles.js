@@ -262,7 +262,9 @@ router.put('/me', async (req, res) => {
       languages,
       pronouns,
       timezone,
-      contactPreferences
+      contactPreferences,
+      published,
+      indexingOptIn
     } = req.body;
 
     db.prepare(
@@ -271,6 +273,7 @@ router.put('/me', async (req, res) => {
         headline = ?, company = ?, bio = ?, profile_tags = ?,
         public_email = ?, public_phone = ?, website = ?, languages = ?,
         pronouns = ?, timezone = ?, contact_preferences = ?,
+        published = ?, indexing_opt_in = ?,
         updated_at = datetime('now')
       WHERE id = ?`
     ).run(
@@ -289,6 +292,8 @@ router.put('/me', async (req, res) => {
       pronouns !== undefined ? pronouns : profile.pronouns,
       timezone !== undefined ? timezone : profile.timezone,
       contactPreferences !== undefined ? contactPreferences : profile.contact_preferences,
+      published !== undefined ? (published ? 1 : 0) : profile.published,
+      indexingOptIn !== undefined ? (indexingOptIn ? 1 : 0) : profile.indexing_opt_in,
       profile.id
     );
 

@@ -33,11 +33,16 @@ export const getQRCode = async (
     size: size.toString(),
   });
 
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`/api/qr-codes/me/qr-code?${params}`, {
     method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-    },
+    credentials: 'include',
+    headers,
   });
 
   if (!response.ok) {
@@ -65,12 +70,18 @@ export const getQRCodeDataURL = async (
 export const regenerateQRCode = async (
   options: QRCodeOptions
 ): Promise<QRCodeResponse> => {
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const response = await fetch('/api/qr-codes/me/qr-code/regenerate', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
-    },
+    credentials: 'include',
+    headers,
     body: JSON.stringify(options),
   });
 
