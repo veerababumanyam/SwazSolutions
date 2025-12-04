@@ -3,6 +3,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* T062: Smooth scrolling for better mobile UX */
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+}
+
+/* T061: Progressive loading - prevent layout shift */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 :root {
   /* Brand Palette - Red & Orange */
   /* Light Mode Defaults */
@@ -333,6 +345,36 @@ body {
   background: linear-gradient(180deg,
       rgb(var(--color-accent-second)) 0%,
       rgb(var(--color-accent-main)) 100%);
+}
+
+/* ============================================================================
+   MOBILE-FIRST UTILITIES
+   Utility classes for mobile-responsive components
+   ============================================================================ */
+
+/* Hide scrollbar while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Safe area insets for iOS devices with notch/home indicator */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-inset-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Touch manipulation for better touch response */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 /* Enhanced Animations */
