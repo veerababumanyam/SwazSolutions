@@ -23,10 +23,12 @@ const publicProfilesRouter = require('./routes/publicProfiles');
 const profilesRouter = require('./routes/profiles');
 const socialLinksRouter = require('./routes/social-links');
 const themesRouter = require('./routes/themes');
+const fontsRouter = require('./routes/fonts');
 const qrCodesRouter = require('./routes/qr-codes');
 const vcardsRouter = require('./routes/vcards');
 const analyticsRouter = require('./routes/analytics');
 const uploadsRouter = require('./routes/uploads');
+const appearanceRouter = require('./routes/appearance');
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -164,6 +166,14 @@ if (!fs.existsSync(coversDir)) {
 app.use('/covers', express.static(coversDir));
 console.log(`🖼️  Serving covers from: ${coversDir}`);
 
+// Serve uploaded files (avatars, logos, backgrounds)
+const uploadsDir = path.join(__dirname, '../public/uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
+console.log(`📤 Serving uploads from: ${uploadsDir}`);
+
 // Initialize camera updates routes with database
 initCameraRoutes(db);
 
@@ -180,9 +190,12 @@ app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter);
 // Virtual Profile routes
 app.use('/api/public', publicProfilesRouter); // No auth required - includes public profile
 app.use('/api/public/profile', vcardsRouter); // vCard downloads (mounted at /api/public/profile/:username/vcard)
+app.use('/api/appearance', appearanceRouter); // Public appearance route (no auth for public/:username/appearance)
 app.use('/api/profiles', apiLimiter, profilesRouter); // Auth required - profile CRUD
 app.use('/api/profiles', apiLimiter, socialLinksRouter); // Auth required - social links (mounted under /api/profiles)
+app.use('/api/profiles', apiLimiter, appearanceRouter); // Auth required - appearance settings (mounted under /api/profiles)
 app.use('/api/themes', themesRouter); // System themes public, custom themes auth
+app.use('/api/fonts', fontsRouter); // Font options public  
 app.use('/api/qr-codes', apiLimiter, qrCodesRouter); // Auth required - QR generation
 app.use('/api/analytics', apiLimiter, analyticsRouter); // Auth required - analytics
 app.use('/api/uploads', apiLimiter, uploadsRouter); // Auth required - file uploads

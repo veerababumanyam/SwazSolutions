@@ -56,6 +56,19 @@ router.get('/profile/:username', async (req, res) => {
       ).get(profile.active_theme_id);
     }
 
+    // Get appearance settings (crucial for public profile rendering to match preview)
+    let appearance = null;
+    const appearanceRow = db.prepare(
+      `SELECT appearance_settings FROM profile_appearance WHERE profile_id = ?`
+    ).get(profile.id);
+    if (appearanceRow && appearanceRow.appearance_settings) {
+      try {
+        appearance = JSON.parse(appearanceRow.appearance_settings);
+      } catch (e) {
+        console.error('Error parsing appearance settings:', e);
+      }
+    }
+
     res.json({
       id: profile.id, // T140: Added for share tracking
       profile: {
@@ -64,6 +77,7 @@ router.get('/profile/:username', async (req, res) => {
         firstName: profile.first_name,
         lastName: profile.last_name,
         avatarUrl: profile.avatar_url,
+        logoUrl: profile.logo_url, // Include logo URL for public profile
         headline: profile.headline,
         company: profile.company,
         bio: profile.bio,
@@ -71,12 +85,21 @@ router.get('/profile/:username', async (req, res) => {
         publicEmail: profile.public_email,
         publicPhone: profile.public_phone,
         website: profile.website,
+        showEmail: profile.show_email !== 0,
+        showPhone: profile.show_phone !== 0,
+        showWebsite: profile.show_website !== 0,
+        showBio: profile.show_bio !== 0,
+        companyEmail: profile.company_email,
+        companyPhone: profile.company_phone,
+        showCompanyEmail: profile.show_company_email !== 0,
+        showCompanyPhone: profile.show_company_phone !== 0,
         languages: profile.languages ? JSON.parse(profile.languages) : [],
         pronouns: profile.pronouns,
         timezone: profile.timezone
       },
       socialProfiles: transformedSocialProfiles,
       customLinks,
+      appearance, // Include appearance settings for public profile rendering
       theme: theme ? {
         ...theme,
         colors: JSON.parse(theme.colors),

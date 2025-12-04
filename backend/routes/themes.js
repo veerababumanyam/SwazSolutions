@@ -11,9 +11,9 @@ const db = require('../config/database');
 // ============================================================================
 router.get('/system', (req, res) => {
   try {
-    // Fetch all system themes
+    // Fetch all system themes including wallpaper and headerBackground for visual themes
     const themesStmt = db.prepare(`
-      SELECT id, name, category, colors, typography, layout, avatar
+      SELECT id, name, category, colors, typography, layout, avatar, wallpaper, header_background
       FROM themes 
       WHERE is_system = 1 
       ORDER BY category, name
@@ -29,6 +29,8 @@ router.get('/system', (req, res) => {
       typography: JSON.parse(theme.typography),
       layout: JSON.parse(theme.layout),
       avatar: JSON.parse(theme.avatar),
+      wallpaper: theme.wallpaper || null,
+      headerBackground: theme.header_background ? JSON.parse(theme.header_background) : null,
       isSystem: true
     }));
 

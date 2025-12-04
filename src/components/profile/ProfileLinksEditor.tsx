@@ -6,6 +6,7 @@ import { LinkCard } from './LinkCard';
 import { MobilePreview } from './MobilePreview';
 import { AddLinkModal } from './AddLinkModal';
 import { AppearancePanel, AppearanceSettings } from './AppearancePanel';
+import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
 
 export interface SocialLink {
   id: number;
@@ -25,6 +26,14 @@ export interface ProfileData {
   avatar?: string;
   logo?: string;
   headline?: string;
+  // Contact info
+  publicEmail?: string;
+  publicPhone?: string;
+  website?: string;
+  // Contact visibility toggles
+  showEmail?: boolean;
+  showPhone?: boolean;
+  showWebsite?: boolean;
 }
 
 interface ProfileLinksEditorProps {
@@ -45,26 +54,6 @@ const FEATURED_PLATFORMS = [
   { name: 'Spotify', icon: 'spotify', pattern: 'spotify.com' },
 ];
 
-const KNOWN_PLATFORMS = [
-  { name: 'LinkedIn', pattern: 'linkedin.com', logo: '/assets/social-logos/linkedin.svg' },
-  { name: 'Twitter', pattern: 'twitter.com', logo: '/assets/social-logos/twitter.svg' },
-  { name: 'X', pattern: 'x.com', logo: '/assets/social-logos/x.svg' },
-  { name: 'GitHub', pattern: 'github.com', logo: '/assets/social-logos/github.svg' },
-  { name: 'Instagram', pattern: 'instagram.com', logo: '/assets/social-logos/instagram.svg' },
-  { name: 'Facebook', pattern: 'facebook.com', logo: '/assets/social-logos/facebook.svg' },
-  { name: 'TikTok', pattern: 'tiktok.com', logo: '/assets/social-logos/tiktok.svg' },
-  { name: 'YouTube', pattern: 'youtube.com', logo: '/assets/social-logos/youtube.svg' },
-  { name: 'Spotify', pattern: 'spotify.com', logo: '/assets/social-logos/spotify.svg' },
-  { name: 'Apple Music', pattern: 'music.apple.com', logo: '/assets/social-logos/apple-music.svg' },
-  { name: 'Medium', pattern: 'medium.com', logo: '/assets/social-logos/medium.svg' },
-  { name: 'Behance', pattern: 'behance.net', logo: '/assets/social-logos/behance.svg' },
-  { name: 'Dribbble', pattern: 'dribbble.com', logo: '/assets/social-logos/dribbble.svg' },
-  { name: 'Twitch', pattern: 'twitch.tv', logo: '/assets/social-logos/twitch.svg' },
-  { name: 'Discord', pattern: 'discord.', logo: '/assets/social-logos/discord.svg' },
-  { name: 'Telegram', pattern: 't.me', logo: '/assets/social-logos/telegram.svg' },
-  { name: 'WhatsApp', pattern: 'wa.me', logo: '/assets/social-logos/whatsapp.svg' },
-];
-
 // Default appearance settings
 const DEFAULT_APPEARANCE: AppearanceSettings = {
   buttonStyle: 'solid',
@@ -77,6 +66,11 @@ const DEFAULT_APPEARANCE: AppearanceSettings = {
   fontFamily: 'Inter',
   headerStyle: 'simple',
   headerColor: '#8B5CF6',
+  bannerSettings: {
+    mode: 'color',
+    color: '#8B5CF6',
+    derivedFromWallpaper: true,
+  },
   wallpaper: '',
   wallpaperOpacity: 100,
   footerText: '',
@@ -193,8 +187,24 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
     }
   };
 
-  const loadAppearanceSettings = () => {
-    // Load saved appearance settings from localStorage or API
+  const loadAppearanceSettings = async () => {
+    // Load saved appearance settings from API (with localStorage fallback)
+    try {
+      const response = await fetch('/api/profiles/me/appearance', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.settings) {
+          setAppearance({ ...DEFAULT_APPEARANCE, ...data.settings });
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load appearance from API:', error);
+    }
+    
+    // Fallback to localStorage
     const saved = localStorage.getItem(`appearance_${profile.username}`);
     if (saved) {
       try {
@@ -205,10 +215,29 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
     }
   };
 
-  const handleAppearanceChange = (newSettings: AppearanceSettings) => {
+  const handleAppearanceChange = async (newSettings: AppearanceSettings) => {
     setAppearance(newSettings);
-    // Save to localStorage
-    localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+    
+    // Save to API (persistent storage)
+    try {
+      const response = await fetch('/api/profiles/me/appearance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ settings: newSettings })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to save appearance settings');
+      }
+      
+      // Also save to localStorage as backup
+      localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+    } catch (error) {
+      console.error('Failed to save appearance to API:', error);
+      // Fallback to localStorage only
+      localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+    }
   };
 
   const fetchLinks = async () => {
@@ -234,15 +263,14 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
   };
 
   const detectPlatform = (url: string) => {
-    for (const platform of KNOWN_PLATFORMS) {
-      if (url.toLowerCase().includes(platform.pattern)) {
-        return { name: platform.name, logo: platform.logo };
-      }
+    const platform = detectPlatformFromUrl(url);
+    if (platform) {
+      return { name: platform.name, logo: platform.logo };
     }
     return null;
   };
 
-  const handleAddLink = async (url: string, label: string, isFeatured: boolean) => {
+  const handleAddLink = async (url: string, label: string, isFeatured: boolean, customLogo?: string) => {
     const detected = detectPlatform(url);
     
     try {
@@ -254,7 +282,7 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
           url,
           displayLabel: label || null,
           platform: detected?.name || null,
-          customLogo: detected?.logo || null,
+          customLogo: customLogo || detected?.logo || DEFAULT_LOGO,
           isFeatured
         })
       });

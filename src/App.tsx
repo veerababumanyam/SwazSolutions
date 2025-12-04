@@ -22,8 +22,14 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
+import { preloadFonts } from './utils/fontLoader';
 
 const App: React.FC = () => {
+  // Preload locally hosted fonts on app mount
+  useEffect(() => {
+    preloadFonts();
+  }, []);
+
   return (
     <ErrorBoundary>
       <HashRouter>
@@ -65,7 +71,7 @@ const App: React.FC = () => {
                       <HelpPage />
                       <Footer />
                     </>} />
-                    
+
                     {/* Virtual Profile Routes - Unified Edit Profile */}
                     <Route path="/profile/edit" element={
                       <ProtectedRoute>

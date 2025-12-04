@@ -2,6 +2,7 @@
 // Displays featured and custom social links on public profile
 
 import React from 'react';
+import { Theme } from '../../types/theme.types';
 
 interface SocialLink {
   id: number;
@@ -17,12 +18,14 @@ interface SocialLinksProps {
   links: SocialLink[];
   layout?: 'horizontal' | 'grid';
   iconSize?: 'small' | 'medium' | 'large';
+  theme?: Theme;
 }
 
-export const SocialLinks: React.FC<SocialLinksProps> = ({ 
-  links, 
+export const SocialLinks: React.FC<SocialLinksProps> = ({
+  links,
   layout = 'grid',
-  iconSize = 'large'
+  iconSize = 'large',
+  theme
 }) => {
   const [showAll, setShowAll] = React.useState(false);
 
@@ -51,18 +54,39 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
     }
   };
 
+  const headingStyle: React.CSSProperties = theme ? {
+    color: theme.colors.text,
+    fontFamily: theme.typography.headingFont,
+    fontWeight: theme.typography.fontWeights.bold,
+  } : {};
+
+  const textStyle: React.CSSProperties = theme ? {
+    color: theme.colors.textSecondary,
+  } : {};
+
+  const iconContainerStyle: React.CSSProperties = theme ? {
+    background: theme.colors.primary,
+    borderRadius: theme.layout.borderRadius.lg,
+    boxShadow: theme.layout.shadows.md,
+  } : {};
+
+  const customLinkStyle: React.CSSProperties = theme ? {
+    backgroundColor: theme.colors.backgroundSecondary,
+    borderRadius: theme.layout.borderRadius.md,
+  } : {};
+
   return (
     <div className="w-full">
       {/* Featured Links - Prominent Display */}
       {featuredLinks.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <h3 className="text-lg font-semibold mb-4" style={headingStyle}>
             Connect With Me
           </h3>
-          
+
           <div className={`
-            ${layout === 'grid' 
-              ? 'grid grid-cols-3 sm:grid-cols-5 gap-4' 
+            ${layout === 'grid'
+              ? 'grid grid-cols-3 sm:grid-cols-5 gap-4'
               : 'flex flex-wrap gap-4 justify-center'
             }
           `}>
@@ -76,17 +100,18 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                 aria-label={link.platform || link.displayLabel || 'Social link'}
               >
                 {/* T101: Large icons for mobile (60x60px = w-16 h-16) */}
-                <div className={`
-                  ${getMobileIconSize()} md:${getIconSizeClass()}
-                  bg-gradient-to-br from-blue-500 to-purple-600 
-                  rounded-2xl p-0.5 shadow-lg
-                  group-hover:shadow-xl transition-shadow
-                `}>
+                <div
+                  className={`
+                    ${getMobileIconSize()} md:${getIconSizeClass()}
+                    p-0.5 hover:scale-110 transition-all
+                  `}
+                  style={iconContainerStyle}
+                >
                   <div className="w-full h-full bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center p-2">
                     {link.customLogo ? (
-                      <img 
-                        src={link.customLogo} 
-                        alt={link.platform || 'Social link'} 
+                      <img
+                        src={link.customLogo}
+                        alt={link.platform || 'Social link'}
                         className="w-full h-full object-contain"
                       />
                     ) : (
@@ -96,9 +121,9 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                     )}
                   </div>
                 </div>
-                
+
                 {/* Platform name or label */}
-                <span className="mt-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300 text-center">
+                <span className="mt-2 text-xs sm:text-sm text-center" style={textStyle}>
                   {link.displayLabel || link.platform || 'Link'}
                 </span>
               </a>
@@ -114,13 +139,13 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
             onClick={() => setShowAll(!showAll)}
             className="flex items-center justify-between w-full text-left mb-4 group"
           >
-            <h3 className="text-base font-medium text-gray-700 dark:text-gray-300">
+            <h3 className="text-base font-medium" style={textStyle}>
               More Links ({customLinks.length})
             </h3>
-            <svg 
+            <svg
               className={`w-5 h-5 text-gray-500 transition-transform ${showAll ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -135,12 +160,13 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                  className="flex items-center space-x-3 p-3 hover:opacity-80 transition-opacity group"
+                  style={customLinkStyle}
                 >
                   {link.customLogo ? (
-                    <img 
-                      src={link.customLogo} 
-                      alt={link.platform || 'Link'} 
+                    <img
+                      src={link.customLogo}
+                      alt={link.platform || 'Link'}
                       className="w-8 h-8 rounded"
                     />
                   ) : (
@@ -148,7 +174,7 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                       {(link.displayLabel || link.platform || '?')[0].toUpperCase()}
                     </div>
                   )}
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400">
                       {link.displayLabel || link.platform || 'Custom Link'}
@@ -158,10 +184,10 @@ export const SocialLinks: React.FC<SocialLinksProps> = ({
                     </div>
                   </div>
 
-                  <svg 
-                    className="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" 
-                    fill="none" 
-                    stroke="currentColor" 
+                  <svg
+                    className="w-5 h-5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                    fill="none"
+                    stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

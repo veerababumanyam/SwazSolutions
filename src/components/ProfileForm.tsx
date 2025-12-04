@@ -35,6 +35,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     pronouns: '',
     published: false,
     indexingOptIn: false,
+    showEmail: true,
+    showPhone: true,
+    showWebsite: true,
+    // Company contact fields
+    companyEmail: '',
+    companyPhone: '',
+    showCompanyEmail: true,
+    showCompanyPhone: true,
     ...initialData,
   });
 
@@ -126,6 +134,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     // Optional field validations
     if (formData.publicEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.publicEmail)) {
       newErrors.publicEmail = 'Invalid email format';
+    }
+
+    // Company email validation
+    if (formData.companyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.companyEmail)) {
+      newErrors.companyEmail = 'Invalid email format';
     }
 
     if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
@@ -344,48 +357,190 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       {/* Contact Information Section (T043) */}
       <div className="border-t pt-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Contact Information</h3>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Add contact details and control their visibility on your public profile and vCard.
+        </p>
 
+        {/* Personal Contact Section */}
+        <div className="mb-6">
+          <h4 className="text-md font-medium mb-3 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Personal Contact
+          </h4>
+          <div className="space-y-4">
+            {/* Personal Email with Toggle */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="publicEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Personal Email
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="showEmail"
+                    checked={formData.showEmail ?? true}
+                    onChange={(e) => setFormData({ ...formData, showEmail: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.showEmail ? 'Visible' : 'Hidden'}
+                  </span>
+                </label>
+              </div>
+              <input
+                type="email"
+                id="publicEmail"
+                name="publicEmail"
+                value={formData.publicEmail}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.publicEmail ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white`}
+                placeholder="john@personal.com"
+              />
+              {errors.publicEmail && <p className="mt-1 text-sm text-red-600">{errors.publicEmail}</p>}
+              <p className="mt-1 text-xs text-gray-400">Personal email shown in vCard as HOME type</p>
+            </div>
+
+            {/* Personal Phone with Toggle */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="publicPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Personal Phone
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="showPhone"
+                    checked={formData.showPhone ?? true}
+                    onChange={(e) => setFormData({ ...formData, showPhone: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.showPhone ? 'Visible' : 'Hidden'}
+                  </span>
+                </label>
+              </div>
+              <input
+                type="tel"
+                id="publicPhone"
+                name="publicPhone"
+                value={formData.publicPhone}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="+1 (555) 123-4567"
+              />
+              <p className="mt-1 text-xs text-gray-400">Personal phone shown in vCard as CELL type</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Company Contact Section */}
+        <div className="mb-6">
+          <h4 className="text-md font-medium mb-3 text-gray-800 dark:text-gray-200 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            Company Contact
+          </h4>
+          <div className="space-y-4">
+            {/* Company Email with Toggle */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="companyEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Company Email
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="showCompanyEmail"
+                    checked={formData.showCompanyEmail ?? true}
+                    onChange={(e) => setFormData({ ...formData, showCompanyEmail: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.showCompanyEmail ? 'Visible' : 'Hidden'}
+                  </span>
+                </label>
+              </div>
+              <input
+                type="email"
+                id="companyEmail"
+                name="companyEmail"
+                value={formData.companyEmail || ''}
+                onChange={handleChange}
+                className={`mt-1 block w-full px-3 py-2 border ${
+                  errors.companyEmail ? 'border-red-300' : 'border-gray-300'
+                } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white`}
+                placeholder="john@company.com"
+              />
+              {errors.companyEmail && <p className="mt-1 text-sm text-red-600">{errors.companyEmail}</p>}
+              <p className="mt-1 text-xs text-gray-400">Work email shown in vCard as WORK type</p>
+            </div>
+
+            {/* Company Phone with Toggle */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="companyPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Company Phone
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="showCompanyPhone"
+                    checked={formData.showCompanyPhone ?? true}
+                    onChange={(e) => setFormData({ ...formData, showCompanyPhone: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.showCompanyPhone ? 'Visible' : 'Hidden'}
+                  </span>
+                </label>
+              </div>
+              <input
+                type="tel"
+                id="companyPhone"
+                name="companyPhone"
+                value={formData.companyPhone || ''}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                placeholder="+1 (555) 987-6543"
+              />
+              <p className="mt-1 text-xs text-gray-400">Work phone shown in vCard as WORK type</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Website Section */}
         <div className="space-y-4">
-          {/* Public Email */}
-          <div>
-            <label htmlFor="publicEmail" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Public Email
-            </label>
-            <input
-              type="email"
-              id="publicEmail"
-              name="publicEmail"
-              value={formData.publicEmail}
-              onChange={handleChange}
-              className={`mt-1 block w-full px-3 py-2 border ${
-                errors.publicEmail ? 'border-red-300' : 'border-gray-300'
-              } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white`}
-              placeholder="john@example.com"
-            />
-            {errors.publicEmail && <p className="mt-1 text-sm text-red-600">{errors.publicEmail}</p>}
-          </div>
-
-          {/* Public Phone */}
-          <div>
-            <label htmlFor="publicPhone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Public Phone
-            </label>
-            <input
-              type="tel"
-              id="publicPhone"
-              name="publicPhone"
-              value={formData.publicPhone}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-              placeholder="+1 (555) 123-4567"
-            />
-          </div>
-
-          {/* Website */}
-          <div>
-            <label htmlFor="website" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Website
-            </label>
+          {/* Website with Toggle */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="website" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Website
+              </label>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="showWebsite"
+                  checked={formData.showWebsite ?? true}
+                  onChange={(e) => setFormData({ ...formData, showWebsite: e.target.checked })}
+                  className="sr-only peer"
+                />
+                <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                  {formData.showWebsite ? 'Visible' : 'Hidden'}
+                </span>
+              </label>
+            </div>
             <input
               type="url"
               id="website"
@@ -394,10 +549,11 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               onChange={handleChange}
               className={`mt-1 block w-full px-3 py-2 border ${
                 errors.website ? 'border-red-300' : 'border-gray-300'
-              } rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white`}
+              } rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white`}
               placeholder="https://example.com"
             />
             {errors.website && <p className="mt-1 text-sm text-red-600">{errors.website}</p>}
+            <p className="mt-1 text-xs text-gray-400">Visitors can click to visit your website</p>
           </div>
         </div>
       </div>

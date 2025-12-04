@@ -17,6 +17,7 @@ import { MobilePreview, AppearanceSettings } from '../components/profile/MobileP
 import { AddLinkModal } from '../components/profile/AddLinkModal';
 import { AppearancePanel } from '../components/profile/AppearancePanel';
 import { getQRCodeDataURL } from '../services/qrCodeService';
+import { detectPlatformFromUrl, DEFAULT_LOGO } from '../constants/platforms';
 
 // Tab types for different sections
 type TabType = 'info' | 'media' | 'links' | 'appearance' | 'qr';
@@ -32,21 +33,25 @@ interface SocialLink {
   clicks?: number;
 }
 
-// Known platforms for auto-detection
-const KNOWN_PLATFORMS = [
-  { name: 'LinkedIn', pattern: 'linkedin.com', logo: '/assets/social-logos/linkedin.svg' },
-  { name: 'Twitter', pattern: 'twitter.com', logo: '/assets/social-logos/twitter.svg' },
-  { name: 'X', pattern: 'x.com', logo: '/assets/social-logos/x.svg' },
-  { name: 'GitHub', pattern: 'github.com', logo: '/assets/social-logos/github.svg' },
-  { name: 'Instagram', pattern: 'instagram.com', logo: '/assets/social-logos/instagram.svg' },
-  { name: 'Facebook', pattern: 'facebook.com', logo: '/assets/social-logos/facebook.svg' },
-  { name: 'TikTok', pattern: 'tiktok.com', logo: '/assets/social-logos/tiktok.svg' },
-  { name: 'YouTube', pattern: 'youtube.com', logo: '/assets/social-logos/youtube.svg' },
-  { name: 'Spotify', pattern: 'spotify.com', logo: '/assets/social-logos/spotify.svg' },
-  { name: 'Apple Music', pattern: 'music.apple.com', logo: '/assets/social-logos/apple-music.svg' },
-  { name: 'WhatsApp', pattern: 'wa.me', logo: '/assets/social-logos/whatsapp.svg' },
-  { name: 'Telegram', pattern: 't.me', logo: '/assets/social-logos/telegram.svg' },
-];
+// Helper for authenticated fetch requests
+const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('auth_token');
+  const headers = new Headers(options.headers || {});
+
+  if (!headers.has('Content-Type') && options.body) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
+};
 
 // Default appearance settings
 const DEFAULT_APPEARANCE: AppearanceSettings = {
@@ -60,6 +65,11 @@ const DEFAULT_APPEARANCE: AppearanceSettings = {
   fontFamily: 'Inter',
   headerStyle: 'simple',
   headerColor: '#8B5CF6',
+  bannerSettings: {
+    mode: 'color',
+    color: '#8B5CF6',
+    derivedFromWallpaper: true,
+  },
   wallpaper: '',
   wallpaperOpacity: 100,
   footerText: '',
@@ -120,21 +130,50 @@ export const UnifiedProfileEditor: React.FC = () => {
         pronouns: profile.pronouns,
         published: profile.published,
         indexingOptIn: profile.indexingOptIn,
+        // Contact visibility toggles
+        showEmail: profile.showEmail ?? true,
+        showPhone: profile.showPhone ?? true,
+        showWebsite: profile.showWebsite ?? true,
+        showBio: profile.showBio ?? true,
+        // Company contact fields
+        companyEmail: profile.companyEmail,
+        companyPhone: profile.companyPhone,
+        showCompanyEmail: profile.showCompanyEmail ?? true,
+        showCompanyPhone: profile.showCompanyPhone ?? true,
       });
       setAvatarUrl(profile.avatar || '');
       setLogoUrl(profile.logo || '');
 
-      // Load appearance settings
-      const saved = localStorage.getItem(`appearance_${profile.username}`);
-      if (saved) {
-        try {
-          setAppearance({ ...DEFAULT_APPEARANCE, ...JSON.parse(saved) });
-        } catch (e) {
-          console.error('Failed to load appearance settings:', e);
+      // Load appearance settings from API
+      loadAppearanceSettings();
+    }
+  }, [profile]);
+
+  // Load appearance settings from API
+  const loadAppearanceSettings = async () => {
+    try {
+      const response = await authFetch('/api/profiles/me/appearance');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.settings) {
+          setAppearance({ ...DEFAULT_APPEARANCE, ...data.settings });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load appearance settings:', e);
+      // Fallback to localStorage for backward compatibility
+      if (profile?.username) {
+        const saved = localStorage.getItem(`appearance_${profile.username}`);
+        if (saved) {
+          try {
+            setAppearance({ ...DEFAULT_APPEARANCE, ...JSON.parse(saved) });
+          } catch (parseError) {
+            console.error('Failed to parse localStorage appearance:', parseError);
+          }
         }
       }
     }
-  }, [profile]);
+  };
 
   // Load links when profile exists
   useEffect(() => {
@@ -179,9 +218,7 @@ export const UnifiedProfileEditor: React.FC = () => {
   const fetchLinks = async () => {
     try {
       setLinksLoading(true);
-      const response = await fetch('/api/profiles/me/social-links', {
-        credentials: 'include'
-      });
+      const response = await authFetch('/api/profiles/me/social-links');
       if (!response.ok) throw new Error('Failed to fetch links');
       const data = await response.json();
       const allLinks = [...(data.featured || []), ...(data.custom || [])];
@@ -241,6 +278,10 @@ export const UnifiedProfileEditor: React.FC = () => {
       errors.publicEmail = 'Invalid email format';
     }
 
+    if (formData.companyEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.companyEmail)) {
+      errors.companyEmail = 'Invalid email format';
+    }
+
     if (formData.website && !/^https?:\/\/.+/.test(formData.website)) {
       errors.website = 'Website must start with http:// or https://';
     }
@@ -296,10 +337,8 @@ export const UnifiedProfileEditor: React.FC = () => {
       const reader = new FileReader();
       reader.onload = async () => {
         const base64 = reader.result as string;
-        const response = await fetch(`/api/uploads/${type}`, {
+        const response = await authFetch(`/api/uploads/${type}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({ image: base64 })
         });
 
@@ -323,9 +362,8 @@ export const UnifiedProfileEditor: React.FC = () => {
   const handleRemoveImage = async (type: 'avatar' | 'logo') => {
     if (!confirm(`Remove your ${type}?`)) return;
     try {
-      const response = await fetch(`/api/uploads/${type}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const response = await authFetch(`/api/uploads/${type}`, {
+        method: 'DELETE'
       });
       if (!response.ok) throw new Error('Delete failed');
 
@@ -339,26 +377,23 @@ export const UnifiedProfileEditor: React.FC = () => {
   };
 
   const detectPlatform = (url: string) => {
-    for (const platform of KNOWN_PLATFORMS) {
-      if (url.toLowerCase().includes(platform.pattern)) {
-        return { name: platform.name, logo: platform.logo };
-      }
+    const platform = detectPlatformFromUrl(url);
+    if (platform) {
+      return { name: platform.name, logo: platform.logo };
     }
     return null;
   };
 
-  const handleAddLink = async (url: string, label: string, isFeatured: boolean) => {
+  const handleAddLink = async (url: string, label: string, isFeatured: boolean, customLogo?: string) => {
     const detected = detectPlatform(url);
     try {
-      const response = await fetch('/api/profiles/me/social-links', {
+      const response = await authFetch('/api/profiles/me/social-links', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           url,
           displayLabel: label || null,
           platform: detected?.name || null,
-          customLogo: detected?.logo || null,
+          customLogo: customLogo || detected?.logo || DEFAULT_LOGO,
           isFeatured
         })
       });
@@ -379,9 +414,8 @@ export const UnifiedProfileEditor: React.FC = () => {
   const handleDeleteLink = async (linkId: number) => {
     if (!confirm('Delete this link?')) return;
     try {
-      const response = await fetch(`/api/profiles/me/social-links/${linkId}`, {
-        method: 'DELETE',
-        credentials: 'include'
+      const response = await authFetch(`/api/profiles/me/social-links/${linkId}`, {
+        method: 'DELETE'
       });
       if (!response.ok) throw new Error('Failed to delete link');
       await fetchLinks();
@@ -393,10 +427,8 @@ export const UnifiedProfileEditor: React.FC = () => {
 
   const handleUpdateLink = async (linkId: number, updates: Partial<SocialLink>) => {
     try {
-      const response = await fetch(`/api/profiles/me/social-links/${linkId}`, {
+      const response = await authFetch(`/api/profiles/me/social-links/${linkId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(updates)
       });
       if (!response.ok) throw new Error('Failed to update link');
@@ -406,18 +438,36 @@ export const UnifiedProfileEditor: React.FC = () => {
     }
   };
 
-  const handleAppearanceChange = (newSettings: AppearanceSettings) => {
+  const handleAppearanceChange = async (newSettings: AppearanceSettings) => {
     setAppearance(newSettings);
-    if (profile?.username) {
-      localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+
+    // Save to API (persistent storage)
+    try {
+      const response = await authFetch('/api/profiles/me/appearance', {
+        method: 'PUT',
+        body: JSON.stringify({ settings: newSettings })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save appearance settings');
+      }
+
+      // Also save to localStorage as backup
+      if (profile?.username) {
+        localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+      }
+    } catch (error) {
+      console.error('Failed to save appearance settings to API:', error);
+      // Fallback to localStorage only
+      if (profile?.username) {
+        localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+      }
     }
   };
 
   const handleDownloadQR = async (format: 'png' | 'svg') => {
     try {
-      const response = await fetch(`/api/profiles/me/qr-code?format=${format}&size=1000`, {
-        credentials: 'include'
-      });
+      const response = await authFetch(`/api/profiles/me/qr-code?format=${format}&size=1000`);
       if (!response.ok) throw new Error('Failed to download');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -494,10 +544,19 @@ export const UnifiedProfileEditor: React.FC = () => {
       <header className="bg-surface border-b border-border sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <h1 className="text-xl font-bold text-primary flex items-center gap-2">
-              <FileText className="w-6 h-6 text-accent" />
-              {exists ? 'Edit Profile' : 'Create Profile'}
-            </h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate('/profile')}
+                className="p-2 hover:bg-muted rounded-full transition-colors"
+                title="Back to Dashboard"
+              >
+                <ChevronDown className="w-6 h-6 rotate-90" />
+              </button>
+              <h1 className="text-xl font-bold text-primary flex items-center gap-2">
+                <FileText className="w-6 h-6 text-accent" />
+                {exists ? 'Edit Profile' : 'Create Profile'}
+              </h1>
+            </div>
 
             <div className="flex items-center gap-3">
               {/* Publish Status */}
@@ -693,7 +752,22 @@ export const UnifiedProfileEditor: React.FC = () => {
 
                   {/* Bio */}
                   <div>
-                    <label className="block text-sm font-medium text-primary mb-1">Bio</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-primary">Bio</label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          name="showBio"
+                          checked={formData.showBio ?? true}
+                          onChange={handleChange}
+                          className="sr-only peer"
+                        />
+                        <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-accent rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-accent"></div>
+                        <span className="text-xs text-secondary">
+                          {formData.showBio !== false ? 'Visible' : 'Hidden'}
+                        </span>
+                      </label>
+                    </div>
                     <textarea
                       name="bio"
                       value={formData.bio || ''}
@@ -704,7 +778,12 @@ export const UnifiedProfileEditor: React.FC = () => {
                       maxLength={500}
                     />
                     {formErrors.bio && <p className="mt-1 text-sm text-red-500">{formErrors.bio}</p>}
-                    <p className="mt-1 text-xs text-secondary">{(formData.bio || '').length}/500</p>
+                    <div className="flex justify-between mt-1">
+                      <p className="text-xs text-secondary">{(formData.bio || '').length}/500</p>
+                      {formData.showBio === false && (
+                        <p className="text-xs text-amber-500">Bio will be hidden on public profile</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Contact Info Section */}
@@ -713,35 +792,165 @@ export const UnifiedProfileEditor: React.FC = () => {
                       <Mail className="w-5 h-5 text-accent" />
                       Contact Information
                     </h3>
+                    <p className="text-sm text-secondary mb-4">
+                      Add contact details and control their visibility on your public profile and vCard.
+                    </p>
 
+                    {/* Personal Contact Section */}
+                    <div className="mb-6">
+                      <h4 className="text-md font-medium mb-3 text-primary flex items-center gap-2">
+                        <User className="w-4 h-4" />
+                        Personal Contact
+                      </h4>
+                      <div className="space-y-4">
+                        {/* Personal Email with Toggle */}
+                        <div className="p-4 bg-muted/30 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-primary">Personal Email</label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                name="showEmail"
+                                checked={formData.showEmail ?? true}
+                                onChange={handleChange}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                              <span className="ml-2 text-xs text-secondary">
+                                {formData.showEmail !== false ? 'Visible' : 'Hidden'}
+                              </span>
+                            </label>
+                          </div>
+                          <input
+                            type="email"
+                            name="publicEmail"
+                            value={formData.publicEmail || ''}
+                            onChange={handleChange}
+                            className={`w-full input ${formErrors.publicEmail ? 'border-red-500' : ''}`}
+                            placeholder="john@personal.com"
+                          />
+                          {formErrors.publicEmail && <p className="mt-1 text-sm text-red-500">{formErrors.publicEmail}</p>}
+                          <p className="mt-1 text-xs text-secondary">Personal email shown in vCard as HOME type</p>
+                        </div>
+
+                        {/* Personal Phone with Toggle */}
+                        <div className="p-4 bg-muted/30 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-primary">Personal Phone</label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                name="showPhone"
+                                checked={formData.showPhone ?? true}
+                                onChange={handleChange}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                              <span className="ml-2 text-xs text-secondary">
+                                {formData.showPhone !== false ? 'Visible' : 'Hidden'}
+                              </span>
+                            </label>
+                          </div>
+                          <input
+                            type="tel"
+                            name="publicPhone"
+                            value={formData.publicPhone || ''}
+                            onChange={handleChange}
+                            className="w-full input"
+                            placeholder="+1 (555) 123-4567"
+                          />
+                          <p className="mt-1 text-xs text-secondary">Personal phone shown in vCard as CELL type</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Company Contact Section */}
+                    <div className="mb-6">
+                      <h4 className="text-md font-medium mb-3 text-primary flex items-center gap-2">
+                        <Briefcase className="w-4 h-4" />
+                        Company Contact
+                      </h4>
+                      <div className="space-y-4">
+                        {/* Company Email with Toggle */}
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-primary">Company Email</label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                name="showCompanyEmail"
+                                checked={formData.showCompanyEmail ?? true}
+                                onChange={handleChange}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                              <span className="ml-2 text-xs text-secondary">
+                                {formData.showCompanyEmail !== false ? 'Visible' : 'Hidden'}
+                              </span>
+                            </label>
+                          </div>
+                          <input
+                            type="email"
+                            name="companyEmail"
+                            value={formData.companyEmail || ''}
+                            onChange={handleChange}
+                            className={`w-full input ${formErrors.companyEmail ? 'border-red-500' : ''}`}
+                            placeholder="john@company.com"
+                          />
+                          {formErrors.companyEmail && <p className="mt-1 text-sm text-red-500">{formErrors.companyEmail}</p>}
+                          <p className="mt-1 text-xs text-secondary">Work email shown in vCard as WORK type</p>
+                        </div>
+
+                        {/* Company Phone with Toggle */}
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-medium text-primary">Company Phone</label>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                name="showCompanyPhone"
+                                checked={formData.showCompanyPhone ?? true}
+                                onChange={handleChange}
+                                className="sr-only peer"
+                              />
+                              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                              <span className="ml-2 text-xs text-secondary">
+                                {formData.showCompanyPhone !== false ? 'Visible' : 'Hidden'}
+                              </span>
+                            </label>
+                          </div>
+                          <input
+                            type="tel"
+                            name="companyPhone"
+                            value={formData.companyPhone || ''}
+                            onChange={handleChange}
+                            className="w-full input"
+                            placeholder="+1 (555) 987-6543"
+                          />
+                          <p className="mt-1 text-xs text-secondary">Work phone shown in vCard as WORK type</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Website Section */}
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-1">Email</label>
-                        <input
-                          type="email"
-                          name="publicEmail"
-                          value={formData.publicEmail || ''}
-                          onChange={handleChange}
-                          className={`w-full input ${formErrors.publicEmail ? 'border-red-500' : ''}`}
-                          placeholder="john@example.com"
-                        />
-                        {formErrors.publicEmail && <p className="mt-1 text-sm text-red-500">{formErrors.publicEmail}</p>}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-1">Phone</label>
-                        <input
-                          type="tel"
-                          name="publicPhone"
-                          value={formData.publicPhone || ''}
-                          onChange={handleChange}
-                          className="w-full input"
-                          placeholder="+1 (555) 123-4567"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-primary mb-1">Website</label>
+                      <div className="p-4 bg-muted/30 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-medium text-primary">Website</label>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              name="showWebsite"
+                              checked={formData.showWebsite ?? true}
+                              onChange={handleChange}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                            <span className="ml-2 text-xs text-secondary">
+                              {formData.showWebsite !== false ? 'Visible' : 'Hidden'}
+                            </span>
+                          </label>
+                        </div>
                         <input
                           type="url"
                           name="website"
@@ -751,6 +960,7 @@ export const UnifiedProfileEditor: React.FC = () => {
                           placeholder="https://example.com"
                         />
                         {formErrors.website && <p className="mt-1 text-sm text-red-500">{formErrors.website}</p>}
+                        <p className="mt-1 text-xs text-secondary">Visitors can click to visit your website</p>
                       </div>
                     </div>
                   </div>
@@ -1063,6 +1273,17 @@ export const UnifiedProfileEditor: React.FC = () => {
                   headline: formData.headline,
                   avatar: avatarUrl,
                   logo: logoUrl,
+                  publicEmail: formData.publicEmail,
+                  publicPhone: formData.publicPhone,
+                  website: formData.website,
+                  showEmail: formData.showEmail,
+                  showPhone: formData.showPhone,
+                  showWebsite: formData.showWebsite,
+                  showBio: formData.showBio,
+                  companyEmail: formData.companyEmail,
+                  companyPhone: formData.companyPhone,
+                  showCompanyEmail: formData.showCompanyEmail,
+                  showCompanyPhone: formData.showCompanyPhone,
                 }}
                 links={sortedLinks}
                 appearance={appearance}

@@ -2,12 +2,14 @@
 // vCard download button for public profiles - mobile-friendly
 
 import React, { useState } from 'react';
+import { Theme } from '../types/theme.types';
 
 interface ContactButtonProps {
   username: string;
   displayName: string;
   className?: string;
   variant?: 'primary' | 'secondary';
+  theme?: Theme;
 }
 
 const ContactButton: React.FC<ContactButtonProps> = ({
@@ -15,6 +17,7 @@ const ContactButton: React.FC<ContactButtonProps> = ({
   displayName,
   className = '',
   variant = 'primary',
+  theme,
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +37,7 @@ const ContactButton: React.FC<ContactButtonProps> = ({
 
       // Get the blob
       const blob = await response.blob();
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -42,7 +45,7 @@ const ContactButton: React.FC<ContactButtonProps> = ({
       a.download = `${username}.vcf`;
       document.body.appendChild(a);
       a.click();
-      
+
       // Cleanup
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
@@ -60,13 +63,22 @@ const ContactButton: React.FC<ContactButtonProps> = ({
   };
 
   const baseClasses = 'flex items-center justify-center space-x-2 rounded-lg font-medium transition-all transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
-  
+
   // T076: Mobile-friendly touch target (minimum 44x44px)
   const sizeClasses = 'px-6 py-3 min-h-[44px] text-base';
-  
-  const variantClasses = variant === 'primary'
+
+  const variantClasses = !theme ? (variant === 'primary'
     ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
-    : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white';
+    : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white') : '';
+
+  const buttonStyle: React.CSSProperties = theme ? {
+    backgroundColor: theme.colors.primary,
+    color: theme.colors.background,
+    borderRadius: theme.layout.borderRadius.md,
+    boxShadow: theme.layout.shadows.md,
+    fontFamily: theme.typography.fontFamily,
+    fontWeight: theme.typography.fontWeights.medium,
+  } : {};
 
   return (
     <div className={className}>
@@ -74,6 +86,7 @@ const ContactButton: React.FC<ContactButtonProps> = ({
         onClick={handleDownload}
         disabled={downloading}
         className={`${baseClasses} ${sizeClasses} ${variantClasses}`}
+        style={buttonStyle}
         aria-label={`Save ${displayName}'s contact information`}
       >
         {downloading ? (

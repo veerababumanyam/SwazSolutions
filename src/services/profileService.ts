@@ -18,6 +18,16 @@ interface ProfileData {
   pronouns?: string;
   published?: boolean;
   indexingOptIn?: boolean;
+  // Contact visibility toggles (personal)
+  showEmail?: boolean;
+  showPhone?: boolean;
+  showWebsite?: boolean;
+  showBio?: boolean;
+  // Company contact fields
+  companyEmail?: string;
+  companyPhone?: string;
+  showCompanyEmail?: boolean;
+  showCompanyPhone?: boolean;
 }
 
 interface UsernameCheckResponse {
@@ -41,6 +51,16 @@ interface PublicProfileResponse {
   publicPhone?: string;
   website?: string;
   pronouns?: string;
+  // Contact visibility toggles (personal)
+  showEmail?: boolean;
+  showPhone?: boolean;
+  showWebsite?: boolean;
+  showBio?: boolean;
+  // Company contact fields
+  companyEmail?: string;
+  companyPhone?: string;
+  showCompanyEmail?: boolean;
+  showCompanyPhone?: boolean;
   socialProfiles?: Array<{
     id: number;
     platform: string | null;
@@ -58,6 +78,41 @@ interface PublicProfileResponse {
     displayOrder: number;
   }>;
   theme?: any;
+  appearance?: AppearanceSettings | null;
+}
+
+// Appearance settings interface for public profile rendering
+interface AppearanceSettings {
+  buttonStyle: 'solid' | 'glass' | 'outline';
+  cornerRadius: number;
+  shadowStyle: 'none' | 'subtle' | 'strong' | 'hard';
+  buttonColor: string;
+  shadowColor: string;
+  textColor: string;
+  backgroundColor: string;
+  fontFamily: string;
+  headerStyle: 'simple' | 'banner' | 'avatar-top' | 'minimal' | 'hero-photo';
+  headerColor: string;
+  headerBackground?: {
+    useProfilePhoto: boolean;
+    height: string;
+    overlayColor: string;
+    overlayOpacity: number;
+    blur: number;
+    gradientOverlay?: string;
+    fallbackGradient: string;
+  };
+  bannerSettings?: {
+    mode: 'color' | 'image';
+    color: string;
+    image?: string;
+    derivedFromWallpaper: boolean;
+  };
+  wallpaper: string;
+  wallpaperOpacity: number;
+  footerText: string;
+  showPoweredBy: boolean;
+  themeId: string;
 }
 
 class ProfileService {
@@ -271,9 +326,20 @@ class ProfileService {
         publicPhone: data.profile.publicPhone,
         website: data.profile.website,
         pronouns: data.profile.pronouns,
+        // Contact visibility toggles (personal)
+        showEmail: data.profile.showEmail,
+        showPhone: data.profile.showPhone,
+        showWebsite: data.profile.showWebsite,
+        showBio: data.profile.showBio,
+        // Company contact fields
+        companyEmail: data.profile.companyEmail,
+        companyPhone: data.profile.companyPhone,
+        showCompanyEmail: data.profile.showCompanyEmail,
+        showCompanyPhone: data.profile.showCompanyPhone,
         socialProfiles: data.socialProfiles,
         customLinks: data.customLinks,
-        theme: data.theme
+        theme: data.theme,
+        appearance: data.appearance || null, // Include appearance settings for public profile
       };
     } catch (error) {
       console.error('Error fetching public profile:', error);
@@ -302,6 +368,16 @@ class ProfileService {
       pronouns: data.pronouns,
       published: Boolean(data.published),
       indexingOptIn: Boolean(data.indexingOptIn),
+      // Contact visibility toggles (personal)
+      showEmail: data.showEmail,
+      showPhone: data.showPhone,
+      showWebsite: data.showWebsite,
+      showBio: data.showBio,
+      // Company contact fields
+      companyEmail: data.companyEmail,
+      companyPhone: data.companyPhone,
+      showCompanyEmail: data.showCompanyEmail,
+      showCompanyPhone: data.showCompanyPhone,
     };
   }
 
@@ -326,6 +402,16 @@ class ProfileService {
     if (data.pronouns !== undefined) result.pronouns = data.pronouns;
     if (data.published !== undefined) result.published = data.published;
     if (data.indexingOptIn !== undefined) result.indexingOptIn = data.indexingOptIn;
+    // Contact visibility toggles (personal)
+    if (data.showEmail !== undefined) result.showEmail = data.showEmail;
+    if (data.showPhone !== undefined) result.showPhone = data.showPhone;
+    if (data.showWebsite !== undefined) result.showWebsite = data.showWebsite;
+    if (data.showBio !== undefined) result.showBio = data.showBio;
+    // Company contact fields
+    if (data.companyEmail !== undefined) result.companyEmail = data.companyEmail;
+    if (data.companyPhone !== undefined) result.companyPhone = data.companyPhone;
+    if (data.showCompanyEmail !== undefined) result.showCompanyEmail = data.showCompanyEmail;
+    if (data.showCompanyPhone !== undefined) result.showCompanyPhone = data.showCompanyPhone;
     
     return result;
   }

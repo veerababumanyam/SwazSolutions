@@ -2,6 +2,10 @@
 // Manages featured and custom social links with drag-and-drop reordering
 
 import React, { useState, useEffect } from 'react';
+import { 
+  detectPlatformFromUrl, 
+  DEFAULT_LOGO 
+} from '../../constants/platforms';
 
 interface SocialLink {
   id: number;
@@ -17,24 +21,6 @@ interface SocialLinksManagerProps {
   profileId?: number;
   onChange?: () => void;
 }
-
-const KNOWN_PLATFORMS = [
-  { name: 'LinkedIn', pattern: 'linkedin.com', logo: '/assets/social-logos/linkedin.svg' },
-  { name: 'Twitter', pattern: 'twitter.com', logo: '/assets/social-logos/twitter.svg' },
-  { name: 'GitHub', pattern: 'github.com', logo: '/assets/social-logos/github.svg' },
-  { name: 'Instagram', pattern: 'instagram.com', logo: '/assets/social-logos/instagram.svg' },
-  { name: 'Facebook', pattern: 'facebook.com', logo: '/assets/social-logos/facebook.svg' },
-  { name: 'TikTok', pattern: 'tiktok.com', logo: '/assets/social-logos/tiktok.svg' },
-  { name: 'YouTube', pattern: 'youtube.com', logo: '/assets/social-logos/youtube.svg' },
-  { name: 'Spotify', pattern: 'spotify.com', logo: '/assets/social-logos/spotify.svg' },
-  { name: 'Medium', pattern: 'medium.com', logo: '/assets/social-logos/medium.svg' },
-  { name: 'Behance', pattern: 'behance.net', logo: '/assets/social-logos/behance.svg' },
-  { name: 'Dribbble', pattern: 'dribbble.com', logo: '/assets/social-logos/dribbble.svg' },
-  { name: 'Twitch', pattern: 'twitch.tv', logo: '/assets/social-logos/twitch.svg' },
-  { name: 'Discord', pattern: 'discord.', logo: '/assets/social-logos/discord.svg' },
-  { name: 'Telegram', pattern: 't.me', logo: '/assets/social-logos/telegram.svg' },
-  { name: 'WhatsApp', pattern: 'wa.me', logo: '/assets/social-logos/whatsapp.svg' },
-];
 
 export const SocialLinksManager: React.FC<SocialLinksManagerProps> = ({ onChange }) => {
   const [links, setLinks] = useState<SocialLink[]>([]);
@@ -72,17 +58,16 @@ export const SocialLinksManager: React.FC<SocialLinksManagerProps> = ({ onChange
     }
   };
 
-  // T095: Auto-detect logo from URL
+  // T095: Auto-detect logo from URL using centralized platforms
   const detectPlatform = (url: string) => {
-    for (const platform of KNOWN_PLATFORMS) {
-      if (url.toLowerCase().includes(platform.pattern)) {
-        setDetectedPlatform(platform.name);
-        setDetectedLogo(platform.logo);
-        return;
-      }
+    const platform = detectPlatformFromUrl(url);
+    if (platform) {
+      setDetectedPlatform(platform.name);
+      setDetectedLogo(platform.logo);
+    } else {
+      setDetectedPlatform(null);
+      setDetectedLogo(null);
     }
-    setDetectedPlatform(null);
-    setDetectedLogo(null);
   };
 
   const handleUrlChange = (url: string) => {
@@ -294,9 +279,12 @@ export const SocialLinksManager: React.FC<SocialLinksManagerProps> = ({ onChange
                 className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  {link.customLogo && (
-                    <img src={link.customLogo} alt={link.platform || 'Logo'} className="w-8 h-8 rounded" />
-                  )}
+                  <img 
+                    src={link.customLogo || DEFAULT_LOGO} 
+                    alt={link.platform || 'Logo'} 
+                    className="w-8 h-8 rounded object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_LOGO; }}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">
                       {link.platform || 'Custom Link'}
@@ -339,9 +327,12 @@ export const SocialLinksManager: React.FC<SocialLinksManagerProps> = ({ onChange
                 className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg"
               >
                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                  {link.customLogo && (
-                    <img src={link.customLogo} alt={link.platform || 'Logo'} className="w-6 h-6 rounded" />
-                  )}
+                  <img 
+                    src={link.customLogo || DEFAULT_LOGO} 
+                    alt={link.platform || 'Logo'} 
+                    className="w-6 h-6 rounded object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_LOGO; }}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-gray-900 dark:text-white">
                       {link.displayLabel || link.platform || 'Custom Link'}

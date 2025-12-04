@@ -1,14 +1,12 @@
 // PublicProfile Page (T046)
-// Public-facing profile view with integrated ProfileCard component
+// Public-facing profile view with integrated PublicProfileView component
+// Uses AppearanceSettings to match editor preview exactly
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { profileService, PublicProfileResponse } from '../services/profileService';
-import ProfileCard from '../components/ProfileCard';
-import ContactButton from '../components/ContactButton';
-import SocialLinks from '../components/public-profile/SocialLinks';
+import PublicProfileView from '../components/public-profile/PublicProfileView';
 import QRCodeModal from '../components/profile/QRCodeModal';
-import { SharePanel } from '../components/profile/SharePanel';
 
 interface PublicProfileProps { }
 
@@ -50,9 +48,25 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
     }
   }, [username]);
 
-  // vCard download now handled by ContactButton component (T074-T076)
+  // Handle vCard download
+  const handleDownloadVCard = async () => {
+    if (!profile) return;
+    try {
+      const response = await fetch(`/api/public/profile/${profile.username}/vcard`);
+      if (!response.ok) throw new Error('Failed to download vCard');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${profile.username}.vcf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download vCard:', err);
+    }
+  };
 
-  // Handle QR code display (T124-T128)
+  // Handle QR code display
   const handleViewQR = () => {
     setShowQRModal(true);
   };
@@ -67,18 +81,15 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
       url: window.location.href,
     };
 
-    // Try native Web Share API first
     if (navigator.share) {
       try {
         await navigator.share(shareData);
       } catch (err) {
-        // User cancelled or error occurred
         if (err instanceof Error && err.name !== 'AbortError') {
           copyToClipboard();
         }
       }
     } else {
-      // Fallback to clipboard
       copyToClipboard();
     }
   };
@@ -123,52 +134,61 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
     );
   }
 
-  // Success state - display profile
-  // T058: Mobile-first responsive design (320px-1920px)
+  // Map profile data for PublicProfileView
+  const profileData = {
+    username: profile.username,
+    displayName: profile.displayName,
+    bio: profile.bio,
+    avatar: profile.avatar,
+    logo: profile.logoUrl,
+    headline: profile.headline,
+    publicEmail: profile.publicEmail,
+    publicPhone: profile.publicPhone,
+    website: profile.website,
+    showEmail: profile.showEmail,
+    showPhone: profile.showPhone,
+    showWebsite: profile.showWebsite,
+    showBio: profile.showBio,
+    companyEmail: profile.companyEmail,
+    companyPhone: profile.companyPhone,
+    showCompanyEmail: profile.showCompanyEmail,
+    showCompanyPhone: profile.showCompanyPhone,
+    pronouns: profile.pronouns,
+    company: profile.company,
+  };
+
+  // Combine social profiles and custom links for the links array
+  const allLinks = [
+    ...(profile.socialProfiles || []),
+    ...(profile.customLinks || []).map(link => ({
+      id: link.id,
+      platform: null,
+      url: link.linkUrl,
+      displayLabel: link.linkTitle,
+      customLogo: link.customLogoUrl,
+      isFeatured: false,
+      displayOrder: link.displayOrder,
+    })),
+  ].sort((a, b) => a.displayOrder - b.displayOrder);
+
+  // Success state - display profile using PublicProfileView
   return (
-    <div className="min-h-screen bg-background py-4 sm:py-8">
-      <div className="container mx-auto px-2 sm:px-4">
-        <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
-          <ProfileCard
-            profile={profile}
-            showActions={true}
-            onViewQR={handleViewQR}
-            onShare={handleShare}
-          />
+    <>
+      <PublicProfileView
+        profile={profileData}
+        links={allLinks}
+        appearance={profile.appearance}
+        onDownloadVCard={handleDownloadVCard}
+        onViewQR={handleViewQR}
+        onShare={handleShare}
+      />
 
-          {/* Social Links Display - T101-T102 */}
-          {/* T060: Optimized for mobile with touch-friendly sizing */}
-          {profile.socialProfiles && profile.socialProfiles.length > 0 && (
-            <div className="bg-surface rounded-lg shadow-lg p-4 sm:p-6 border border-border">
-              <SocialLinks
-                links={profile.socialProfiles}
-                layout="grid"
-                iconSize="large"
-              />
-            </div>
-          )}
-
-          {/* Share Panel - T134-T139 */}
-          <SharePanel
-            profileId={profile.id}
-            profileUrl={window.location.href}
-            title={`${profile.displayName}'s Profile`}
-            username={profile.username}
-          />
-
-          {/* SEO Meta Tags (will be added via Helmet in Phase 3) */}
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Profile URL: {window.location.href}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* QR Code Modal (T124-T128) */}
+      {/* QR Code Modal */}
       <QRCodeModal
         isOpen={showQRModal}
         onClose={() => setShowQRModal(false)}
         username={profile.username}
       />
-    </div>
+    </>
   );
 };

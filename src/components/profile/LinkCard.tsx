@@ -14,7 +14,7 @@ export interface AppearanceSettings {
   backgroundColor: string;
   fontFamily: string;
   // Header settings
-  headerStyle?: 'simple' | 'banner' | 'avatar-top' | 'minimal';
+  headerStyle?: 'simple' | 'banner' | 'avatar-top' | 'minimal' | 'hero-photo';
   headerColor?: string;
   // Wallpaper settings
   wallpaper?: string;

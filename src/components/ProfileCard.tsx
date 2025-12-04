@@ -3,6 +3,7 @@
 
 import React from 'react';
 import { PublicProfileResponse } from '../services/profileService';
+import { Theme } from '../types/theme.types';
 import ContactButton from './ContactButton';
 
 interface ProfileCardProps {
@@ -18,17 +19,61 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
   onViewQR,
   onShare,
 }) => {
+  const theme = profile.theme as Theme | undefined;
+
+  // Generate dynamic styles from theme
+  const cardStyle: React.CSSProperties = theme ? {
+    backgroundColor: theme.colors.background,
+    borderColor: theme.colors.border,
+    fontFamily: theme.typography.fontFamily,
+  } : {};
+
+  const bannerStyle: React.CSSProperties = theme ? {
+    backgroundColor: theme.colors.primary,
+    background: theme.wallpaper || theme.colors.primary,
+  } : {};
+
+  const avatarStyle: React.CSSProperties = theme ? {
+    borderRadius: theme.avatar.shape === 'circle' ? '50%' :
+      theme.avatar.shape === 'rounded' ? theme.layout.borderRadius.lg : '0',
+    borderWidth: theme.avatar.borderWidth,
+    borderColor: theme.avatar.borderColor,
+    boxShadow: theme.avatar.shadow,
+  } : {};
+
+  const headingStyle: React.CSSProperties = theme ? {
+    color: theme.colors.text,
+    fontFamily: theme.typography.headingFont,
+    fontWeight: theme.typography.fontWeights.bold,
+  } : {};
+
+  const textStyle: React.CSSProperties = theme ? {
+    color: theme.colors.textSecondary,
+  } : {};
+
+  const buttonStyle: React.CSSProperties = theme ? {
+    backgroundColor: theme.colors.primary,
+    color: theme.colors.background,
+    borderRadius: theme.layout.borderRadius.md,
+    boxShadow: theme.layout.shadows.sm,
+  } : {};
+
+  const socialLinkStyle: React.CSSProperties = theme ? {
+    backgroundColor: theme.colors.backgroundSecondary,
+    color: theme.colors.text,
+    borderRadius: theme.layout.borderRadius.md,
+  } : {};
+
   // T058-T062: Mobile-first optimizations
   return (
-    <div className="bg-surface rounded-lg shadow-lg overflow-hidden border border-border">
+    <div
+      className="bg-surface rounded-lg shadow-lg overflow-hidden border border-border"
+      style={cardStyle}
+    >
       {/* Background Banner - T060: Responsive height */}
       <div
-        className="h-24 sm:h-32 md:h-40 bg-brand-gradient"
-        style={
-          profile.theme?.backgroundImage
-            ? { backgroundImage: `url(${profile.theme.backgroundImage})`, backgroundSize: 'cover' }
-            : undefined
-        }
+        className="h-24 sm:h-32 md:h-40"
+        style={bannerStyle}
       />
 
       {/* Profile Header */}
@@ -40,7 +85,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
               src={profile.avatar || '/assets/images/default-avatar.png'}
               alt={`${profile.displayName}'s avatar`}
               loading="lazy"
-              className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-surface bg-surface object-cover"
+              className="w-24 h-24 sm:w-32 sm:h-32 border-4 bg-surface object-cover"
+              style={avatarStyle}
               onError={(e) => {
                 e.currentTarget.src = '/assets/images/default-avatar.png';
               }}
@@ -61,24 +107,24 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
 
         {/* Name and Info - T058: Mobile-responsive typography */}
         <div className="pt-14 sm:pt-20">
-          <h1 className="text-2xl sm:text-3xl font-bold text-primary">
+          <h1 className="text-2xl sm:text-3xl font-bold text-primary" style={headingStyle}>
             {profile.displayName}
           </h1>
 
           {profile.pronouns && (
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm mt-1" style={textStyle}>
               ({profile.pronouns})
             </p>
           )}
 
           {profile.headline && (
-            <p className="text-base sm:text-lg text-primary mt-2">
+            <p className="text-base sm:text-lg mt-2" style={headingStyle}>
               {profile.headline}
             </p>
           )}
 
           {profile.company && (
-            <p className="text-md text-secondary mt-1">
+            <p className="text-md mt-1" style={textStyle}>
               {profile.company}
             </p>
           )}
@@ -86,7 +132,7 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
           {/* Bio */}
           {profile.bio && (
             <div className="mt-4">
-              <p className="text-primary whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap" style={textStyle}>
                 {profile.bio}
               </p>
             </div>
@@ -165,7 +211,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center px-4 py-2 bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+                      className="flex items-center px-4 py-2 hover:opacity-80 transition-opacity"
+                      style={socialLinkStyle}
                       title={link.platform || undefined}
                     >
                       {link.customLogo && (
@@ -202,7 +249,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                 {onViewQR && (
                   <button
                     onClick={onViewQR}
-                    className="flex-1 sm:flex-none px-4 py-3 min-h-[44px] bg-muted text-primary rounded-lg hover:bg-muted/80 transition-all transform active:scale-95 flex items-center justify-center"
+                    className="flex-1 sm:flex-none px-4 py-3 min-h-[44px] hover:opacity-90 transition-all transform active:scale-95 flex items-center justify-center"
+                    style={buttonStyle}
                     aria-label="View QR Code"
                   >
                     <svg className="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +268,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
                 {onShare && (
                   <button
                     onClick={onShare}
-                    className="flex-1 sm:flex-none px-4 py-3 min-h-[44px] bg-muted text-primary rounded-lg hover:bg-muted/80 transition-all transform active:scale-95 flex items-center justify-center"
+                    className="flex-1 sm:flex-none px-4 py-3 min-h-[44px] hover:opacity-90 transition-all transform active:scale-95 flex items-center justify-center"
+                    style={buttonStyle}
                     aria-label="Share Profile"
                   >
                     <svg className="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

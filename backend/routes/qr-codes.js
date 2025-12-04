@@ -11,25 +11,37 @@ const crypto = require('crypto');
 // ============================================================================
 // T119: Get QR Code (GET /api/profiles/me/qr-code)
 // ============================================================================
+const { generateVCard, generateQRVCard } = require('../services/vCardGenerator');
+
+// ============================================================================
+// T119: Get QR Code (GET /api/profiles/me/qr-code)
+// ============================================================================
 router.get('/me/qr-code', auth, async (req, res) => {
-  const { format = 'png', size = 1000 } = req.query;
+  const { format = 'png', size = 1000, content = 'url' } = req.query;
   const userId = req.user.id;
 
   try {
-    // Get user's profile
-    const profileStmt = db.prepare('SELECT id, username FROM profiles WHERE user_id = ?');
+    // Get user's profile with all fields needed for vCard
+    const profileStmt = db.prepare('SELECT * FROM profiles WHERE user_id = ?');
     const profile = profileStmt.get(userId);
 
     if (!profile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    // Generate profile URL
-    const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
-    const profileUrl = `${baseUrl}/u/${profile.username}`;
+    // Determine QR data based on content type
+    let qrInputData;
+    if (content === 'vcard') {
+      // Use minimal vCard for QR codes to ensure scannability
+      qrInputData = generateQRVCard(profile);
+    } else {
+      // Default to URL
+      const baseUrl = process.env.BASE_URL || 'http://localhost:5173';
+      qrInputData = `${baseUrl}/u/${profile.username}`;
+    }
 
     // Check cache
-    const cacheKey = `${profile.id}-${format}-${size}`;
+    const cacheKey = `${profile.id}-${format}-${size}-${content}`;
     const cacheStmt = db.prepare(`
       SELECT qr_data, format FROM qr_codes 
       WHERE profile_id = ? AND cache_key = ? AND expires_at > datetime('now')
@@ -39,7 +51,7 @@ router.get('/me/qr-code', auth, async (req, res) => {
     if (cached) {
       // Return cached QR code
       const contentType = format === 'svg' ? 'image/svg+xml' : 'image/png';
-      const buffer = format === 'svg' 
+      const buffer = format === 'svg'
         ? Buffer.from(cached.qr_data, 'utf-8')
         : Buffer.from(cached.qr_data, 'base64');
 
@@ -58,9 +70,9 @@ router.get('/me/qr-code', auth, async (req, res) => {
 
     let qrData;
     if (format === 'svg') {
-      qrData = await QRCode.toString(profileUrl, { ...qrOptions, type: 'svg' });
+      qrData = await QRCode.toString(qrInputData, { ...qrOptions, type: 'svg' });
     } else {
-      const dataUrl = await QRCode.toDataURL(profileUrl, qrOptions);
+      const dataUrl = await QRCode.toDataURL(qrInputData, qrOptions);
       qrData = dataUrl.split(',')[1]; // Remove data:image/png;base64, prefix
     }
 
@@ -74,7 +86,7 @@ router.get('/me/qr-code', auth, async (req, res) => {
 
     // Return QR code
     const contentType = format === 'svg' ? 'image/svg+xml' : 'image/png';
-    const buffer = format === 'svg' 
+    const buffer = format === 'svg'
       ? Buffer.from(qrData, 'utf-8')
       : Buffer.from(qrData, 'base64');
 
@@ -98,16 +110,16 @@ router.post('/me/qr-code/regenerate', auth, async (req, res) => {
   try {
     // Validate error correction level
     if (!['L', 'M', 'Q', 'H'].includes(errorLevel)) {
-      return res.status(400).json({ 
-        error: 'Invalid error correction level. Use L, M, Q, or H.' 
+      return res.status(400).json({
+        error: 'Invalid error correction level. Use L, M, Q, or H.'
       });
     }
 
     // Validate size
     const sizeNum = parseInt(size);
     if (sizeNum < 100 || sizeNum > 2000) {
-      return res.status(400).json({ 
-        error: 'Size must be between 100 and 2000 pixels.' 
+      return res.status(400).json({
+        error: 'Size must be between 100 and 2000 pixels.'
       });
     }
 
@@ -159,7 +171,7 @@ router.post('/me/qr-code/regenerate', auth, async (req, res) => {
         size: sizeNum,
         errorLevel,
         cacheKey,
-        dataUrl: format === 'svg' 
+        dataUrl: format === 'svg'
           ? `data:image/svg+xml;utf8,${encodeURIComponent(qrData)}`
           : `data:image/png;base64,${qrData}`
       }

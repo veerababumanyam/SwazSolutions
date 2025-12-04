@@ -6,6 +6,7 @@ export interface QRCodeOptions {
   size?: number;
   errorLevel?: 'L' | 'M' | 'Q' | 'H';
   includeLogo?: boolean;
+  content?: 'url' | 'vcard';
 }
 
 export interface QRCodeResponse {
@@ -26,11 +27,12 @@ export interface QRCodeResponse {
 export const getQRCode = async (
   options: QRCodeOptions = {}
 ): Promise<Blob> => {
-  const { format = 'png', size = 1000 } = options;
-  
+  const { format = 'png', size = 1000, content = 'url' } = options;
+
   const params = new URLSearchParams({
     format,
     size: size.toString(),
+    content,
   });
 
   const token = localStorage.getItem('auth_token');
@@ -102,7 +104,7 @@ export const downloadQRCode = async (
 ): Promise<void> => {
   const { format = 'png' } = options;
   const blob = await getQRCode(options);
-  
+
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

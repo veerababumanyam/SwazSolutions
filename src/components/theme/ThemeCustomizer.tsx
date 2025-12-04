@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save, Palette, Type, Layout as LayoutIcon, User } from 'lucide-react';
 import { Theme, ThemeColors, ThemeTypography, ThemeLayout, ThemeAvatar } from '../../types/theme.types';
 import { ThemePreview } from './ThemePreview';
+import { FontSelector } from './FontSelector';
 import { themeService } from '../../services/themeService';
 
 interface ThemeCustomizerProps {
@@ -163,8 +164,8 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${activeTab === tab.id
-                                                ? 'border-primary text-primary font-medium'
-                                                : 'border-transparent text-gray-600 hover:text-gray-900'
+                                            ? 'border-primary text-primary font-medium'
+                                            : 'border-transparent text-gray-600 hover:text-gray-900'
                                             }`}
                                     >
                                         <Icon className="w-4 h-4" />
@@ -202,30 +203,21 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
                                 </div>
                             )}
 
+
                             {activeTab === 'typography' && (
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Font Family
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={typography.fontFamily}
-                                            onChange={(e) => setTypography({ ...typography, fontFamily: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Heading Font
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={typography.headingFont}
-                                            onChange={(e) => setTypography({ ...typography, headingFont: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded"
-                                        />
-                                    </div>
+                                    <FontSelector
+                                        label="Font Family"
+                                        value={typography.fontFamily}
+                                        onChange={(value) => setTypography({ ...typography, fontFamily: value })}
+                                        allowCustom={true}
+                                    />
+                                    <FontSelector
+                                        label="Heading Font"
+                                        value={typography.headingFont}
+                                        onChange={(value) => setTypography({ ...typography, headingFont: value })}
+                                        allowCustom={true}
+                                    />
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Base Font Size
@@ -235,6 +227,7 @@ export const ThemeCustomizer: React.FC<ThemeCustomizerProps> = ({
                                             value={typography.baseFontSize}
                                             onChange={(e) => setTypography({ ...typography, baseFontSize: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded"
+                                            placeholder="16px"
                                         />
                                     </div>
                                 </div>

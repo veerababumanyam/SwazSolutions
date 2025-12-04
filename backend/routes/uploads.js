@@ -1,6 +1,7 @@
 /**
  * File Upload Routes
- * Handles avatar and logo uploads for profiles
+ * Handles avatar, logo, and background uploads for profiles
+ * Supports WebP conversion for optimized photo backgrounds
  */
 
 const express = require('express');
@@ -10,6 +11,15 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { authenticateToken } = require('../middleware/auth');
 
+// Try to load sharp for image optimization (optional dependency)
+let sharp;
+try {
+  sharp = require('sharp');
+} catch (e) {
+  console.log('Sharp not installed - WebP conversion disabled. Run: npm install sharp');
+  sharp = null;
+}
+
 // Apply auth middleware to all routes
 router.use(authenticateToken);
 
@@ -17,7 +27,8 @@ router.use(authenticateToken);
 const UPLOAD_DIRS = {
   avatars: path.join(__dirname, '../../public/uploads/avatars'),
   logos: path.join(__dirname, '../../public/uploads/logos'),
-  backgrounds: path.join(__dirname, '../../public/uploads/backgrounds')
+  backgrounds: path.join(__dirname, '../../public/uploads/backgrounds'),
+  socialLogos: path.join(__dirname, '../../public/uploads/social-logos')
 };
 
 Object.values(UPLOAD_DIRS).forEach(dir => {
@@ -54,6 +65,145 @@ const generateFilename = (extension) => {
 };
 
 /**
+ * Convert image to WebP format for optimization
+ * Only used for header backgrounds to reduce file size while maintaining quality
+ * @param {Buffer} imageData - The original image buffer
+ * @param {Object} options - Conversion options
+ * @param {number} options.quality - WebP quality (0-100), default 85
+ * @param {number} options.maxWidth - Maximum width, default 1200
+ * @returns {Promise<{data: Buffer, extension: string}>}
+ */
+const convertToWebP = async (imageData, options = {}) => {
+  const quality = options.quality || 85;
+  const maxWidth = options.maxWidth || 1200;
+  
+  if (!sharp) {
+    // Sharp not available, return original
+    return null;
+  }
+  
+  try {
+    const webpData = await sharp(imageData)
+      .resize(maxWidth, null, { 
+        withoutEnlargement: true,
+        fit: 'inside' 
+      })
+      .webp({ quality })
+      .toBuffer();
+    
+    return {
+      data: webpData,
+      extension: 'webp'
+    };
+  } catch (error) {
+    console.error('WebP conversion failed:', error);
+    return null;
+  }
+};
+
+/**
+ * Resize and convert custom social logo to WebP
+ * Resizes to 512x512 and converts to WebP for consistency
+ * @param {Buffer} imageData - The original image buffer
+ * @returns {Promise<{data: Buffer, extension: string} | null>}
+ */
+const processCustomLogo = async (imageData) => {
+  if (!sharp) {
+    // Sharp not available, return original
+    return null;
+  }
+  
+  try {
+    const webpData = await sharp(imageData)
+      .resize(512, 512, { 
+        fit: 'contain',
+        background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent background
+      })
+      .webp({ quality: 90 })
+      .toBuffer();
+    
+    return {
+      data: webpData,
+      extension: 'webp'
+    };
+  } catch (error) {
+    console.error('Custom logo processing failed:', error);
+    return null;
+  }
+};
+
+// Ensure social-logos upload directory exists
+const SOCIAL_LOGOS_DIR = path.join(__dirname, '../../public/uploads/social-logos');
+if (!fs.existsSync(SOCIAL_LOGOS_DIR)) {
+  fs.mkdirSync(SOCIAL_LOGOS_DIR, { recursive: true });
+}
+
+/**
+ * POST /api/uploads/social-logo
+ * Upload a custom logo for social links
+ * Max 500KB, resizes to 512x512, converts to WebP
+ */
+router.post('/social-logo', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    // Parse the base64 image
+    const { extension, data } = parseBase64Image(image);
+
+    // Validate file size (max 500KB for social logos)
+    if (data.length > 500 * 1024) {
+      return res.status(400).json({ error: 'Logo size must be less than 500KB' });
+    }
+
+    // Validate extension
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+    if (!allowedExtensions.includes(extension.toLowerCase())) {
+      return res.status(400).json({ error: 'Invalid image format. Allowed: JPG, PNG, GIF, WebP, SVG' });
+    }
+
+    let finalData = data;
+    let finalExtension = extension;
+
+    // Process non-SVG images: resize and convert to WebP
+    if (extension.toLowerCase() !== 'svg') {
+      const processed = await processCustomLogo(data);
+      if (processed) {
+        finalData = processed.data;
+        finalExtension = processed.extension;
+        console.log(`Custom logo processed: ${data.length} bytes -> ${finalData.length} bytes`);
+      }
+    }
+
+    // Generate filename and save
+    const filename = generateFilename(finalExtension);
+    const filepath = path.join(SOCIAL_LOGOS_DIR, filename);
+
+    fs.writeFileSync(filepath, finalData);
+
+    const logoUrl = `/uploads/social-logos/${filename}`;
+
+    res.json({
+      success: true,
+      url: logoUrl,
+      message: 'Custom logo uploaded successfully',
+      processed: finalExtension === 'webp' && extension !== 'webp'
+    });
+
+  } catch (error) {
+    console.error('Error uploading custom logo:', error);
+    res.status(500).json({ error: 'Failed to upload custom logo' });
+  }
+});
+
+/**
  * POST /api/uploads/avatar
  * Upload a profile avatar image
  */
@@ -83,11 +233,25 @@ router.post('/avatar', async (req, res) => {
       return res.status(400).json({ error: 'Invalid image format. Allowed: JPG, PNG, GIF, WebP' });
     }
 
+    // Convert to WebP for optimization (used as header background in Visual themes)
+    // Skip if already WebP or if sharp is not available
+    let finalData = data;
+    let finalExtension = extension;
+    
+    if (extension.toLowerCase() !== 'webp' && extension.toLowerCase() !== 'gif') {
+      const webpResult = await convertToWebP(data, { quality: 85, maxWidth: 1200 });
+      if (webpResult) {
+        finalData = webpResult.data;
+        finalExtension = webpResult.extension;
+        console.log(`Avatar converted to WebP: ${data.length} bytes -> ${finalData.length} bytes`);
+      }
+    }
+
     // Generate filename and save
-    const filename = generateFilename(extension);
+    const filename = generateFilename(finalExtension);
     const filepath = path.join(UPLOAD_DIRS.avatars, filename);
 
-    fs.writeFileSync(filepath, data);
+    fs.writeFileSync(filepath, finalData);
 
     // Update user's profile with new avatar URL
     const db = require('../config/database');
@@ -100,7 +264,8 @@ router.post('/avatar', async (req, res) => {
     res.json({
       success: true,
       url: avatarUrl,
-      message: 'Avatar uploaded successfully'
+      message: 'Avatar uploaded successfully',
+      optimized: finalExtension === 'webp' && extension !== 'webp'
     });
 
   } catch (error) {
@@ -288,6 +453,108 @@ router.delete('/logo', async (req, res) => {
   } catch (error) {
     console.error('Error removing logo:', error);
     res.status(500).json({ error: 'Failed to remove logo' });
+  }
+});
+
+/**
+ * POST /api/uploads/social-logo
+ * Upload a custom logo for social links
+ * Resizes to 512x512 and converts to WebP for optimization
+ */
+router.post('/social-logo', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { image } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: 'No image data provided' });
+    }
+
+    // Parse the base64 image
+    const { extension, data } = parseBase64Image(image);
+
+    // Validate file size (max 500KB for social logos)
+    if (data.length > 500 * 1024) {
+      return res.status(400).json({ error: 'Logo size must be less than 500KB' });
+    }
+
+    // Validate extension
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+    if (!allowedExtensions.includes(extension.toLowerCase())) {
+      return res.status(400).json({ error: 'Invalid image format. Allowed: JPG, PNG, GIF, WebP, SVG' });
+    }
+
+    let finalData = data;
+    let finalExtension = extension;
+
+    // For non-SVG images, resize to 512x512 and convert to WebP
+    if (extension.toLowerCase() !== 'svg' && sharp) {
+      try {
+        finalData = await sharp(data)
+          .resize(512, 512, {
+            fit: 'contain',
+            background: { r: 0, g: 0, b: 0, alpha: 0 }
+          })
+          .webp({ quality: 90 })
+          .toBuffer();
+        finalExtension = 'webp';
+        console.log(`Social logo converted: ${data.length} bytes -> ${finalData.length} bytes`);
+      } catch (sharpError) {
+        console.error('Sharp processing failed, using original:', sharpError);
+        // Fall back to original if sharp fails
+      }
+    }
+
+    // Generate filename and save
+    const filename = generateFilename(finalExtension);
+    const filepath = path.join(UPLOAD_DIRS.socialLogos, filename);
+
+    fs.writeFileSync(filepath, finalData);
+
+    const logoUrl = `/uploads/social-logos/${filename}`;
+
+    res.json({
+      success: true,
+      url: logoUrl,
+      message: 'Social logo uploaded successfully',
+      optimized: finalExtension === 'webp' && extension !== 'webp'
+    });
+
+  } catch (error) {
+    console.error('Error uploading social logo:', error);
+    res.status(500).json({ error: 'Failed to upload social logo' });
+  }
+});
+
+/**
+ * DELETE /api/uploads/social-logo
+ * Remove a custom social logo
+ */
+router.delete('/social-logo', async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { url } = req.body;
+
+    if (!url || !url.startsWith('/uploads/social-logos/')) {
+      return res.status(400).json({ error: 'Invalid logo URL' });
+    }
+
+    const filepath = path.join(__dirname, '../../public', url);
+    if (fs.existsSync(filepath)) {
+      fs.unlinkSync(filepath);
+    }
+
+    res.json({ success: true, message: 'Social logo removed' });
+
+  } catch (error) {
+    console.error('Error removing social logo:', error);
+    res.status(500).json({ error: 'Failed to remove social logo' });
   }
 });
 

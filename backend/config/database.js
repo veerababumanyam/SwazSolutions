@@ -315,6 +315,7 @@ async function initializeDatabase() {
       typography TEXT NOT NULL,
       layout TEXT NOT NULL,
       avatar TEXT NOT NULL,
+      header_background TEXT,
       background_image_url TEXT,
       logo_url TEXT,
       preview_image_url TEXT,
@@ -327,10 +328,89 @@ async function initializeDatabase() {
     )
   `);
 
+  // Migration: Add header_background column to themes if it doesn't exist
+  try {
+    db.exec("SELECT header_background FROM themes LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE themes ADD COLUMN header_background TEXT");
+      console.log('✅ Added header_background column to themes table');
+    } catch (alterError) {
+      // Column might already exist
+    }
+  }
+
+  // Migration: Add wallpaper column to themes if it doesn't exist
+  try {
+    db.exec("SELECT wallpaper FROM themes LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE themes ADD COLUMN wallpaper TEXT");
+      console.log('✅ Added wallpaper column to themes table');
+    } catch (alterError) {
+      // Column might already exist
+    }
+  }
+
+  // Migration: Add contact visibility columns to profiles if they don't exist
+  try {
+    db.exec("SELECT show_email FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN show_email INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_phone INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_website INTEGER DEFAULT 1");
+      console.log('✅ Added contact visibility columns to profiles table');
+    } catch (alterError) {
+      // Columns might already exist
+    }
+  }
+
+  // Migration: Add show_bio column to profiles if it doesn't exist
+  try {
+    db.exec("SELECT show_bio FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN show_bio INTEGER DEFAULT 1");
+      console.log('✅ Added show_bio column to profiles table');
+    } catch (alterError) {
+      // Column might already exist
+    }
+  }
+
+  // Migration: Add company contact columns to profiles if they don't exist
+  try {
+    db.exec("SELECT company_email FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN company_email TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN company_phone TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_email INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_phone INTEGER DEFAULT 1");
+      console.log('✅ Added company contact columns to profiles table');
+    } catch (alterError) {
+      // Columns might already exist
+    }
+  }
+
   // Create indexes
   db.run('CREATE INDEX IF NOT EXISTS idx_themes_system ON themes(is_system)');
   db.run('CREATE INDEX IF NOT EXISTS idx_themes_profile ON themes(profile_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_themes_category ON themes(category)');
+
+  // Profile Appearance Settings table (persistent storage for all appearance settings)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS profile_appearance (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL UNIQUE,
+      appearance_settings TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_profile_appearance_profile ON profile_appearance(profile_id)');
+  console.log('✅ Profile appearance table created/verified');
 
   // T005: Profile views analytics table
   db.run(`

@@ -1,7 +1,7 @@
 // Seed Script: Populate System Themes
-// This script seeds the database with 12 pre-built system themes
+// This script seeds the database with 18 WCAG 2.1 AA compliant system themes
 
-const THEME_DEFINITIONS = require('../data/theme-definitions');
+const { THEME_DEFINITIONS } = require('../data/theme-definitions');
 const path = require('path');
 
 // Set DB_PATH to use music.db
@@ -15,17 +15,18 @@ async function seedThemes() {
         await db.ready;
 
         console.log('🌱 Starting theme seeding process...\n');
+        console.log('📋 Theme categories: aurora, gradient, glass, minimal, dark, visual\n');
 
         // Clear existing system themes
         const deleteStmt = db.prepare('DELETE FROM themes WHERE is_system = 1');
         const deleteResult = deleteStmt.run();
         console.log(`🗑️  Cleared ${deleteResult.changes || 0} existing system themes\n`);
 
-        // Insert each theme
+        // Insert each theme with wallpaper support
         const insertStmt = db.prepare(`
       INSERT INTO themes (
-        profile_id, name, category, colors, typography, layout, avatar, is_system
-      ) VALUES (NULL, ?, ?, ?, ?, ?, ?, 1)
+        profile_id, name, category, colors, typography, layout, avatar, wallpaper, header_background, is_system
+      ) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `);
 
         let successCount = 0;
@@ -39,7 +40,9 @@ async function seedThemes() {
                     JSON.stringify(theme.colors),
                     JSON.stringify(theme.typography),
                     JSON.stringify(theme.layout),
-                    JSON.stringify(theme.avatar)
+                    JSON.stringify(theme.avatar),
+                    theme.wallpaper || null,
+                    theme.headerBackground ? JSON.stringify(theme.headerBackground) : null
                 );
                 console.log(`✅ Seeded: ${theme.name} (${theme.category})`);
                 successCount++;

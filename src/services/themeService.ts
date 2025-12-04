@@ -6,11 +6,19 @@ import {
     ThemeUserResponse,
     ThemeCreateRequest,
     ThemeUpdateRequest,
-    ThemeApplyResponse
+    ThemeApplyResponse,
+    AIThemePrompt,
+    AIThemeResponse,
+    ThemeCategory,
+    THEME_CATEGORY_META
 } from '../types/theme.types';
+import { generateAITheme } from '../agents/themeAgent';
 
 // Use relative URL for Vite proxy to work correctly in development
 const API_BASE_URL = '/api';
+
+// Theme category display order
+const CATEGORY_ORDER: ThemeCategory[] = ['aurora', 'gradient', 'glass', 'minimal', 'dark', 'visual', 'custom', 'ai-generated'];
 
 class ThemeService {
     private getAuthHeaders(): HeadersInit {
@@ -19,6 +27,74 @@ class ThemeService {
             'Content-Type': 'application/json',
             ...(token && { 'Authorization': `Bearer ${token}` })
         };
+    }
+
+    /**
+     * Get theme category metadata (label, description, icon)
+     */
+    getCategoryMeta(category: ThemeCategory) {
+        return THEME_CATEGORY_META[category] || THEME_CATEGORY_META.custom;
+    }
+
+    /**
+     * Get all categories in display order
+     */
+    getCategories(): ThemeCategory[] {
+        return CATEGORY_ORDER;
+    }
+
+    /**
+     * Group themes by category
+     */
+    groupByCategory(themes: Theme[]): Record<ThemeCategory, Theme[]> {
+        const grouped: Record<ThemeCategory, Theme[]> = {} as Record<ThemeCategory, Theme[]>;
+        
+        for (const category of CATEGORY_ORDER) {
+            grouped[category] = [];
+        }
+        
+        for (const theme of themes) {
+            const category = theme.category as ThemeCategory;
+            if (grouped[category]) {
+                grouped[category].push(theme);
+            } else {
+                grouped.custom.push(theme);
+            }
+        }
+        
+        return grouped;
+    }
+
+    /**
+     * Generate a theme using AI
+     */
+    async generateWithAI(prompt: AIThemePrompt, apiKey?: string): Promise<AIThemeResponse> {
+        try {
+            const response = await generateAITheme(prompt, apiKey);
+            return response;
+        } catch (error) {
+            console.error('Error generating AI theme:', error);
+            return {
+                success: false,
+                message: error instanceof Error ? error.message : 'Failed to generate theme'
+            };
+        }
+    }
+
+    /**
+     * Save an AI-generated theme as a custom theme
+     */
+    async saveAITheme(theme: Theme): Promise<{ message: string; theme: Theme }> {
+        const themeData: ThemeCreateRequest = {
+            name: theme.name,
+            category: 'ai-generated',
+            colors: theme.colors,
+            typography: theme.typography,
+            layout: theme.layout,
+            avatar: theme.avatar
+        };
+        
+        return this.createTheme(themeData);
     }
 
     /**
