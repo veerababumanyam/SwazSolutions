@@ -3,7 +3,7 @@
 // Features: Modern icon-based links, action bar for QR/Share/vCard, mobile-first design
 
 import React, { useState, useCallback } from 'react';
-import { Mail, Phone, Globe, ExternalLink, Copy, Check, Share2, Eye, Briefcase, Building2, Download } from 'lucide-react';
+import { Mail, Phone, Globe, ExternalLink, Copy, Check, Share2, Eye, Briefcase, Building2, Download, MapPin } from 'lucide-react';
 import { getOptimalTextColor, getOptimalSecondaryTextColor, isLightColor } from '../../utils/wcagValidator';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
 import { ProfileQRCode } from '../public-profile/ProfileQRCode';
@@ -84,6 +84,32 @@ interface ProfileData {
   // Visibility toggles for company contact info
   showCompanyEmail?: boolean;
   showCompanyPhone?: boolean;
+  // Personal address fields
+  addressLine1?: string;
+  addressLine2?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressPostalCode?: string;
+  addressCountry?: string;
+  showAddressLine1?: boolean;
+  showAddressLine2?: boolean;
+  showAddressCity?: boolean;
+  showAddressState?: boolean;
+  showAddressPostalCode?: boolean;
+  showAddressCountry?: boolean;
+  // Company address fields
+  companyAddressLine1?: string;
+  companyAddressLine2?: string;
+  companyAddressCity?: string;
+  companyAddressState?: string;
+  companyAddressPostalCode?: string;
+  companyAddressCountry?: string;
+  showCompanyAddressLine1?: boolean;
+  showCompanyAddressLine2?: boolean;
+  showCompanyAddressCity?: boolean;
+  showCompanyAddressState?: boolean;
+  showCompanyAddressPostalCode?: boolean;
+  showCompanyAddressCountry?: boolean;
 }
 
 interface MobilePreviewProps {
@@ -630,63 +656,85 @@ export const MobilePreview: React.FC<MobilePreviewProps> = ({ profile, links, ap
                   </>
                 )}
 
-                {/* Contact Info Section - Personal and Company contacts */}
+                {/* Contact Info Section - Personal and Company contacts with labels */}
                 {((profile.showEmail && profile.publicEmail) || 
                   (profile.showPhone && profile.publicPhone) || 
                   (profile.showWebsite && profile.website) ||
                   (profile.showCompanyEmail && profile.companyEmail) ||
-                  (profile.showCompanyPhone && profile.companyPhone)) && (
-                  <div className="flex flex-wrap justify-center gap-2 mb-4">
+                  (profile.showCompanyPhone && profile.companyPhone) ||
+                  (profile.addressLine1 || profile.addressCity) ||
+                  (profile.companyAddressLine1 || profile.companyAddressCity)) && (
+                  <div className="flex flex-wrap justify-center gap-3 mb-4">
                     {/* Personal Email */}
                     {profile.showEmail && profile.publicEmail && (
                       <a
                         href={`mailto:${profile.publicEmail}`}
-                        className="flex items-center justify-center w-9 h-9 rounded-full transition-transform hover:scale-110"
-                        style={{ 
-                          backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                        }}
+                        className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                         title={`Personal: ${profile.publicEmail}`}
                       >
-                        <Mail className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        <div 
+                          className="flex items-center justify-center w-9 h-9 rounded-full"
+                          style={{ 
+                            backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                          }}
+                        >
+                          <Mail className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        </div>
+                        <span className="text-[8px] font-medium" style={{ color: wcagColors.nameColor }}>Email</span>
                       </a>
                     )}
                     {/* Personal Phone */}
                     {profile.showPhone && profile.publicPhone && (
                       <a
                         href={`tel:${profile.publicPhone}`}
-                        className="flex items-center justify-center w-9 h-9 rounded-full transition-transform hover:scale-110"
-                        style={{ 
-                          backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                        }}
+                        className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                         title={`Personal: ${profile.publicPhone}`}
                       >
-                        <Phone className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        <div 
+                          className="flex items-center justify-center w-9 h-9 rounded-full"
+                          style={{ 
+                            backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                          }}
+                        >
+                          <Phone className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        </div>
+                        <span className="text-[8px] font-medium" style={{ color: wcagColors.nameColor }}>Phone</span>
                       </a>
                     )}
                     {/* Company Email */}
                     {profile.showCompanyEmail && profile.companyEmail && (
                       <a
                         href={`mailto:${profile.companyEmail}`}
-                        className="flex items-center justify-center w-9 h-9 rounded-full transition-transform hover:scale-110"
-                        style={{ 
-                          backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
-                        }}
+                        className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                         title={`Work: ${profile.companyEmail}`}
                       >
-                        <Briefcase className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        <div 
+                          className="flex items-center justify-center w-9 h-9 rounded-full"
+                          style={{ 
+                            backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
+                          }}
+                        >
+                          <Briefcase className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        </div>
+                        <span className="text-[8px] font-medium" style={{ color: wcagColors.nameColor }}>Office</span>
                       </a>
                     )}
                     {/* Company Phone */}
                     {profile.showCompanyPhone && profile.companyPhone && (
                       <a
                         href={`tel:${profile.companyPhone}`}
-                        className="flex items-center justify-center w-9 h-9 rounded-full transition-transform hover:scale-110"
-                        style={{ 
-                          backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
-                        }}
+                        className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                         title={`Work: ${profile.companyPhone}`}
                       >
-                        <Building2 className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        <div 
+                          className="flex items-center justify-center w-9 h-9 rounded-full"
+                          style={{ 
+                            backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
+                          }}
+                        >
+                          <Building2 className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        </div>
+                        <span className="text-[8px] font-medium" style={{ color: wcagColors.nameColor }}>Work</span>
                       </a>
                     )}
                     {/* Website */}
@@ -695,15 +743,84 @@ export const MobilePreview: React.FC<MobilePreviewProps> = ({ profile, links, ap
                         href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center w-9 h-9 rounded-full transition-transform hover:scale-110"
-                        style={{ 
-                          backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                        }}
+                        className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                         title={profile.website}
                       >
-                        <Globe className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        <div 
+                          className="flex items-center justify-center w-9 h-9 rounded-full"
+                          style={{ 
+                            backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                          }}
+                        >
+                          <Globe className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                        </div>
+                        <span className="text-[8px] font-medium" style={{ color: wcagColors.nameColor }}>Website</span>
                       </a>
                     )}
+                    {/* Personal Address */}
+                    {(() => {
+                      const visibleParts = [
+                        profile.showAddressLine1 !== false && profile.addressLine1,
+                        profile.showAddressLine2 !== false && profile.addressLine2,
+                        profile.showAddressCity !== false && profile.addressCity,
+                        profile.showAddressState !== false && profile.addressState,
+                        profile.showAddressPostalCode !== false && profile.addressPostalCode,
+                        profile.showAddressCountry !== false && profile.addressCountry,
+                      ].filter(Boolean);
+                      if (visibleParts.length === 0) return null;
+                      const addressString = visibleParts.join(', ');
+                      return (
+                        <a
+                          href={`https://maps.google.com/?q=${encodeURIComponent(addressString)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
+                          title={`Personal: ${addressString}`}
+                        >
+                          <div 
+                            className="flex items-center justify-center w-9 h-9 rounded-full"
+                            style={{ 
+                              backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                            }}
+                          >
+                            <MapPin className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                          </div>
+                          <span className="text-[8px] font-medium" style={{ color: wcagColors.nameColor }}>Personal</span>
+                        </a>
+                      );
+                    })()}
+                    {/* Company Address */}
+                    {(() => {
+                      const visibleParts = [
+                        profile.showCompanyAddressLine1 !== false && profile.companyAddressLine1,
+                        profile.showCompanyAddressLine2 !== false && profile.companyAddressLine2,
+                        profile.showCompanyAddressCity !== false && profile.companyAddressCity,
+                        profile.showCompanyAddressState !== false && profile.companyAddressState,
+                        profile.showCompanyAddressPostalCode !== false && profile.companyAddressPostalCode,
+                        profile.showCompanyAddressCountry !== false && profile.companyAddressCountry,
+                      ].filter(Boolean);
+                      if (visibleParts.length === 0) return null;
+                      const addressString = visibleParts.join(', ');
+                      return (
+                        <a
+                          href={`https://maps.google.com/?q=${encodeURIComponent(addressString)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
+                          title={`Work: ${addressString}`}
+                        >
+                          <div 
+                            className="flex items-center justify-center w-9 h-9 rounded-full"
+                            style={{ 
+                              backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
+                            }}
+                          >
+                            <MapPin className="w-4 h-4" style={{ color: wcagColors.nameColor }} />
+                          </div>
+                          <span className="text-[8px] font-medium" style={{ color: wcagColors.nameColor }}>Office</span>
+                        </a>
+                      );
+                    })()}
                   </div>
                 )}
 
@@ -839,6 +956,123 @@ export const MobilePreview: React.FC<MobilePreviewProps> = ({ profile, links, ap
                     </div>
                   </div>
                 )}
+
+                {/* Address Section Box */}
+                {(() => {
+                  // Build personal address from visible fields only
+                  const personalParts = [
+                    profile.showAddressLine1 && profile.addressLine1,
+                    profile.showAddressLine2 && profile.addressLine2,
+                    profile.showAddressCity && profile.addressCity,
+                    profile.showAddressState && profile.addressState,
+                    profile.showAddressPostalCode && profile.addressPostalCode,
+                    profile.showAddressCountry && profile.addressCountry,
+                  ].filter(Boolean);
+                  
+                  // Build company address from visible fields only
+                  const companyParts = [
+                    profile.showCompanyAddressLine1 && profile.companyAddressLine1,
+                    profile.showCompanyAddressLine2 && profile.companyAddressLine2,
+                    profile.showCompanyAddressCity && profile.companyAddressCity,
+                    profile.showCompanyAddressState && profile.companyAddressState,
+                    profile.showCompanyAddressPostalCode && profile.companyAddressPostalCode,
+                    profile.showCompanyAddressCountry && profile.companyAddressCountry,
+                  ].filter(Boolean);
+                  
+                  const hasPersonalAddress = personalParts.length > 0;
+                  const hasCompanyAddress = companyParts.length > 0;
+                  
+                  if (!hasPersonalAddress && !hasCompanyAddress) return null;
+                  
+                  return (
+                    <div className="mt-4">
+                      {/* Section Divider */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}15` }} />
+                        <span className="text-[9px] font-medium uppercase tracking-wider opacity-50" style={{ color: wcagColors.nameColor }}>
+                          Address
+                        </span>
+                        <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}15` }} />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        {/* Personal Address Box */}
+                        {hasPersonalAddress && (
+                          <a
+                            href={`https://maps.google.com/?q=${encodeURIComponent(personalParts.join(', '))}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-3 rounded-xl transition-all hover:scale-[1.02]"
+                            style={{ 
+                              backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.06)',
+                              border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'}`
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div 
+                                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                style={{ 
+                                  backgroundColor: `${settings.buttonColor}15`,
+                                  border: `1px solid ${settings.buttonColor}25`
+                                }}
+                              >
+                                <MapPin className="w-4 h-4" style={{ color: settings.buttonColor }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: settings.buttonColor }}>
+                                    Personal Address
+                                  </span>
+                                </div>
+                                <p className="text-[11px] leading-relaxed" style={{ color: wcagColors.nameColor }}>
+                                  {personalParts.join(', ')}
+                                </p>
+                              </div>
+                              <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-40" style={{ color: wcagColors.nameColor }} />
+                            </div>
+                          </a>
+                        )}
+                        
+                        {/* Company Address Box */}
+                        {hasCompanyAddress && (
+                          <a
+                            href={`https://maps.google.com/?q=${encodeURIComponent(companyParts.join(', '))}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block p-3 rounded-xl transition-all hover:scale-[1.02]"
+                            style={{ 
+                              backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.05)' : 'rgba(59,130,246,0.1)',
+                              border: `1px solid ${wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.2)'}`
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div 
+                                className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                style={{ 
+                                  backgroundColor: 'rgba(59,130,246,0.15)',
+                                  border: '1px solid rgba(59,130,246,0.25)'
+                                }}
+                              >
+                                <Building2 className="w-4 h-4" style={{ color: '#3B82F6' }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide" style={{ color: '#3B82F6' }}>
+                                    Office Address
+                                  </span>
+                                </div>
+                                <p className="text-[11px] leading-relaxed" style={{ color: wcagColors.nameColor }}>
+                                  {companyParts.join(', ')}
+                                </p>
+                              </div>
+                              <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-40" style={{ color: wcagColors.nameColor }} />
+                            </div>
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Empty State */}
                 {links.length === 0 && (

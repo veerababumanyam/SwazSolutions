@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   User, Image, Link2, Palette, QrCode, Eye, Share2, Download,
   Cloud, ChevronDown, ChevronUp, Check, X, Camera, Globe, Lock,
-  Mail, Phone, Briefcase, Building2, FileText, ExternalLink, CheckCircle, AlertCircle, Loader2
+  Mail, Phone, Briefcase, Building2, FileText, ExternalLink, CheckCircle, AlertCircle, Loader2, MapPin
 } from 'lucide-react';
 import { useProfile } from '../hooks/useProfile';
 import { useToast } from '../contexts/ToastContext';
@@ -20,9 +20,10 @@ import { getQRCodeDataURL } from '../services/qrCodeService';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../constants/platforms';
 import { ImageCropper, AspectRatioPreset } from '../components/common/ImageCropper';
 import { CropResult } from '../utils/cropImage';
+import { AIEnhanceButton } from '../components/AIEnhanceButton';
 
 // Tab types for different sections
-type TabType = 'info' | 'media' | 'links' | 'appearance' | 'qr';
+type TabType = 'info' | 'media' | 'links' | 'address' | 'appearance' | 'qr';
 
 interface SocialLink {
   id: number;
@@ -77,6 +78,367 @@ const DEFAULT_APPEARANCE: AppearanceSettings = {
   footerText: '',
   showPoweredBy: true,
   themeId: '',
+};
+
+// Address Tab Component with local state to prevent auto-save issues
+interface AddressTabContentProps {
+  formData: Partial<ProfileData>;
+  onSave: (data: Partial<ProfileData>) => Promise<void>;
+  onUpdateLocalData?: (data: Partial<ProfileData>) => void;
+}
+
+const AddressTabContent: React.FC<AddressTabContentProps> = ({ formData: initialFormData, onSave, onUpdateLocalData }) => {
+  const [saving, setSaving] = useState(false);
+  const [localData, setLocalData] = useState({
+    // Personal address
+    addressLine1: initialFormData.addressLine1 || '',
+    addressLine2: initialFormData.addressLine2 || '',
+    addressCity: initialFormData.addressCity || '',
+    addressState: initialFormData.addressState || '',
+    addressPostalCode: initialFormData.addressPostalCode || '',
+    addressCountry: initialFormData.addressCountry || '',
+    showAddressLine1: initialFormData.showAddressLine1 ?? false,
+    showAddressLine2: initialFormData.showAddressLine2 ?? false,
+    showAddressCity: initialFormData.showAddressCity ?? false,
+    showAddressState: initialFormData.showAddressState ?? false,
+    showAddressPostalCode: initialFormData.showAddressPostalCode ?? false,
+    showAddressCountry: initialFormData.showAddressCountry ?? false,
+    // Company address
+    companyAddressLine1: initialFormData.companyAddressLine1 || '',
+    companyAddressLine2: initialFormData.companyAddressLine2 || '',
+    companyAddressCity: initialFormData.companyAddressCity || '',
+    companyAddressState: initialFormData.companyAddressState || '',
+    companyAddressPostalCode: initialFormData.companyAddressPostalCode || '',
+    companyAddressCountry: initialFormData.companyAddressCountry || '',
+    showCompanyAddressLine1: initialFormData.showCompanyAddressLine1 ?? false,
+    showCompanyAddressLine2: initialFormData.showCompanyAddressLine2 ?? false,
+    showCompanyAddressCity: initialFormData.showCompanyAddressCity ?? false,
+    showCompanyAddressState: initialFormData.showCompanyAddressState ?? false,
+    showCompanyAddressPostalCode: initialFormData.showCompanyAddressPostalCode ?? false,
+    showCompanyAddressCountry: initialFormData.showCompanyAddressCountry ?? false,
+  });
+
+  // Sync local state when initialFormData changes (e.g., when profile loads from API)
+  useEffect(() => {
+    setLocalData({
+      addressLine1: initialFormData.addressLine1 || '',
+      addressLine2: initialFormData.addressLine2 || '',
+      addressCity: initialFormData.addressCity || '',
+      addressState: initialFormData.addressState || '',
+      addressPostalCode: initialFormData.addressPostalCode || '',
+      addressCountry: initialFormData.addressCountry || '',
+      showAddressLine1: initialFormData.showAddressLine1 ?? false,
+      showAddressLine2: initialFormData.showAddressLine2 ?? false,
+      showAddressCity: initialFormData.showAddressCity ?? false,
+      showAddressState: initialFormData.showAddressState ?? false,
+      showAddressPostalCode: initialFormData.showAddressPostalCode ?? false,
+      showAddressCountry: initialFormData.showAddressCountry ?? false,
+      companyAddressLine1: initialFormData.companyAddressLine1 || '',
+      companyAddressLine2: initialFormData.companyAddressLine2 || '',
+      companyAddressCity: initialFormData.companyAddressCity || '',
+      companyAddressState: initialFormData.companyAddressState || '',
+      companyAddressPostalCode: initialFormData.companyAddressPostalCode || '',
+      companyAddressCountry: initialFormData.companyAddressCountry || '',
+      showCompanyAddressLine1: initialFormData.showCompanyAddressLine1 ?? false,
+      showCompanyAddressLine2: initialFormData.showCompanyAddressLine2 ?? false,
+      showCompanyAddressCity: initialFormData.showCompanyAddressCity ?? false,
+      showCompanyAddressState: initialFormData.showCompanyAddressState ?? false,
+      showCompanyAddressPostalCode: initialFormData.showCompanyAddressPostalCode ?? false,
+      showCompanyAddressCountry: initialFormData.showCompanyAddressCountry ?? false,
+    });
+  }, [initialFormData.addressLine1, initialFormData.addressLine2, initialFormData.addressCity, 
+      initialFormData.addressState, initialFormData.addressPostalCode, initialFormData.addressCountry,
+      initialFormData.showAddressLine1, initialFormData.showAddressLine2, initialFormData.showAddressCity,
+      initialFormData.showAddressState, initialFormData.showAddressPostalCode, initialFormData.showAddressCountry,
+      initialFormData.companyAddressLine1, initialFormData.companyAddressLine2, initialFormData.companyAddressCity,
+      initialFormData.companyAddressState, initialFormData.companyAddressPostalCode, initialFormData.companyAddressCountry,
+      initialFormData.showCompanyAddressLine1, initialFormData.showCompanyAddressLine2, initialFormData.showCompanyAddressCity,
+      initialFormData.showCompanyAddressState, initialFormData.showCompanyAddressPostalCode, initialFormData.showCompanyAddressCountry]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setLocalData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(localData);
+      // Update parent's local formData so preview updates immediately
+      if (onUpdateLocalData) {
+        onUpdateLocalData(localData);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Small toggle component for inline use
+  const VisibilityToggle = ({ name, checked, label }: { name: string; checked: boolean; label: string }) => (
+    <label className="inline-flex items-center cursor-pointer ml-2">
+      <input
+        type="checkbox"
+        name={name}
+        checked={checked}
+        onChange={handleChange}
+        className="sr-only peer"
+      />
+      <div className="w-8 h-4 bg-gray-300 peer-focus:outline-none peer-focus:ring-1 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-600 relative"></div>
+      <span className="ml-1 text-xs text-secondary">{checked ? 'Show' : 'Hide'}</span>
+    </label>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <MapPin className="w-6 h-6 text-accent" />
+          <h2 className="text-xl font-semibold text-primary">Address Information</h2>
+        </div>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 disabled:opacity-50 transition-colors"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Check className="w-4 h-4" />
+              Save Address
+            </>
+          )}
+        </button>
+      </div>
+      <p className="text-sm text-secondary mb-6">
+        Add your personal and company addresses. Toggle visibility for each field to control what appears in your vCard and public profile.
+      </p>
+
+      {/* Personal Address Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+            <User className="w-5 h-5 text-purple-500" />
+            Personal Address
+          </h3>
+        </div>
+        <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+          {/* Street Address Line 1 */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">Street Address Line 1</label>
+              <VisibilityToggle name="showAddressLine1" checked={localData.showAddressLine1} label="Line 1" />
+            </div>
+            <input
+              type="text"
+              name="addressLine1"
+              value={localData.addressLine1}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="House/Flat No., Building, Street"
+            />
+          </div>
+
+          {/* Street Address Line 2 */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">Street Address Line 2</label>
+              <VisibilityToggle name="showAddressLine2" checked={localData.showAddressLine2} label="Line 2" />
+            </div>
+            <input
+              type="text"
+              name="addressLine2"
+              value={localData.addressLine2}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="Area, Landmark (optional)"
+            />
+          </div>
+
+          {/* City */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">City</label>
+              <VisibilityToggle name="showAddressCity" checked={localData.showAddressCity} label="City" />
+            </div>
+            <input
+              type="text"
+              name="addressCity"
+              value={localData.addressCity}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="City"
+            />
+          </div>
+
+          {/* State */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">State</label>
+              <VisibilityToggle name="showAddressState" checked={localData.showAddressState} label="State" />
+            </div>
+            <input
+              type="text"
+              name="addressState"
+              value={localData.addressState}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="State"
+            />
+          </div>
+
+          {/* PIN Code */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">PIN Code</label>
+              <VisibilityToggle name="showAddressPostalCode" checked={localData.showAddressPostalCode} label="PIN" />
+            </div>
+            <input
+              type="text"
+              name="addressPostalCode"
+              value={localData.addressPostalCode}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="PIN Code"
+            />
+          </div>
+
+          {/* Country */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">Country</label>
+              <VisibilityToggle name="showAddressCountry" checked={localData.showAddressCountry} label="Country" />
+            </div>
+            <input
+              type="text"
+              name="addressCountry"
+              value={localData.addressCountry}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="Country"
+            />
+          </div>
+
+          <p className="text-xs text-secondary mt-2">Personal address will be shown in vCard as HOME type</p>
+        </div>
+      </div>
+
+      {/* Company Address Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-blue-500" />
+            Company Address
+          </h3>
+        </div>
+        <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+          {/* Street Address Line 1 */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">Street Address Line 1</label>
+              <VisibilityToggle name="showCompanyAddressLine1" checked={localData.showCompanyAddressLine1} label="Line 1" />
+            </div>
+            <input
+              type="text"
+              name="companyAddressLine1"
+              value={localData.companyAddressLine1}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="Office No., Building, Street"
+            />
+          </div>
+
+          {/* Street Address Line 2 */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">Street Address Line 2</label>
+              <VisibilityToggle name="showCompanyAddressLine2" checked={localData.showCompanyAddressLine2} label="Line 2" />
+            </div>
+            <input
+              type="text"
+              name="companyAddressLine2"
+              value={localData.companyAddressLine2}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="Area, Landmark (optional)"
+            />
+          </div>
+
+          {/* City */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">City</label>
+              <VisibilityToggle name="showCompanyAddressCity" checked={localData.showCompanyAddressCity} label="City" />
+            </div>
+            <input
+              type="text"
+              name="companyAddressCity"
+              value={localData.companyAddressCity}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="City"
+            />
+          </div>
+
+          {/* State */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">State</label>
+              <VisibilityToggle name="showCompanyAddressState" checked={localData.showCompanyAddressState} label="State" />
+            </div>
+            <input
+              type="text"
+              name="companyAddressState"
+              value={localData.companyAddressState}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="State"
+            />
+          </div>
+
+          {/* PIN Code */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">PIN Code</label>
+              <VisibilityToggle name="showCompanyAddressPostalCode" checked={localData.showCompanyAddressPostalCode} label="PIN" />
+            </div>
+            <input
+              type="text"
+              name="companyAddressPostalCode"
+              value={localData.companyAddressPostalCode}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="PIN Code"
+            />
+          </div>
+
+          {/* Country */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-primary">Country</label>
+              <VisibilityToggle name="showCompanyAddressCountry" checked={localData.showCompanyAddressCountry} label="Country" />
+            </div>
+            <input
+              type="text"
+              name="companyAddressCountry"
+              value={localData.companyAddressCountry}
+              onChange={handleChange}
+              className="w-full input"
+              placeholder="Country"
+            />
+          </div>
+
+          <p className="text-xs text-secondary mt-2">Company address will be shown in vCard as WORK type</p>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export const UnifiedProfileEditor: React.FC = () => {
@@ -153,6 +515,32 @@ export const UnifiedProfileEditor: React.FC = () => {
         companyPhone: profile.companyPhone,
         showCompanyEmail: profile.showCompanyEmail ?? true,
         showCompanyPhone: profile.showCompanyPhone ?? true,
+        // Personal address fields
+        addressLine1: profile.addressLine1,
+        addressLine2: profile.addressLine2,
+        addressCity: profile.addressCity,
+        addressState: profile.addressState,
+        addressPostalCode: profile.addressPostalCode,
+        addressCountry: profile.addressCountry,
+        showAddressLine1: profile.showAddressLine1 ?? false,
+        showAddressLine2: profile.showAddressLine2 ?? false,
+        showAddressCity: profile.showAddressCity ?? false,
+        showAddressState: profile.showAddressState ?? false,
+        showAddressPostalCode: profile.showAddressPostalCode ?? false,
+        showAddressCountry: profile.showAddressCountry ?? false,
+        // Company address fields
+        companyAddressLine1: profile.companyAddressLine1,
+        companyAddressLine2: profile.companyAddressLine2,
+        companyAddressCity: profile.companyAddressCity,
+        companyAddressState: profile.companyAddressState,
+        companyAddressPostalCode: profile.companyAddressPostalCode,
+        companyAddressCountry: profile.companyAddressCountry,
+        showCompanyAddressLine1: profile.showCompanyAddressLine1 ?? false,
+        showCompanyAddressLine2: profile.showCompanyAddressLine2 ?? false,
+        showCompanyAddressCity: profile.showCompanyAddressCity ?? false,
+        showCompanyAddressState: profile.showCompanyAddressState ?? false,
+        showCompanyAddressPostalCode: profile.showCompanyAddressPostalCode ?? false,
+        showCompanyAddressCountry: profile.showCompanyAddressCountry ?? false,
       });
       setAvatarUrl(profile.avatar || '');
       setLogoUrl(profile.logo || '');
@@ -373,6 +761,17 @@ export const UnifiedProfileEditor: React.FC = () => {
       }
     };
   }, []);
+
+  // Handle updates from AI enhancement
+  const handleEnhancementUpdate = (field: keyof ProfileData, value: string) => {
+    const newFormData = { ...formData, [field]: value };
+    setFormData(newFormData);
+    setHasChanges(true);
+    
+    if (exists) {
+      scheduleAutoSave(newFormData);
+    }
+  };
 
   const handleSave = async () => {
     if (!validateForm()) {
@@ -629,6 +1028,7 @@ export const UnifiedProfileEditor: React.FC = () => {
     { id: 'info', label: 'Profile Info', icon: <User className="w-5 h-5" /> },
     { id: 'media', label: 'Photo & Logo', icon: <Image className="w-5 h-5" /> },
     { id: 'links', label: 'Links', icon: <Link2 className="w-5 h-5" /> },
+    { id: 'address', label: 'Address', icon: <MapPin className="w-5 h-5" /> },
     { id: 'appearance', label: 'Appearance', icon: <Palette className="w-5 h-5" /> },
     { id: 'qr', label: 'QR Code', icon: <QrCode className="w-5 h-5" /> },
   ];
@@ -863,7 +1263,15 @@ export const UnifiedProfileEditor: React.FC = () => {
 
                   {/* Headline */}
                   <div>
-                    <label className="block text-sm font-medium text-primary mb-1">Headline</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-primary">Headline</label>
+                      <AIEnhanceButton
+                        fieldType="headline"
+                        currentText={formData.headline || ''}
+                        onEnhanced={(text) => handleEnhancementUpdate('headline', text)}
+                        additionalContext={formData.company ? `Company: ${formData.company}` : undefined}
+                      />
+                    </div>
                     <input
                       type="text"
                       name="headline"
@@ -893,7 +1301,17 @@ export const UnifiedProfileEditor: React.FC = () => {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-sm font-medium text-primary">Bio</label>
-                      <label className="flex items-center gap-2 cursor-pointer">
+                      <div className="flex items-center gap-3">
+                        <AIEnhanceButton
+                          fieldType="bio"
+                          currentText={formData.bio || ''}
+                          onEnhanced={(text) => handleEnhancementUpdate('bio', text)}
+                          additionalContext={[
+                            formData.headline ? `Headline: ${formData.headline}` : '',
+                            formData.company ? `Company: ${formData.company}` : ''
+                          ].filter(Boolean).join(', ')}
+                        />
+                        <label className="flex items-center gap-2 cursor-pointer">
                         <input
                           type="checkbox"
                           name="showBio"
@@ -906,6 +1324,7 @@ export const UnifiedProfileEditor: React.FC = () => {
                           {formData.showBio !== false ? 'Visible' : 'Hidden'}
                         </span>
                       </label>
+                      </div>
                     </div>
                     <textarea
                       name="bio"
@@ -1306,6 +1725,24 @@ export const UnifiedProfileEditor: React.FC = () => {
                 </div>
               )}
 
+              {/* Address Tab */}
+              {activeTab === 'address' && (
+                <AddressTabContent
+                  formData={formData}
+                  onSave={async (addressData) => {
+                    try {
+                      await updateProfile(addressData);
+                      showToast('Address saved successfully!', 'success');
+                    } catch (err) {
+                      showToast('Failed to save address', 'error');
+                    }
+                  }}
+                  onUpdateLocalData={(addressData) => {
+                    setFormData(prev => ({ ...prev, ...addressData }));
+                  }}
+                />
+              )}
+
               {/* Appearance Tab */}
               {activeTab === 'appearance' && (
                 <div>
@@ -1423,6 +1860,32 @@ export const UnifiedProfileEditor: React.FC = () => {
                   companyPhone: formData.companyPhone,
                   showCompanyEmail: formData.showCompanyEmail,
                   showCompanyPhone: formData.showCompanyPhone,
+                  // Personal address fields
+                  addressLine1: formData.addressLine1,
+                  addressLine2: formData.addressLine2,
+                  addressCity: formData.addressCity,
+                  addressState: formData.addressState,
+                  addressPostalCode: formData.addressPostalCode,
+                  addressCountry: formData.addressCountry,
+                  showAddressLine1: formData.showAddressLine1,
+                  showAddressLine2: formData.showAddressLine2,
+                  showAddressCity: formData.showAddressCity,
+                  showAddressState: formData.showAddressState,
+                  showAddressPostalCode: formData.showAddressPostalCode,
+                  showAddressCountry: formData.showAddressCountry,
+                  // Company address fields
+                  companyAddressLine1: formData.companyAddressLine1,
+                  companyAddressLine2: formData.companyAddressLine2,
+                  companyAddressCity: formData.companyAddressCity,
+                  companyAddressState: formData.companyAddressState,
+                  companyAddressPostalCode: formData.companyAddressPostalCode,
+                  companyAddressCountry: formData.companyAddressCountry,
+                  showCompanyAddressLine1: formData.showCompanyAddressLine1,
+                  showCompanyAddressLine2: formData.showCompanyAddressLine2,
+                  showCompanyAddressCity: formData.showCompanyAddressCity,
+                  showCompanyAddressState: formData.showCompanyAddressState,
+                  showCompanyAddressPostalCode: formData.showCompanyAddressPostalCode,
+                  showCompanyAddressCountry: formData.showCompanyAddressCountry,
                 }}
                 links={sortedLinks}
                 appearance={appearance}

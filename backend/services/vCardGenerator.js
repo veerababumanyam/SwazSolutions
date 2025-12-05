@@ -19,6 +19,18 @@
  * @property {number} [show_website] - Show website in vCard (1 = show, 0 = hide)
  * @property {number} [show_company_email] - Show company email in vCard (1 = show, 0 = hide)
  * @property {number} [show_company_phone] - Show company phone in vCard (1 = show, 0 = hide)
+ * @property {string} [address_line1] - Personal address line 1
+ * @property {string} [address_line2] - Personal address line 2
+ * @property {string} [address_city] - Personal address city
+ * @property {string} [address_state] - Personal address state
+ * @property {string} [address_postal_code] - Personal address postal code
+ * @property {number} [show_address] - Show personal address in vCard (1 = show, 0 = hide)
+ * @property {string} [company_address_line1] - Company address line 1
+ * @property {string} [company_address_line2] - Company address line 2
+ * @property {string} [company_address_city] - Company address city
+ * @property {string} [company_address_state] - Company address state
+ * @property {string} [company_address_postal_code] - Company address postal code
+ * @property {number} [show_company_address] - Show company address in vCard (1 = show, 0 = hide)
  * @property {string} [bio] - Biography/notes
  * @property {string} [avatar_url] - Avatar image URL
  * @property {string} username - Profile username
@@ -83,6 +95,56 @@ function generateVCard(profile) {
   const showCompanyPhone = profile.show_company_phone === undefined ? true : profile.show_company_phone !== 0;
   if (profile.company_phone && showCompanyPhone) {
     lines.push(`TEL;TYPE=WORK:${escapeVCardValue(profile.company_phone)}`);
+  }
+
+  // Personal ADR (TYPE=HOME) - only if at least one visible field has data
+  const showAddressLine1 = profile.show_address_line1 === undefined ? true : profile.show_address_line1 !== 0;
+  const showAddressLine2 = profile.show_address_line2 === undefined ? true : profile.show_address_line2 !== 0;
+  const showAddressCity = profile.show_address_city === undefined ? true : profile.show_address_city !== 0;
+  const showAddressState = profile.show_address_state === undefined ? true : profile.show_address_state !== 0;
+  const showAddressPostalCode = profile.show_address_postal_code === undefined ? true : profile.show_address_postal_code !== 0;
+  const showAddressCountry = profile.show_address_country === undefined ? true : profile.show_address_country !== 0;
+  
+  const hasPersonalAddress = profile.address_line1 || profile.address_city || profile.address_state || profile.address_postal_code || profile.address_country;
+  if (hasPersonalAddress) {
+    // ADR format: PO Box;Extended Address;Street;City;State;Postal Code;Country
+    const streetParts = [];
+    if (showAddressLine1 && profile.address_line1) streetParts.push(profile.address_line1);
+    if (showAddressLine2 && profile.address_line2) streetParts.push(profile.address_line2);
+    const street = streetParts.join(', ');
+    const city = showAddressCity ? (profile.address_city || '') : '';
+    const state = showAddressState ? (profile.address_state || '') : '';
+    const postalCode = showAddressPostalCode ? (profile.address_postal_code || '') : '';
+    const country = showAddressCountry ? (profile.address_country || '') : '';
+    // Only add ADR if at least one field has data
+    if (street || city || state || postalCode || country) {
+      lines.push(`ADR;TYPE=HOME:;;${escapeVCardValue(street)};${escapeVCardValue(city)};${escapeVCardValue(state)};${escapeVCardValue(postalCode)};${escapeVCardValue(country)}`);
+    }
+  }
+
+  // Company ADR (TYPE=WORK) - only if at least one visible field has data
+  const showCompanyAddressLine1 = profile.show_company_address_line1 === undefined ? true : profile.show_company_address_line1 !== 0;
+  const showCompanyAddressLine2 = profile.show_company_address_line2 === undefined ? true : profile.show_company_address_line2 !== 0;
+  const showCompanyAddressCity = profile.show_company_address_city === undefined ? true : profile.show_company_address_city !== 0;
+  const showCompanyAddressState = profile.show_company_address_state === undefined ? true : profile.show_company_address_state !== 0;
+  const showCompanyAddressPostalCode = profile.show_company_address_postal_code === undefined ? true : profile.show_company_address_postal_code !== 0;
+  const showCompanyAddressCountry = profile.show_company_address_country === undefined ? true : profile.show_company_address_country !== 0;
+  
+  const hasCompanyAddress = profile.company_address_line1 || profile.company_address_city || profile.company_address_state || profile.company_address_postal_code || profile.company_address_country;
+  if (hasCompanyAddress) {
+    // ADR format: PO Box;Extended Address;Street;City;State;Postal Code;Country
+    const streetParts = [];
+    if (showCompanyAddressLine1 && profile.company_address_line1) streetParts.push(profile.company_address_line1);
+    if (showCompanyAddressLine2 && profile.company_address_line2) streetParts.push(profile.company_address_line2);
+    const street = streetParts.join(', ');
+    const city = showCompanyAddressCity ? (profile.company_address_city || '') : '';
+    const state = showCompanyAddressState ? (profile.company_address_state || '') : '';
+    const postalCode = showCompanyAddressPostalCode ? (profile.company_address_postal_code || '') : '';
+    const country = showCompanyAddressCountry ? (profile.company_address_country || '') : '';
+    // Only add ADR if at least one field has data
+    if (street || city || state || postalCode || country) {
+      lines.push(`ADR;TYPE=WORK:;;${escapeVCardValue(street)};${escapeVCardValue(city)};${escapeVCardValue(state)};${escapeVCardValue(postalCode)};${escapeVCardValue(country)}`);
+    }
   }
 
   // URL (Personal website) - only if enabled and set

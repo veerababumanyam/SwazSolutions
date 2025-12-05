@@ -69,34 +69,106 @@ router.get('/profile/:username', async (req, res) => {
       }
     }
 
+    // Helper to check visibility (default to true if column doesn't exist yet)
+    const isVisible = (val) => val === undefined || val === null || val !== 0;
+
+    // Build response with ONLY visible data - don't expose hidden fields
+    const profileResponse = {
+      username: profile.username,
+      displayName: profile.display_name,
+      firstName: profile.first_name,
+      lastName: profile.last_name,
+      avatarUrl: profile.avatar_url,
+      logoUrl: profile.logo_url,
+      headline: profile.headline,
+      company: profile.company,
+      pronouns: profile.pronouns,
+      timezone: profile.timezone,
+      profileTags: profile.profile_tags ? JSON.parse(profile.profile_tags) : [],
+      languages: profile.languages ? JSON.parse(profile.languages) : [],
+    };
+
+    // Only include contact fields if visible
+    if (isVisible(profile.show_bio)) {
+      profileResponse.bio = profile.bio;
+      profileResponse.showBio = true;
+    }
+    if (isVisible(profile.show_email) && profile.public_email) {
+      profileResponse.publicEmail = profile.public_email;
+      profileResponse.showEmail = true;
+    }
+    if (isVisible(profile.show_phone) && profile.public_phone) {
+      profileResponse.publicPhone = profile.public_phone;
+      profileResponse.showPhone = true;
+    }
+    if (isVisible(profile.show_website) && profile.website) {
+      profileResponse.website = profile.website;
+      profileResponse.showWebsite = true;
+    }
+    if (isVisible(profile.show_company_email) && profile.company_email) {
+      profileResponse.companyEmail = profile.company_email;
+      profileResponse.showCompanyEmail = true;
+    }
+    if (isVisible(profile.show_company_phone) && profile.company_phone) {
+      profileResponse.companyPhone = profile.company_phone;
+      profileResponse.showCompanyPhone = true;
+    }
+
+    // Personal address - only include visible fields
+    if (isVisible(profile.show_address_line1) && profile.address_line1) {
+      profileResponse.addressLine1 = profile.address_line1;
+      profileResponse.showAddressLine1 = true;
+    }
+    if (isVisible(profile.show_address_line2) && profile.address_line2) {
+      profileResponse.addressLine2 = profile.address_line2;
+      profileResponse.showAddressLine2 = true;
+    }
+    if (isVisible(profile.show_address_city) && profile.address_city) {
+      profileResponse.addressCity = profile.address_city;
+      profileResponse.showAddressCity = true;
+    }
+    if (isVisible(profile.show_address_state) && profile.address_state) {
+      profileResponse.addressState = profile.address_state;
+      profileResponse.showAddressState = true;
+    }
+    if (isVisible(profile.show_address_postal_code) && profile.address_postal_code) {
+      profileResponse.addressPostalCode = profile.address_postal_code;
+      profileResponse.showAddressPostalCode = true;
+    }
+    if (isVisible(profile.show_address_country) && profile.address_country) {
+      profileResponse.addressCountry = profile.address_country;
+      profileResponse.showAddressCountry = true;
+    }
+
+    // Company address - only include visible fields
+    if (isVisible(profile.show_company_address_line1) && profile.company_address_line1) {
+      profileResponse.companyAddressLine1 = profile.company_address_line1;
+      profileResponse.showCompanyAddressLine1 = true;
+    }
+    if (isVisible(profile.show_company_address_line2) && profile.company_address_line2) {
+      profileResponse.companyAddressLine2 = profile.company_address_line2;
+      profileResponse.showCompanyAddressLine2 = true;
+    }
+    if (isVisible(profile.show_company_address_city) && profile.company_address_city) {
+      profileResponse.companyAddressCity = profile.company_address_city;
+      profileResponse.showCompanyAddressCity = true;
+    }
+    if (isVisible(profile.show_company_address_state) && profile.company_address_state) {
+      profileResponse.companyAddressState = profile.company_address_state;
+      profileResponse.showCompanyAddressState = true;
+    }
+    if (isVisible(profile.show_company_address_postal_code) && profile.company_address_postal_code) {
+      profileResponse.companyAddressPostalCode = profile.company_address_postal_code;
+      profileResponse.showCompanyAddressPostalCode = true;
+    }
+    if (isVisible(profile.show_company_address_country) && profile.company_address_country) {
+      profileResponse.companyAddressCountry = profile.company_address_country;
+      profileResponse.showCompanyAddressCountry = true;
+    }
+
     res.json({
       id: profile.id, // T140: Added for share tracking
-      profile: {
-        username: profile.username,
-        displayName: profile.display_name,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
-        avatarUrl: profile.avatar_url,
-        logoUrl: profile.logo_url, // Include logo URL for public profile
-        headline: profile.headline,
-        company: profile.company,
-        bio: profile.bio,
-        profileTags: profile.profile_tags ? JSON.parse(profile.profile_tags) : [],
-        publicEmail: profile.public_email,
-        publicPhone: profile.public_phone,
-        website: profile.website,
-        showEmail: profile.show_email !== 0,
-        showPhone: profile.show_phone !== 0,
-        showWebsite: profile.show_website !== 0,
-        showBio: profile.show_bio !== 0,
-        companyEmail: profile.company_email,
-        companyPhone: profile.company_phone,
-        showCompanyEmail: profile.show_company_email !== 0,
-        showCompanyPhone: profile.show_company_phone !== 0,
-        languages: profile.languages ? JSON.parse(profile.languages) : [],
-        pronouns: profile.pronouns,
-        timezone: profile.timezone
-      },
+      profile: profileResponse,
       socialProfiles: transformedSocialProfiles,
       customLinks,
       appearance, // Include appearance settings for public profile rendering

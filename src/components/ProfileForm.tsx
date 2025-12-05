@@ -43,6 +43,20 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     companyPhone: '',
     showCompanyEmail: true,
     showCompanyPhone: true,
+    // Personal address fields
+    addressLine1: '',
+    addressLine2: '',
+    addressCity: '',
+    addressState: '',
+    addressPostalCode: '',
+    showAddress: true,
+    // Company address fields
+    companyAddressLine1: '',
+    companyAddressLine2: '',
+    companyAddressCity: '',
+    companyAddressState: '',
+    companyAddressPostalCode: '',
+    showCompanyAddress: true,
     ...initialData,
   });
 
@@ -437,6 +451,73 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
               />
               <p className="mt-1 text-xs text-gray-400">Personal phone shown in vCard as CELL type</p>
             </div>
+
+            {/* Personal Address with Toggle */}
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Personal Address
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="showAddress"
+                    checked={formData.showAddress ?? true}
+                    onChange={(e) => setFormData({ ...formData, showAddress: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.showAddress ? 'Visible' : 'Hidden'}
+                  </span>
+                </label>
+              </div>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  name="addressLine1"
+                  value={formData.addressLine1 || ''}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="Address Line 1 (House/Flat No., Building, Street)"
+                />
+                <input
+                  type="text"
+                  name="addressLine2"
+                  value={formData.addressLine2 || ''}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="Address Line 2 (Area, Landmark)"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    name="addressCity"
+                    value={formData.addressCity || ''}
+                    onChange={handleChange}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="City"
+                  />
+                  <input
+                    type="text"
+                    name="addressState"
+                    value={formData.addressState || ''}
+                    onChange={handleChange}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="State"
+                  />
+                </div>
+                <input
+                  type="text"
+                  name="addressPostalCode"
+                  value={formData.addressPostalCode || ''}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="PIN Code"
+                />
+              </div>
+              <p className="mt-2 text-xs text-gray-400">Personal address shown in vCard as HOME type</p>
+            </div>
           </div>
         </div>
 
@@ -515,6 +596,73 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                 placeholder="+1 (555) 987-6543"
               />
               <p className="mt-1 text-xs text-gray-400">Work phone shown in vCard as WORK type</p>
+            </div>
+
+            {/* Company Address with Toggle */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Company Address
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="showCompanyAddress"
+                    checked={formData.showCompanyAddress ?? true}
+                    onChange={(e) => setFormData({ ...formData, showCompanyAddress: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                  <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                    {formData.showCompanyAddress ? 'Visible' : 'Hidden'}
+                  </span>
+                </label>
+              </div>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  name="companyAddressLine1"
+                  value={formData.companyAddressLine1 || ''}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="Address Line 1 (Office No., Building, Street)"
+                />
+                <input
+                  type="text"
+                  name="companyAddressLine2"
+                  value={formData.companyAddressLine2 || ''}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="Address Line 2 (Area, Landmark)"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    name="companyAddressCity"
+                    value={formData.companyAddressCity || ''}
+                    onChange={handleChange}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="City"
+                  />
+                  <input
+                    type="text"
+                    name="companyAddressState"
+                    value={formData.companyAddressState || ''}
+                    onChange={handleChange}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    placeholder="State"
+                  />
+                </div>
+                <input
+                  type="text"
+                  name="companyAddressPostalCode"
+                  value={formData.companyAddressPostalCode || ''}
+                  onChange={handleChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  placeholder="PIN Code"
+                />
+              </div>
+              <p className="mt-2 text-xs text-gray-400">Company address shown in vCard as WORK type</p>
             </div>
           </div>
         </div>

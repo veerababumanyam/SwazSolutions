@@ -28,6 +28,32 @@ interface ProfileData {
   companyPhone?: string;
   showCompanyEmail?: boolean;
   showCompanyPhone?: boolean;
+  // Personal address fields
+  addressLine1?: string;
+  addressLine2?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressPostalCode?: string;
+  addressCountry?: string;
+  showAddressLine1?: boolean;
+  showAddressLine2?: boolean;
+  showAddressCity?: boolean;
+  showAddressState?: boolean;
+  showAddressPostalCode?: boolean;
+  showAddressCountry?: boolean;
+  // Company address fields
+  companyAddressLine1?: string;
+  companyAddressLine2?: string;
+  companyAddressCity?: string;
+  companyAddressState?: string;
+  companyAddressPostalCode?: string;
+  companyAddressCountry?: string;
+  showCompanyAddressLine1?: boolean;
+  showCompanyAddressLine2?: boolean;
+  showCompanyAddressCity?: boolean;
+  showCompanyAddressState?: boolean;
+  showCompanyAddressPostalCode?: boolean;
+  showCompanyAddressCountry?: boolean;
 }
 
 interface UsernameCheckResponse {
@@ -61,6 +87,32 @@ interface PublicProfileResponse {
   companyPhone?: string;
   showCompanyEmail?: boolean;
   showCompanyPhone?: boolean;
+  // Personal address fields
+  addressLine1?: string;
+  addressLine2?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressPostalCode?: string;
+  addressCountry?: string;
+  showAddressLine1?: boolean;
+  showAddressLine2?: boolean;
+  showAddressCity?: boolean;
+  showAddressState?: boolean;
+  showAddressPostalCode?: boolean;
+  showAddressCountry?: boolean;
+  // Company address fields
+  companyAddressLine1?: string;
+  companyAddressLine2?: string;
+  companyAddressCity?: string;
+  companyAddressState?: string;
+  companyAddressPostalCode?: string;
+  companyAddressCountry?: string;
+  showCompanyAddressLine1?: boolean;
+  showCompanyAddressLine2?: boolean;
+  showCompanyAddressCity?: boolean;
+  showCompanyAddressState?: boolean;
+  showCompanyAddressPostalCode?: boolean;
+  showCompanyAddressCountry?: boolean;
   socialProfiles?: Array<{
     id: number;
     platform: string | null;
@@ -311,6 +363,7 @@ class ProfileService {
       const data = await response.json();
       
       // T140: Map API response to include id and flatten profile object
+      // Only include data that the backend has marked as visible
       return {
         id: data.id,
         username: data.profile.username,
@@ -336,6 +389,32 @@ class ProfileService {
         companyPhone: data.profile.companyPhone,
         showCompanyEmail: data.profile.showCompanyEmail,
         showCompanyPhone: data.profile.showCompanyPhone,
+        // Personal address fields
+        addressLine1: data.profile.addressLine1,
+        addressLine2: data.profile.addressLine2,
+        addressCity: data.profile.addressCity,
+        addressState: data.profile.addressState,
+        addressPostalCode: data.profile.addressPostalCode,
+        addressCountry: data.profile.addressCountry,
+        showAddressLine1: data.profile.showAddressLine1,
+        showAddressLine2: data.profile.showAddressLine2,
+        showAddressCity: data.profile.showAddressCity,
+        showAddressState: data.profile.showAddressState,
+        showAddressPostalCode: data.profile.showAddressPostalCode,
+        showAddressCountry: data.profile.showAddressCountry,
+        // Company address fields
+        companyAddressLine1: data.profile.companyAddressLine1,
+        companyAddressLine2: data.profile.companyAddressLine2,
+        companyAddressCity: data.profile.companyAddressCity,
+        companyAddressState: data.profile.companyAddressState,
+        companyAddressPostalCode: data.profile.companyAddressPostalCode,
+        companyAddressCountry: data.profile.companyAddressCountry,
+        showCompanyAddressLine1: data.profile.showCompanyAddressLine1,
+        showCompanyAddressLine2: data.profile.showCompanyAddressLine2,
+        showCompanyAddressCity: data.profile.showCompanyAddressCity,
+        showCompanyAddressState: data.profile.showCompanyAddressState,
+        showCompanyAddressPostalCode: data.profile.showCompanyAddressPostalCode,
+        showCompanyAddressCountry: data.profile.showCompanyAddressCountry,
         socialProfiles: data.socialProfiles,
         customLinks: data.customLinks,
         theme: data.theme,
@@ -378,6 +457,32 @@ class ProfileService {
       companyPhone: data.companyPhone,
       showCompanyEmail: data.showCompanyEmail,
       showCompanyPhone: data.showCompanyPhone,
+      // Personal address fields
+      addressLine1: data.addressLine1,
+      addressLine2: data.addressLine2,
+      addressCity: data.addressCity,
+      addressState: data.addressState,
+      addressPostalCode: data.addressPostalCode,
+      addressCountry: data.addressCountry,
+      showAddressLine1: data.showAddressLine1,
+      showAddressLine2: data.showAddressLine2,
+      showAddressCity: data.showAddressCity,
+      showAddressState: data.showAddressState,
+      showAddressPostalCode: data.showAddressPostalCode,
+      showAddressCountry: data.showAddressCountry,
+      // Company address fields
+      companyAddressLine1: data.companyAddressLine1,
+      companyAddressLine2: data.companyAddressLine2,
+      companyAddressCity: data.companyAddressCity,
+      companyAddressState: data.companyAddressState,
+      companyAddressPostalCode: data.companyAddressPostalCode,
+      companyAddressCountry: data.companyAddressCountry,
+      showCompanyAddressLine1: data.showCompanyAddressLine1,
+      showCompanyAddressLine2: data.showCompanyAddressLine2,
+      showCompanyAddressCity: data.showCompanyAddressCity,
+      showCompanyAddressState: data.showCompanyAddressState,
+      showCompanyAddressPostalCode: data.showCompanyAddressPostalCode,
+      showCompanyAddressCountry: data.showCompanyAddressCountry,
     };
   }
 
@@ -412,6 +517,32 @@ class ProfileService {
     if (data.companyPhone !== undefined) result.companyPhone = data.companyPhone;
     if (data.showCompanyEmail !== undefined) result.showCompanyEmail = data.showCompanyEmail;
     if (data.showCompanyPhone !== undefined) result.showCompanyPhone = data.showCompanyPhone;
+    // Personal address fields
+    if (data.addressLine1 !== undefined) result.addressLine1 = data.addressLine1;
+    if (data.addressLine2 !== undefined) result.addressLine2 = data.addressLine2;
+    if (data.addressCity !== undefined) result.addressCity = data.addressCity;
+    if (data.addressState !== undefined) result.addressState = data.addressState;
+    if (data.addressPostalCode !== undefined) result.addressPostalCode = data.addressPostalCode;
+    if (data.addressCountry !== undefined) result.addressCountry = data.addressCountry;
+    if (data.showAddressLine1 !== undefined) result.showAddressLine1 = data.showAddressLine1;
+    if (data.showAddressLine2 !== undefined) result.showAddressLine2 = data.showAddressLine2;
+    if (data.showAddressCity !== undefined) result.showAddressCity = data.showAddressCity;
+    if (data.showAddressState !== undefined) result.showAddressState = data.showAddressState;
+    if (data.showAddressPostalCode !== undefined) result.showAddressPostalCode = data.showAddressPostalCode;
+    if (data.showAddressCountry !== undefined) result.showAddressCountry = data.showAddressCountry;
+    // Company address fields
+    if (data.companyAddressLine1 !== undefined) result.companyAddressLine1 = data.companyAddressLine1;
+    if (data.companyAddressLine2 !== undefined) result.companyAddressLine2 = data.companyAddressLine2;
+    if (data.companyAddressCity !== undefined) result.companyAddressCity = data.companyAddressCity;
+    if (data.companyAddressState !== undefined) result.companyAddressState = data.companyAddressState;
+    if (data.companyAddressPostalCode !== undefined) result.companyAddressPostalCode = data.companyAddressPostalCode;
+    if (data.companyAddressCountry !== undefined) result.companyAddressCountry = data.companyAddressCountry;
+    if (data.showCompanyAddressLine1 !== undefined) result.showCompanyAddressLine1 = data.showCompanyAddressLine1;
+    if (data.showCompanyAddressLine2 !== undefined) result.showCompanyAddressLine2 = data.showCompanyAddressLine2;
+    if (data.showCompanyAddressCity !== undefined) result.showCompanyAddressCity = data.showCompanyAddressCity;
+    if (data.showCompanyAddressState !== undefined) result.showCompanyAddressState = data.showCompanyAddressState;
+    if (data.showCompanyAddressPostalCode !== undefined) result.showCompanyAddressPostalCode = data.showCompanyAddressPostalCode;
+    if (data.showCompanyAddressCountry !== undefined) result.showCompanyAddressCountry = data.showCompanyAddressCountry;
     
     return result;
   }

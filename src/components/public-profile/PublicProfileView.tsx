@@ -4,7 +4,7 @@
 // Features: Modern icon-based links, action bar for QR/Share/vCard, mobile-first design
 
 import React, { useCallback } from 'react';
-import { Mail, Phone, Globe, Briefcase, Building2, Download, Share2, ExternalLink } from 'lucide-react';
+import { Mail, Phone, Globe, Briefcase, Building2, Download, Share2, ExternalLink, MapPin } from 'lucide-react';
 import { getOptimalTextColor, getOptimalSecondaryTextColor, isLightColor } from '../../utils/wcagValidator';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
 import { ProfileQRCode } from './ProfileQRCode';
@@ -76,6 +76,32 @@ interface ProfileData {
   companyPhone?: string;
   showCompanyEmail?: boolean;
   showCompanyPhone?: boolean;
+  // Personal address fields
+  addressLine1?: string;
+  addressLine2?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressPostalCode?: string;
+  addressCountry?: string;
+  showAddressLine1?: boolean;
+  showAddressLine2?: boolean;
+  showAddressCity?: boolean;
+  showAddressState?: boolean;
+  showAddressPostalCode?: boolean;
+  showAddressCountry?: boolean;
+  // Company address fields
+  companyAddressLine1?: string;
+  companyAddressLine2?: string;
+  companyAddressCity?: string;
+  companyAddressState?: string;
+  companyAddressPostalCode?: string;
+  companyAddressCountry?: string;
+  showCompanyAddressLine1?: boolean;
+  showCompanyAddressLine2?: boolean;
+  showCompanyAddressCity?: boolean;
+  showCompanyAddressState?: boolean;
+  showCompanyAddressPostalCode?: boolean;
+  showCompanyAddressCountry?: boolean;
   pronouns?: string;
   company?: string;
 }
@@ -703,6 +729,123 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
     );
   };
 
+  // Render address section as styled boxes
+  const renderAddress = () => {
+    // Build personal address from visible fields only
+    const personalParts = [
+      profile.showAddressLine1 && profile.addressLine1,
+      profile.showAddressLine2 && profile.addressLine2,
+      profile.showAddressCity && profile.addressCity,
+      profile.showAddressState && profile.addressState,
+      profile.showAddressPostalCode && profile.addressPostalCode,
+      profile.showAddressCountry && profile.addressCountry,
+    ].filter(Boolean);
+    
+    // Build company address from visible fields only
+    const companyParts = [
+      profile.showCompanyAddressLine1 && profile.companyAddressLine1,
+      profile.showCompanyAddressLine2 && profile.companyAddressLine2,
+      profile.showCompanyAddressCity && profile.companyAddressCity,
+      profile.showCompanyAddressState && profile.companyAddressState,
+      profile.showCompanyAddressPostalCode && profile.companyAddressPostalCode,
+      profile.showCompanyAddressCountry && profile.companyAddressCountry,
+    ].filter(Boolean);
+    
+    const hasPersonalAddress = personalParts.length > 0;
+    const hasCompanyAddress = companyParts.length > 0;
+    
+    if (!hasPersonalAddress && !hasCompanyAddress) return null;
+    
+    return (
+      <div className="space-y-4 pb-8">
+        {/* Section Header */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
+          <span className="text-xs font-medium uppercase tracking-wider opacity-60" style={{ color: wcagColors.nameColor }}>
+            Address
+          </span>
+          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
+        </div>
+        
+        <div className="space-y-3">
+          {/* Personal Address Box */}
+          {hasPersonalAddress && (
+            <a
+              href={`https://maps.google.com/?q=${encodeURIComponent(personalParts.join(', '))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block p-4 rounded-2xl transition-all hover:scale-[1.02] hover:shadow-lg"
+              style={{ 
+                backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
+                border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'}`
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ 
+                    backgroundColor: `${settings.buttonColor}15`,
+                    border: `1px solid ${settings.buttonColor}25`
+                  }}
+                >
+                  <MapPin className="w-6 h-6" style={{ color: settings.buttonColor }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: settings.buttonColor }}>
+                      Personal Address
+                    </span>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: wcagColors.nameColor }}>
+                    {personalParts.join(', ')}
+                  </p>
+                </div>
+                <ExternalLink className="w-4 h-4 flex-shrink-0 opacity-40" style={{ color: wcagColors.nameColor }} />
+              </div>
+            </a>
+          )}
+          
+          {/* Company Address Box */}
+          {hasCompanyAddress && (
+            <a
+              href={`https://maps.google.com/?q=${encodeURIComponent(companyParts.join(', '))}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block p-4 rounded-2xl transition-all hover:scale-[1.02] hover:shadow-lg"
+              style={{ 
+                backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.06)' : 'rgba(59,130,246,0.12)',
+                border: `1px solid ${wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)'}`
+              }}
+            >
+              <div className="flex items-start gap-4">
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ 
+                    backgroundColor: 'rgba(59,130,246,0.15)',
+                    border: '1px solid rgba(59,130,246,0.25)'
+                  }}
+                >
+                  <Building2 className="w-6 h-6" style={{ color: '#3B82F6' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#3B82F6' }}>
+                      Office Address
+                    </span>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: wcagColors.nameColor }}>
+                    {companyParts.join(', ')}
+                  </p>
+                </div>
+                <ExternalLink className="w-4 h-4 flex-shrink-0 opacity-40" style={{ color: wcagColors.nameColor }} />
+              </div>
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div 
       className="min-h-screen relative overflow-hidden"
@@ -772,59 +915,81 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             </div>
           )}
 
-          {/* Contact Info Section - Personal and Company contacts */}
+          {/* Contact Info Section - Personal and Company contacts with labels */}
           {((profile.showEmail && profile.publicEmail) || 
             (profile.showPhone && profile.publicPhone) || 
             (profile.showWebsite && profile.website) ||
             (profile.showCompanyEmail && profile.companyEmail) ||
-            (profile.showCompanyPhone && profile.companyPhone)) && (
-            <div className="flex flex-wrap justify-center gap-3 mb-6">
+            (profile.showCompanyPhone && profile.companyPhone) ||
+            (profile.showAddress && (profile.addressLine1 || profile.addressCity)) ||
+            (profile.showCompanyAddress && (profile.companyAddressLine1 || profile.companyAddressCity))) && (
+            <div className="flex flex-wrap justify-center gap-4 mb-6">
               {profile.showEmail && profile.publicEmail && (
                 <a
                   href={`mailto:${profile.publicEmail}`}
-                  className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full transition-transform hover:scale-110"
-                  style={{ 
-                    backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                  }}
+                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                   title={`Personal: ${profile.publicEmail}`}
                 >
-                  <Mail className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  <div 
+                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
+                    style={{ 
+                      backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    <Mail className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  </div>
+                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Email</span>
                 </a>
               )}
               {profile.showPhone && profile.publicPhone && (
                 <a
                   href={`tel:${profile.publicPhone}`}
-                  className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full transition-transform hover:scale-110"
-                  style={{ 
-                    backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                  }}
+                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                   title={`Personal: ${profile.publicPhone}`}
                 >
-                  <Phone className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  <div 
+                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
+                    style={{ 
+                      backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    <Phone className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  </div>
+                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Phone</span>
                 </a>
               )}
               {profile.showCompanyEmail && profile.companyEmail && (
                 <a
                   href={`mailto:${profile.companyEmail}`}
-                  className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full transition-transform hover:scale-110"
-                  style={{ 
-                    backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
-                  }}
+                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                   title={`Work: ${profile.companyEmail}`}
                 >
-                  <Briefcase className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  <div 
+                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
+                    style={{ 
+                      backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
+                    }}
+                  >
+                    <Briefcase className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  </div>
+                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Office</span>
                 </a>
               )}
               {profile.showCompanyPhone && profile.companyPhone && (
                 <a
                   href={`tel:${profile.companyPhone}`}
-                  className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full transition-transform hover:scale-110"
-                  style={{ 
-                    backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
-                  }}
+                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                   title={`Work: ${profile.companyPhone}`}
                 >
-                  <Building2 className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  <div 
+                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
+                    style={{ 
+                      backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
+                    }}
+                  >
+                    <Building2 className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  </div>
+                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Work</span>
                 </a>
               )}
               {profile.showWebsite && profile.website && (
@@ -832,15 +997,84 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                   href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full transition-transform hover:scale-110"
-                  style={{ 
-                    backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                  }}
+                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
                   title={profile.website}
                 >
-                  <Globe className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  <div 
+                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
+                    style={{ 
+                      backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    <Globe className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                  </div>
+                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Website</span>
                 </a>
               )}
+              {/* Personal Address - show if any visible field has data */}
+              {(() => {
+                const visibleParts = [
+                  profile.showAddressLine1 !== false && profile.addressLine1,
+                  profile.showAddressLine2 !== false && profile.addressLine2,
+                  profile.showAddressCity !== false && profile.addressCity,
+                  profile.showAddressState !== false && profile.addressState,
+                  profile.showAddressPostalCode !== false && profile.addressPostalCode,
+                  profile.showAddressCountry !== false && profile.addressCountry,
+                ].filter(Boolean);
+                if (visibleParts.length === 0) return null;
+                const addressString = visibleParts.join(', ');
+                return (
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(addressString)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
+                    title={`Personal: ${addressString}`}
+                  >
+                    <div 
+                      className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
+                      style={{ 
+                        backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
+                      }}
+                    >
+                      <MapPin className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                    </div>
+                    <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Personal</span>
+                  </a>
+                );
+              })()}
+              {/* Company Address - show if any visible field has data */}
+              {(() => {
+                const visibleParts = [
+                  profile.showCompanyAddressLine1 !== false && profile.companyAddressLine1,
+                  profile.showCompanyAddressLine2 !== false && profile.companyAddressLine2,
+                  profile.showCompanyAddressCity !== false && profile.companyAddressCity,
+                  profile.showCompanyAddressState !== false && profile.companyAddressState,
+                  profile.showCompanyAddressPostalCode !== false && profile.companyAddressPostalCode,
+                  profile.showCompanyAddressCountry !== false && profile.companyAddressCountry,
+                ].filter(Boolean);
+                if (visibleParts.length === 0) return null;
+                const addressString = visibleParts.join(', ');
+                return (
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(addressString)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
+                    title={`Work: ${addressString}`}
+                  >
+                    <div 
+                      className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
+                      style={{ 
+                        backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
+                      }}
+                    >
+                      <MapPin className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
+                    </div>
+                    <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Office</span>
+                  </a>
+                );
+              })()}
             </div>
           )}
 
@@ -876,6 +1110,9 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
 
           {/* Links as Icon Cards */}
           {renderLinks()}
+
+          {/* Address Section */}
+          {renderAddress()}
 
           {/* Footer Section */}
           <div className="py-8 text-center">

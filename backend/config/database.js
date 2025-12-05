@@ -393,6 +393,86 @@ async function initializeDatabase() {
     }
   }
 
+  // Migration: Add personal address columns to profiles if they don't exist
+  try {
+    db.exec("SELECT address_line1 FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN address_line1 TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN address_line2 TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN address_city TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN address_state TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN address_postal_code TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN address_country TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_line1 INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_line2 INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_city INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_state INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_postal_code INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_country INTEGER DEFAULT 1");
+      console.log('✅ Added personal address columns to profiles table');
+    } catch (alterError) {
+      // Columns might already exist
+    }
+  }
+
+  // Migration: Add show_address_line1 column if show_address_street exists (rename migration)
+  try {
+    db.exec("SELECT show_address_line1 FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_line1 INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_address_line2 INTEGER DEFAULT 1");
+      // Copy values from old columns if they exist
+      try {
+        db.run("UPDATE profiles SET show_address_line1 = show_address_street WHERE show_address_street IS NOT NULL");
+      } catch (copyErr) { /* old column doesn't exist */ }
+      console.log('✅ Added show_address_line1/line2 columns');
+    } catch (alterError) {
+      // Columns might already exist
+    }
+  }
+
+  // Migration: Add company address columns to profiles if they don't exist
+  try {
+    db.exec("SELECT company_address_line1 FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN company_address_line1 TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN company_address_line2 TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN company_address_city TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN company_address_state TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN company_address_postal_code TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN company_address_country TEXT");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_line1 INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_line2 INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_city INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_state INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_postal_code INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_country INTEGER DEFAULT 1");
+      console.log('✅ Added company address columns to profiles table');
+    } catch (alterError) {
+      // Columns might already exist
+    }
+  }
+
+  // Migration: Add show_company_address_line1 column if show_company_address_street exists (rename migration)
+  try {
+    db.exec("SELECT show_company_address_line1 FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_line1 INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company_address_line2 INTEGER DEFAULT 1");
+      // Copy values from old columns if they exist
+      try {
+        db.run("UPDATE profiles SET show_company_address_line1 = show_company_address_street WHERE show_company_address_street IS NOT NULL");
+      } catch (copyErr) { /* old column doesn't exist */ }
+      console.log('✅ Added show_company_address_line1/line2 columns');
+    } catch (alterError) {
+      // Columns might already exist
+    }
+  }
+
   // Create indexes
   db.run('CREATE INDEX IF NOT EXISTS idx_themes_system ON themes(is_system)');
   db.run('CREATE INDEX IF NOT EXISTS idx_themes_profile ON themes(profile_id)');
