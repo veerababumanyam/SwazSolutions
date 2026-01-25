@@ -23,6 +23,12 @@ interface ProfileData {
   showPhone?: boolean;
   showWebsite?: boolean;
   showBio?: boolean;
+  // Additional field visibility toggles
+  showHeadline?: boolean;
+  showCompany?: boolean;
+  showFirstName?: boolean;
+  showLastName?: boolean;
+  showPronouns?: boolean;
   // Company contact fields
   companyEmail?: string;
   companyPhone?: string;
@@ -82,6 +88,12 @@ interface PublicProfileResponse {
   showPhone?: boolean;
   showWebsite?: boolean;
   showBio?: boolean;
+  // Additional field visibility toggles
+  showHeadline?: boolean;
+  showCompany?: boolean;
+  showFirstName?: boolean;
+  showLastName?: boolean;
+  showPronouns?: boolean;
   // Company contact fields
   companyEmail?: string;
   companyPhone?: string;
@@ -384,6 +396,12 @@ class ProfileService {
         showPhone: data.profile.showPhone,
         showWebsite: data.profile.showWebsite,
         showBio: data.profile.showBio,
+        // Additional field visibility toggles
+        showHeadline: data.profile.showHeadline,
+        showCompany: data.profile.showCompany,
+        showFirstName: data.profile.showFirstName,
+        showLastName: data.profile.showLastName,
+        showPronouns: data.profile.showPronouns,
         // Company contact fields
         companyEmail: data.profile.companyEmail,
         companyPhone: data.profile.companyPhone,
@@ -427,6 +445,207 @@ class ProfileService {
   }
 
   /**
+   * Track a profile view (T254)
+   * Called when a public profile is loaded
+   */
+  async trackProfileView(username: string): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/public/profile/${username}/view`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch (error) {
+      // Silently fail - analytics tracking shouldn't break the user experience
+      console.error('Error tracking profile view:', error);
+    }
+  }
+
+  /**
+   * Track a share event (T140)
+   * Called when a profile is shared
+   */
+  async trackShareEvent(profileId: number, shareMethod: string, platform?: string): Promise<void> {
+    try {
+      await fetch(`${this.baseUrl}/api/profiles/share-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          profile_id: profileId,
+          share_method: shareMethod,
+          platform: platform || null,
+        }),
+      });
+    } catch (error) {
+      // Silently fail - analytics tracking shouldn't break the user experience
+      console.error('Error tracking share event:', error);
+    }
+  }
+
+  /**
+   * Get analytics for the current user's profile
+   */
+  async getMyAnalytics(startDate?: string, endDate?: string): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const queryString = params.toString();
+      const url = `${this.baseUrl}/api/profiles/me/analytics${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch analytics');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get real-time analytics for current day
+   */
+  async getRealtimeAnalytics(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/profiles/me/analytics/realtime`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch realtime analytics');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching realtime analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get share channel breakdown analytics
+   */
+  async getShareAnalytics(startDate?: string, endDate?: string): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const queryString = params.toString();
+      const url = `${this.baseUrl}/api/profiles/me/analytics/shares${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch share analytics');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching share analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get device breakdown analytics
+   */
+  async getDeviceAnalytics(startDate?: string, endDate?: string): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const queryString = params.toString();
+      const url = `${this.baseUrl}/api/profiles/me/analytics/devices${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch device analytics');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching device analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get referrer breakdown analytics
+   */
+  async getReferrerAnalytics(startDate?: string, endDate?: string): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+
+      const queryString = params.toString();
+      const url = `${this.baseUrl}/api/profiles/me/analytics/referrers${queryString ? `?${queryString}` : ''}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch referrer analytics');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching referrer analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get trend comparisons (week-over-week)
+   */
+  async getTrendAnalytics(): Promise<any> {
+    try {
+      const response = await fetch(`${this.baseUrl}/api/profiles/me/analytics/trends`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch trend analytics');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching trend analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Transform API response to ProfileData (backend returns camelCase)
    */
   private transformProfile(data: any): ProfileData {
@@ -452,6 +671,12 @@ class ProfileService {
       showPhone: data.showPhone,
       showWebsite: data.showWebsite,
       showBio: data.showBio,
+      // Additional field visibility toggles
+      showHeadline: data.showHeadline,
+      showCompany: data.showCompany,
+      showFirstName: data.showFirstName,
+      showLastName: data.showLastName,
+      showPronouns: data.showPronouns,
       // Company contact fields
       companyEmail: data.companyEmail,
       companyPhone: data.companyPhone,
@@ -512,6 +737,12 @@ class ProfileService {
     if (data.showPhone !== undefined) result.showPhone = data.showPhone;
     if (data.showWebsite !== undefined) result.showWebsite = data.showWebsite;
     if (data.showBio !== undefined) result.showBio = data.showBio;
+    // Additional field visibility toggles
+    if (data.showHeadline !== undefined) result.showHeadline = data.showHeadline;
+    if (data.showCompany !== undefined) result.showCompany = data.showCompany;
+    if (data.showFirstName !== undefined) result.showFirstName = data.showFirstName;
+    if (data.showLastName !== undefined) result.showLastName = data.showLastName;
+    if (data.showPronouns !== undefined) result.showPronouns = data.showPronouns;
     // Company contact fields
     if (data.companyEmail !== undefined) result.companyEmail = data.companyEmail;
     if (data.companyPhone !== undefined) result.companyPhone = data.companyPhone;

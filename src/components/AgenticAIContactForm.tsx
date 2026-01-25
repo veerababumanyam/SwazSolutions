@@ -20,8 +20,10 @@ interface FormData {
     phone: string;
     company: string;
     companySize: string;
+    teamSize: string;
     serviceType: string;
     projectDescription: string;
+    projectRequirements: string;
     budget: string;
     timeline: string;
     honeypot: string;
@@ -39,8 +41,10 @@ export const AgenticAIContactForm: React.FC<AgenticAIContactFormProps> = ({ clas
         phone: '',
         company: '',
         companySize: '',
+        teamSize: '',
         serviceType: 'Autonomous AI Agents',
         projectDescription: '',
+        projectRequirements: '',
         budget: '',
         timeline: '',
         honeypot: '',
@@ -87,8 +91,10 @@ export const AgenticAIContactForm: React.FC<AgenticAIContactFormProps> = ({ clas
                     phone: '',
                     company: '',
                     companySize: '',
+                    teamSize: '',
                     serviceType: 'Autonomous AI Agents',
                     projectDescription: '',
+                    projectRequirements: '',
                     budget: '',
                     timeline: '',
                     honeypot: '',
@@ -272,13 +278,13 @@ export const AgenticAIContactForm: React.FC<AgenticAIContactFormProps> = ({ clas
                     </div>
                 </div>
 
-                {/* Company & Project Details */}
+                {/* Company & Team Details */}
                 <div className="grid md:grid-cols-2 gap-6">
                     <div>
                         <label htmlFor="companySize" className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
                             Company Size
                         </label>
-                        <select 
+                        <select
                             id="companySize"
                             name="companySize"
                             value={formData.companySize}
@@ -297,32 +303,60 @@ export const AgenticAIContactForm: React.FC<AgenticAIContactFormProps> = ({ clas
                     </div>
 
                     <div>
-                        <label htmlFor="serviceType" className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
-                            Service Type *
+                        <label htmlFor="teamSize" className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
+                            Technical Team Size *
                         </label>
                         <div className="relative">
-                            <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted pointer-events-none" />
-                            <select 
-                                id="serviceType"
-                                name="serviceType"
-                                value={formData.serviceType}
+                            <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted pointer-events-none" />
+                            <select
+                                id="teamSize"
+                                name="teamSize"
+                                value={formData.teamSize}
                                 onChange={handleInputChange}
                                 className="input rounded-xl pl-11"
                                 required
                                 disabled={isSubmitting}
                             >
-                                <option value="Autonomous AI Agents">Autonomous AI Agents</option>
-                                <option value="Multi-Agent Orchestration">Multi-Agent Orchestration</option>
-                                <option value="AI Assistant Development">AI Assistant Development</option>
-                                <option value="Decision-Support Agents">Decision-Support Agents</option>
-                                <option value="Operational Agents">Operational Agents</option>
-                                <option value="RAG-Powered Agents">RAG-Powered Agents</option>
-                                <option value="Custom Multi-Modal Agents">Custom Multi-Modal Agents</option>
-                                <option value="RPA-Enhanced Agents">RPA-Enhanced Agents</option>
-                                <option value="Full AI Strategy Consultation">Full AI Strategy Consultation</option>
-                                <option value="Other">Other</option>
+                                <option value="">Select team size...</option>
+                                <option value="solo">Solo / Individual</option>
+                                <option value="2-5">2-5 team members</option>
+                                <option value="6-10">6-10 team members</option>
+                                <option value="11-25">11-25 team members</option>
+                                <option value="26-50">26-50 team members</option>
+                                <option value="50+">50+ team members</option>
+                                <option value="not-applicable">Not applicable / Outsourced</option>
                             </select>
                         </div>
+                    </div>
+                </div>
+
+                {/* Service Type */}
+                <div>
+                    <label htmlFor="serviceType" className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
+                        Service Type *
+                    </label>
+                    <div className="relative">
+                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted pointer-events-none" />
+                        <select
+                            id="serviceType"
+                            name="serviceType"
+                            value={formData.serviceType}
+                            onChange={handleInputChange}
+                            className="input rounded-xl pl-11"
+                            required
+                            disabled={isSubmitting}
+                        >
+                            <option value="Autonomous AI Agents">Autonomous AI Agents</option>
+                            <option value="Multi-Agent Orchestration">Multi-Agent Orchestration</option>
+                            <option value="AI Assistant Development">AI Assistant Development</option>
+                            <option value="Decision-Support Agents">Decision-Support Agents</option>
+                            <option value="Operational Agents">Operational Agents</option>
+                            <option value="RAG-Powered Agents">RAG-Powered Agents</option>
+                            <option value="Custom Multi-Modal Agents">Custom Multi-Modal Agents</option>
+                            <option value="RPA-Enhanced Agents">RPA-Enhanced Agents</option>
+                            <option value="Full AI Strategy Consultation">Full AI Strategy Consultation</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
                 </div>
 
@@ -330,13 +364,13 @@ export const AgenticAIContactForm: React.FC<AgenticAIContactFormProps> = ({ clas
                     <label htmlFor="projectDescription" className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
                         Project Description *
                     </label>
-                    <textarea 
+                    <textarea
                         id="projectDescription"
                         name="projectDescription"
                         value={formData.projectDescription}
                         onChange={handleInputChange}
-                        rows={4} 
-                        className="input rounded-xl" 
+                        rows={4}
+                        className="input rounded-xl"
                         placeholder="Tell us about your use case, challenges, and what you're looking to achieve with Agentic AI..."
                         required
                         disabled={isSubmitting}
@@ -345,6 +379,26 @@ export const AgenticAIContactForm: React.FC<AgenticAIContactFormProps> = ({ clas
                     ></textarea>
                     <div className="text-xs text-muted mt-1 text-right">
                         {formData.projectDescription.length}/2000 characters
+                    </div>
+                </div>
+
+                <div>
+                    <label htmlFor="projectRequirements" className="block text-xs font-bold text-secondary uppercase tracking-wider mb-2">
+                        Key Project Requirements
+                    </label>
+                    <textarea
+                        id="projectRequirements"
+                        name="projectRequirements"
+                        value={formData.projectRequirements}
+                        onChange={handleInputChange}
+                        rows={3}
+                        className="input rounded-xl"
+                        placeholder="List specific requirements: integrations needed, data sources, security requirements, compliance needs, etc..."
+                        disabled={isSubmitting}
+                        maxLength={1500}
+                    ></textarea>
+                    <div className="text-xs text-muted mt-1 text-right">
+                        {formData.projectRequirements.length}/1500 characters
                     </div>
                 </div>
 

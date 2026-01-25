@@ -2,10 +2,47 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
+
+// Import centralized rate limiters
+const { apiLimiter, authLimiter } = require('./middleware/rateLimit');
+
+// CORS Configuration - Origin Whitelisting
+const parseAllowedOrigins = () => {
+    const originsEnv = process.env.CORS_ALLOWED_ORIGINS || process.env.CORS_ORIGIN || 'http://localhost:5173';
+    return originsEnv.split(',').map(origin => origin.trim()).filter(Boolean);
+};
+
+const allowedOrigins = parseAllowedOrigins();
+
+const corsOriginValidator = (origin, callback) => {
+    // Allow requests with no origin (same-origin, server-to-server, mobile apps, Postman)
+    if (!origin) {
+        return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+    }
+
+    // In development, log rejected origins for debugging
+    if (process.env.NODE_ENV !== 'production') {
+        console.warn(`⚠️  CORS: Blocked request from unauthorized origin: ${origin}`);
+        console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+    }
+
+    return callback(new Error(`CORS policy: Origin ${origin} is not allowed`), false);
+};
+
+const corsOptions = {
+    origin: corsOriginValidator,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Gemini-API-Key'],
+    optionsSuccessStatus: 200 // For legacy browser support
+};
 
 // Initialize database
 const db = require('./config/database');
@@ -16,6 +53,8 @@ const createSongRoutes = require('./routes/songs');
 const createPlaylistRoutes = require('./routes/playlists');
 const createVisitorRoutes = require('./routes/visitors');
 const createContactRoutes = require('./routes/contact');
+const createLyricsRoutes = require('./routes/lyrics');
+const createAlbumCoverRoutes = require('./routes/album-covers');
 const { router: cameraUpdatesRouter, init: initCameraRoutes, saveUpdatesToDb } = require('./routes/cameraUpdates');
 
 // Virtual Profile routes
@@ -37,7 +76,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+        origin: corsOriginValidator,
         credentials: true,
         methods: ["GET", "POST"]
     }
@@ -45,22 +84,10 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 
-// Rate Limiters
-const authLimiter = rateLimit({
-    windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 5,
-    message: 'Too many authentication attempts, please try again later',
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-const apiLimiter = rateLimit({
-    windowMs: parseInt(process.env.API_RATE_LIMIT_WINDOW_MS) || 60 * 1000, // 1 minute  
-    max: parseInt(process.env.API_RATE_LIMIT_MAX) || 100,
-    message: 'Too many requests, please slow down',
-    standardHeaders: true,
-    legacyHeaders: false,
-});
+// Rate limiters are imported from ./middleware/rateLimit.js
+// - apiLimiter: 100 requests per minute (general API)
+// - authLimiter: 30 requests per 15 minutes (auth operations)
+// - strictAuthLimiter: 5 requests per 15 minutes (login/register - applied in auth routes)
 
 // Database ready flag
 let isDatabaseReady = false;
@@ -106,26 +133,83 @@ io.on('connection', (socket) => {
     });
 });
 
-// Middleware
+// Security Headers Configuration with Helmet.js
+// Implements CSP, X-Frame-Options, HSTS, and other security headers
 app.use(helmet({
+    // Content Security Policy - Restricts resource loading to trusted sources
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
             scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
             imgSrc: ["'self'", "data:", "blob:", "https://lh3.googleusercontent.com"],
             connectSrc: ["'self'", "https://accounts.google.com", "https://oauth2.googleapis.com"],
             frameSrc: ["'self'", "https://accounts.google.com", "https://accounts.google.com/gsi/"],
-            childSrc: ["'self'", "https://accounts.google.com"]
+            childSrc: ["'self'", "https://accounts.google.com"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'self'"],
+            upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
         },
+        reportOnly: false,
     },
+
+    // X-Frame-Options - Prevents clickjacking attacks
+    // frameGuard replaces the deprecated X-Frame-Options with frame-ancestors in CSP
+    // but also sets X-Frame-Options for older browser compatibility
+    frameguard: {
+        action: 'sameorigin'
+    },
+
+    // Strict-Transport-Security (HSTS) - Forces HTTPS connections
+    // Only enable in production with proper HTTPS setup
+    strictTransportSecurity: process.env.NODE_ENV === 'production' ? {
+        maxAge: 31536000, // 1 year in seconds
+        includeSubDomains: true,
+        preload: true
+    } : false,
+
+    // X-Content-Type-Options - Prevents MIME-type sniffing
+    noSniff: true,
+
+    // X-XSS-Protection - Legacy XSS protection for older browsers
+    xssFilter: true,
+
+    // X-DNS-Prefetch-Control - Controls DNS prefetching
+    dnsPrefetchControl: { allow: false },
+
+    // X-Permitted-Cross-Domain-Policies - Restricts Adobe Flash/PDF policies
+    permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+
+    // Referrer-Policy - Controls referrer information leakage
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+
+    // Hide X-Powered-By header to obscure technology stack
+    hidePoweredBy: true,
+
+    // Origin-Agent-Cluster header - Enables origin-keyed agent clusters
+    originAgentCluster: true,
+
+    // Cross-Origin policies for enhanced isolation
+    crossOriginEmbedderPolicy: false, // Disabled to allow Google OAuth iframes
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }, // Allow OAuth popups
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow cross-origin resources (needed for OAuth)
 }));
-app.use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+
+// Permissions-Policy header - Controls browser feature access
+// This header is not included in Helmet by default
+app.use((req, res, next) => {
+    res.setHeader('Permissions-Policy',
+        'accelerometer=(), autoplay=(self), camera=(), cross-origin-isolated=(), display-capture=(), ' +
+        'encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), keyboard-map=(), ' +
+        'magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(self), ' +
+        'publickey-credentials-get=(), screen-wake-lock=(), sync-xhr=(self), usb=(), xr-spatial-tracking=()'
+    );
+    next();
+});
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
@@ -180,11 +264,14 @@ initCameraRoutes(db);
 // API Routes with rate limiting
 // Note: Authentication is disabled for open access
 // Auth routes kept for future use but not enforced
-app.use('/api/auth', apiLimiter, createAuthRoutes(db));
+// Auth routes have their own stricter rate limiting applied at the route level
+app.use('/api/auth', createAuthRoutes(db));
 app.use('/api/songs', apiLimiter, createSongRoutes(db));
 app.use('/api/playlists', apiLimiter, createPlaylistRoutes(db));
 app.use('/api/visitors', apiLimiter, createVisitorRoutes(db));
 app.use('/api/contact', createContactRoutes(db)); // Contact has its own rate limiter
+app.use('/api/lyrics', apiLimiter, createLyricsRoutes(db)); // AI Lyrics generation
+app.use('/api/album-covers', apiLimiter, createAlbumCoverRoutes(db)); // AI Album cover generation
 app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter);
 
 // Virtual Profile routes
@@ -317,6 +404,7 @@ server.listen(PORT, '0.0.0.0', () => {
 
     console.log('🎯 Ready to serve music!');
     console.log('⚠️  Running in OPEN ACCESS mode - no authentication required');
+    console.log(`🔒 CORS: Whitelisted origins: ${allowedOrigins.join(', ')}`);
     console.log('');
 
     // Schedule music scan (every 12 hours) with safety boundaries and retry logic

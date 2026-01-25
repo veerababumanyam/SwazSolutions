@@ -1,15 +1,345 @@
 
-import { ScenarioCategory } from './types';
+import { ScenarioCategory, LanguageMetadata } from './types';
 
 export const INDIAN_LANGUAGES = [
-    "Assamese", "Bengali", "Bodo", "Dogri", "English", "Gujarati", "Hindi", 
-    "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri", 
-    "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali", 
+    "Assamese", "Bengali", "Bodo", "Dogri", "English", "Gujarati", "Hindi",
+    "Kannada", "Kashmiri", "Konkani", "Maithili", "Malayalam", "Manipuri",
+    "Marathi", "Nepali", "Odia", "Punjabi", "Sanskrit", "Santali",
     "Sindhi", "Tamil", "Telugu", "Urdu"
 ];
 
 // Create a sorted copy to avoid mutation issues
 export const ALL_LANGUAGES = [...INDIAN_LANGUAGES].sort();
+
+/**
+ * Language Metadata for 23 languages including all Indian languages
+ * Contains script information, encoding details, and formatting guidelines
+ * for proper multi-language lyric generation with correct character rendering
+ */
+export const LANGUAGE_METADATA: Record<string, LanguageMetadata> = {
+    // Assamese - uses Bengali script with additional characters
+    "Assamese": {
+        code: "as",
+        nativeName: "অসমীয়া",
+        script: "Bengali",
+        scriptCode: "Beng",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0980-U+09FF",
+        specialCharacters: ["ৰ", "ৱ"],
+        formatGuidelines: "Use Assamese-specific characters ৰ (ro) and ৱ (wo). Maintain proper conjuncts and matra placement.",
+        poeticTraditions: ["Borgeet", "Bihu songs", "Zikir", "Ojapali"],
+        commonRhymePatterns: ["AABB", "ABAB"]
+    },
+    // Bengali - uses Bengali/Bangla script
+    "Bengali": {
+        code: "bn",
+        nativeName: "বাংলা",
+        script: "Bengali",
+        scriptCode: "Beng",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0980-U+09FF",
+        specialCharacters: ["ং", "ঃ", "ঁ"],
+        formatGuidelines: "Maintain proper conjunct consonants (যুক্তাক্ষর). Use chandrabindu for nasalization.",
+        poeticTraditions: ["Rabindra Sangeet", "Nazrul Geeti", "Baul", "Kirtan"],
+        commonRhymePatterns: ["AABB", "ABAB", "Free Verse"]
+    },
+    // Bodo - uses Devanagari script
+    "Bodo": {
+        code: "brx",
+        nativeName: "बड़ो",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: [],
+        formatGuidelines: "Write in Devanagari script. Preserve tonal distinctions through context.",
+        poeticTraditions: ["Bwisagu songs", "Folk songs"],
+        commonRhymePatterns: ["AABB"]
+    },
+    // Dogri - uses Devanagari script
+    "Dogri": {
+        code: "doi",
+        nativeName: "डोगरी",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: [],
+        formatGuidelines: "Use Devanagari with regional vocabulary. Maintain Pahari dialect characteristics.",
+        poeticTraditions: ["Folk poetry", "Devotional songs"],
+        commonRhymePatterns: ["AABB", "Doha"]
+    },
+    // English - uses Latin script
+    "English": {
+        code: "en",
+        nativeName: "English",
+        script: "Latin",
+        scriptCode: "Latn",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0000-U+007F",
+        specialCharacters: [],
+        formatGuidelines: "Standard English with proper punctuation. Allow creative spelling for rhythmic effect.",
+        poeticTraditions: ["Sonnet", "Ballad", "Free verse", "Rap/Hip-hop"],
+        commonRhymePatterns: ["AABB", "ABAB", "ABCB", "Free Verse"]
+    },
+    // Gujarati - uses Gujarati script
+    "Gujarati": {
+        code: "gu",
+        nativeName: "ગુજરાતી",
+        script: "Gujarati",
+        scriptCode: "Gujr",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0A80-U+0AFF",
+        specialCharacters: ["ૐ"],
+        formatGuidelines: "Use proper Gujarati script without mixing with Devanagari. Maintain inherent vowels.",
+        poeticTraditions: ["Garba", "Bhajan", "Ghazal", "Sugam Sangeet"],
+        commonRhymePatterns: ["AABB", "ABAB", "Ghazal"]
+    },
+    // Hindi - uses Devanagari script
+    "Hindi": {
+        code: "hi",
+        nativeName: "हिन्दी",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: ["ॐ", "ँ", "ः"],
+        formatGuidelines: "Use proper Devanagari with correct matra placement. Maintain conjunct consonants (संयुक्त व्यंजन).",
+        poeticTraditions: ["Doha", "Chaupai", "Ghazal", "Film songs", "Bhajan"],
+        commonRhymePatterns: ["AABB", "ABAB", "Doha", "Ghazal"]
+    },
+    // Kannada - uses Kannada script
+    "Kannada": {
+        code: "kn",
+        nativeName: "ಕನ್ನಡ",
+        script: "Kannada",
+        scriptCode: "Knda",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0C80-U+0CFF",
+        specialCharacters: [],
+        formatGuidelines: "Use proper Kannada script with correct ottakshara (conjuncts). Maintain vowel signs properly.",
+        poeticTraditions: ["Vachana", "Keertana", "Sugama Sangeetha", "Folk songs"],
+        commonRhymePatterns: ["AABB", "Free Verse"]
+    },
+    // Kashmiri - uses Arabic-based Nastaliq and Devanagari
+    "Kashmiri": {
+        code: "ks",
+        nativeName: "कॉशुर",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: ["ऄ", "ॳ", "ॴ"],
+        formatGuidelines: "Use Devanagari script with Kashmiri-specific vowels. Preserve unique phonemes.",
+        poeticTraditions: ["Lal Ded poetry", "Sufi songs", "Rouf"],
+        commonRhymePatterns: ["AABB", "Ghazal"]
+    },
+    // Konkani - uses Devanagari script
+    "Konkani": {
+        code: "kok",
+        nativeName: "कोंकणी",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: [],
+        formatGuidelines: "Use Devanagari script. Maintain Konkani vocabulary distinct from Marathi.",
+        poeticTraditions: ["Mando", "Dulpod", "Dekhni"],
+        commonRhymePatterns: ["AABB"]
+    },
+    // Maithili - uses Devanagari script
+    "Maithili": {
+        code: "mai",
+        nativeName: "मैथिली",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: [],
+        formatGuidelines: "Use Devanagari script. Preserve Maithili-specific vocabulary and expressions.",
+        poeticTraditions: ["Vidyapati's poetry", "Folk songs", "Marriage songs"],
+        commonRhymePatterns: ["AABB", "ABAB"]
+    },
+    // Malayalam - uses Malayalam script
+    "Malayalam": {
+        code: "ml",
+        nativeName: "മലയാളം",
+        script: "Malayalam",
+        scriptCode: "Mlym",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0D00-U+0D7F",
+        specialCharacters: ["ൾ", "ൺ", "ൻ", "ർ", "ൽ"],
+        formatGuidelines: "Use proper Malayalam script with chillu letters. Maintain correct conjunct formations.",
+        poeticTraditions: ["Mappila Pattu", "Sopana Sangeetham", "Film songs"],
+        commonRhymePatterns: ["AABB", "Free Verse"]
+    },
+    // Manipuri - uses Bengali script or Meitei Mayek
+    "Manipuri": {
+        code: "mni",
+        nativeName: "মৈতৈলোন্",
+        script: "Bengali",
+        scriptCode: "Beng",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0980-U+09FF",
+        specialCharacters: [],
+        formatGuidelines: "Use Bengali script for wider accessibility. Preserve Manipuri tonal patterns.",
+        poeticTraditions: ["Khongjom Parba", "Folk songs"],
+        commonRhymePatterns: ["AABB"]
+    },
+    // Marathi - uses Devanagari script
+    "Marathi": {
+        code: "mr",
+        nativeName: "मराठी",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: ["ळ"],
+        formatGuidelines: "Use Devanagari with ळ (retroflex lateral). Maintain proper anusvara and visarga usage.",
+        poeticTraditions: ["Abhang", "Ovi", "Lavani", "Powada"],
+        commonRhymePatterns: ["AABB", "Abhang", "Free Verse"]
+    },
+    // Nepali - uses Devanagari script
+    "Nepali": {
+        code: "ne",
+        nativeName: "नेपाली",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: [],
+        formatGuidelines: "Use Devanagari script. Maintain Nepali vocabulary distinct from Hindi.",
+        poeticTraditions: ["Folk songs", "Modern Nepali songs"],
+        commonRhymePatterns: ["AABB", "ABAB"]
+    },
+    // Odia - uses Odia script
+    "Odia": {
+        code: "or",
+        nativeName: "ଓଡ଼ିଆ",
+        script: "Odia",
+        scriptCode: "Orya",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0B00-U+0B7F",
+        specialCharacters: ["ଡ଼", "ଢ଼"],
+        formatGuidelines: "Use proper Odia script. Maintain the distinctive rounded letterforms.",
+        poeticTraditions: ["Gita Govinda", "Bhajan", "Folk songs"],
+        commonRhymePatterns: ["AABB", "Free Verse"]
+    },
+    // Punjabi - uses Gurmukhi script
+    "Punjabi": {
+        code: "pa",
+        nativeName: "ਪੰਜਾਬੀ",
+        script: "Gurmukhi",
+        scriptCode: "Guru",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0A00-U+0A7F",
+        specialCharacters: ["ੰ", "ੱ"],
+        formatGuidelines: "Use Gurmukhi script with proper tippi and addak for tonal distinctions.",
+        poeticTraditions: ["Shabad", "Bhangra", "Sufi", "Folk"],
+        commonRhymePatterns: ["AABB", "ABAB", "Ghazal"]
+    },
+    // Sanskrit - uses Devanagari script
+    "Sanskrit": {
+        code: "sa",
+        nativeName: "संस्कृतम्",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: ["ॐ", "ः", "ँ"],
+        formatGuidelines: "Use classical Devanagari. Maintain proper sandhi rules and Vedic accents if applicable.",
+        poeticTraditions: ["Shloka", "Stotra", "Kavya", "Anushtubh"],
+        commonRhymePatterns: ["Sanskrit Slokas (Anushtubh)", "Free Verse"]
+    },
+    // Santali - uses Ol Chiki script or Devanagari
+    "Santali": {
+        code: "sat",
+        nativeName: "ᱥᱟᱱᱛᱟᱲᱤ",
+        script: "Ol Chiki",
+        scriptCode: "Olck",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+1C50-U+1C7F",
+        specialCharacters: [],
+        formatGuidelines: "Use Ol Chiki script for authenticity. Can also use Devanagari for wider accessibility.",
+        poeticTraditions: ["Dong songs", "Baha songs"],
+        commonRhymePatterns: ["AABB"]
+    },
+    // Sindhi - uses Arabic-based script or Devanagari
+    "Sindhi": {
+        code: "sd",
+        nativeName: "सिन्धी",
+        script: "Devanagari",
+        scriptCode: "Deva",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0900-U+097F",
+        specialCharacters: ["ॻ", "ॼ", "ॾ", "ॿ"],
+        formatGuidelines: "Use Devanagari script with Sindhi-specific implosive consonants.",
+        poeticTraditions: ["Shah jo Risalo", "Sufi poetry"],
+        commonRhymePatterns: ["AABB", "Ghazal"]
+    },
+    // Tamil - uses Tamil script
+    "Tamil": {
+        code: "ta",
+        nativeName: "தமிழ்",
+        script: "Tamil",
+        scriptCode: "Taml",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0B80-U+0BFF",
+        specialCharacters: ["ஃ", "ௐ"],
+        formatGuidelines: "Use pure Tamil script. Avoid Sanskrit loanwords where Tamil alternatives exist. Maintain pulli marks.",
+        poeticTraditions: ["Sangam poetry", "Film songs", "Gaana", "Kuthu"],
+        commonRhymePatterns: ["AABB", "ABAB", "Free Verse"]
+    },
+    // Telugu - uses Telugu script
+    "Telugu": {
+        code: "te",
+        nativeName: "తెలుగు",
+        script: "Telugu",
+        scriptCode: "Telu",
+        direction: "ltr",
+        encoding: "UTF-8",
+        unicodeRange: "U+0C00-U+0C7F",
+        specialCharacters: [],
+        formatGuidelines: "Use proper Telugu script with correct vowel signs (matras). Maintain halant for conjuncts.",
+        poeticTraditions: ["Padyam", "Film songs", "Folk songs", "Carnatic lyrics"],
+        commonRhymePatterns: ["AABB", "ABAB", "Free Verse"]
+    },
+    // Urdu - uses Arabic-based Nastaliq script or Devanagari
+    "Urdu": {
+        code: "ur",
+        nativeName: "اردو",
+        script: "Arabic",
+        scriptCode: "Arab",
+        direction: "rtl",
+        encoding: "UTF-8",
+        unicodeRange: "U+0600-U+06FF",
+        specialCharacters: ["ے", "ۂ", "ؤ"],
+        formatGuidelines: "Use Nastaliq script with proper diacritics. For wider accessibility, Devanagari transliteration may be provided.",
+        poeticTraditions: ["Ghazal", "Nazm", "Qawwali", "Film songs"],
+        commonRhymePatterns: ["Ghazal (AA BA CA DA...)", "AABB", "Free Verse"]
+    }
+};
 
 export const MOOD_OPTIONS = [
     "Joyful", "Melancholic", "Romantic", "Energetic", "Devotional", "Patriotic", 

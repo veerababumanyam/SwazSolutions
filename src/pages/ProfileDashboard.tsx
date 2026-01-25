@@ -8,6 +8,7 @@ import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../contexts/AuthContext';
 import { getQRCodeDataURL } from '../services/qrCodeService';
 import { MobilePreview, AppearanceSettings } from '../components/profile/MobilePreview';
+import { LazyImage } from '../components/LazyImage';
 
 // Helper for authenticated fetch requests
 const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
@@ -280,7 +281,7 @@ export const ProfileDashboard: React.FC = () => {
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
                       </div>
                     ) : qrCodeUrl ? (
-                      <img src={qrCodeUrl} alt="Profile QR Code" className="w-32 h-32" />
+                      <LazyImage src={qrCodeUrl} alt="Profile QR Code" className="w-32 h-32" priority />
                     ) : (
                       <div className="w-32 h-32 flex items-center justify-center bg-muted rounded">
                         <QrCode className="w-12 h-12 text-muted-foreground" />
@@ -338,7 +339,7 @@ export const ProfileDashboard: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="w-16 h-16 bg-brand-gradient rounded-full flex items-center justify-center text-white text-2xl font-bold overflow-hidden">
                     {profile.avatar ? (
-                      <img src={profile.avatar} alt={profile.displayName} className="w-full h-full object-cover" />
+                      <LazyImage src={profile.avatar} alt={profile.displayName} className="w-full h-full object-cover" priority />
                     ) : (
                       <span>{profile.displayName?.charAt(0) || profile.username?.charAt(0) || '?'}</span>
                     )}

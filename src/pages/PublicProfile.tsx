@@ -1,11 +1,13 @@
 // PublicProfile Page (T046)
 // Public-facing profile view with integrated PublicProfileView component
 // Uses AppearanceSettings to match editor preview exactly
+// Includes Schema.org structured data and SEO meta tags for better discoverability
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { profileService, PublicProfileResponse } from '../services/profileService';
 import PublicProfileView from '../components/public-profile/PublicProfileView';
+import { ProfileSEO } from '../components/ProfileSEO';
 
 interface PublicProfileProps { }
 
@@ -32,6 +34,8 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
           setError('Profile not found');
         } else {
           setProfile(data);
+          // Track the profile view (analytics)
+          profileService.trackProfileView(username);
         }
       } catch (err) {
         console.error('Failed to load public profile:', err);
@@ -80,6 +84,8 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
     if (navigator.share) {
       try {
         await navigator.share(shareData);
+        // Track successful web share
+        profileService.trackShareEvent(profile.id, 'web_share');
       } catch (err) {
         if (err instanceof Error && err.name !== 'AbortError') {
           copyToClipboard(publicUrl);
@@ -93,6 +99,10 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
   const copyToClipboard = (url?: string) => {
     const publicUrl = url || `${window.location.origin}/u/${encodeURIComponent(profile?.username || '')}`;
     navigator.clipboard.writeText(publicUrl);
+    // Track copy to clipboard share
+    if (profile) {
+      profileService.trackShareEvent(profile.id, 'copy_link');
+    }
     alert('Profile link copied to clipboard!');
   };
 
@@ -194,14 +204,23 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
     })),
   ].sort((a, b) => a.displayOrder - b.displayOrder);
 
+  // Build profile URL for SEO and sharing
+  const profileUrl = `${window.location.origin}/u/${encodeURIComponent(profile.username)}`;
+
   // Success state - display profile using PublicProfileView
   return (
     <>
+      {/* SEO: Schema.org structured data and meta tags */}
+      <ProfileSEO
+        profile={profile}
+        links={allLinks}
+        profileUrl={profileUrl}
+      />
       <PublicProfileView
         profile={profileData}
         links={allLinks}
         appearance={profile.appearance}
-        profileUrl={`${window.location.origin}/u/${encodeURIComponent(profile.username)}`}
+        profileUrl={profileUrl}
         onDownloadVCard={handleDownloadVCard}
         onShare={handleShare}
       />

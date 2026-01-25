@@ -2,6 +2,32 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const encryption = require('../services/encryptionService');
+
+// Sensitive profile fields that should be decrypted when serving
+const PROFILE_ENCRYPTED_FIELDS = [
+  'public_email', 'public_phone',
+  'company_email', 'company_phone',
+  'address_line1', 'address_line2', 'address_city', 'address_state', 'address_postal_code', 'address_country',
+  'company_address_line1', 'company_address_line2', 'company_address_city', 'company_address_state', 'company_address_postal_code', 'company_address_country'
+];
+
+/**
+ * Decrypt sensitive profile fields from database record
+ * @param {Object} profile - Raw profile from database
+ * @returns {Object} - Profile with decrypted sensitive fields
+ */
+function decryptProfileFields(profile) {
+  if (!profile) return profile;
+
+  const decrypted = { ...profile };
+  for (const field of PROFILE_ENCRYPTED_FIELDS) {
+    if (decrypted[field]) {
+      decrypted[field] = encryption.decrypt(decrypted[field]);
+    }
+  }
+  return decrypted;
+}
 
 // Helper to hash IP for privacy
 function hashIP(ip) {
@@ -15,13 +41,16 @@ router.get('/profile/:username', async (req, res) => {
     const db = require('../config/database');
 
     // T037: Check if profile exists and is published
-    const profile = db.prepare(
+    const rawProfile = db.prepare(
       `SELECT * FROM profiles WHERE username = ? AND published = 1`
     ).get(username);
 
-    if (!profile) {
+    if (!rawProfile) {
       return res.status(404).json({ error: 'Profile not available' });
     }
+
+    // Decrypt sensitive fields before returning
+    const profile = decryptProfileFields(rawProfile);
 
     // Get social profiles (featured links)
     const socialProfiles = db.prepare(
@@ -76,17 +105,34 @@ router.get('/profile/:username', async (req, res) => {
     const profileResponse = {
       username: profile.username,
       displayName: profile.display_name,
-      firstName: profile.first_name,
-      lastName: profile.last_name,
       avatarUrl: profile.avatar_url,
       logoUrl: profile.logo_url,
-      headline: profile.headline,
-      company: profile.company,
-      pronouns: profile.pronouns,
       timezone: profile.timezone,
       profileTags: profile.profile_tags ? JSON.parse(profile.profile_tags) : [],
       languages: profile.languages ? JSON.parse(profile.languages) : [],
     };
+
+    // Conditionally include fields based on visibility settings
+    if (isVisible(profile.show_first_name) && profile.first_name) {
+      profileResponse.firstName = profile.first_name;
+      profileResponse.showFirstName = true;
+    }
+    if (isVisible(profile.show_last_name) && profile.last_name) {
+      profileResponse.lastName = profile.last_name;
+      profileResponse.showLastName = true;
+    }
+    if (isVisible(profile.show_headline) && profile.headline) {
+      profileResponse.headline = profile.headline;
+      profileResponse.showHeadline = true;
+    }
+    if (isVisible(profile.show_company) && profile.company) {
+      profileResponse.company = profile.company;
+      profileResponse.showCompany = true;
+    }
+    if (isVisible(profile.show_pronouns) && profile.pronouns) {
+      profileResponse.pronouns = profile.pronouns;
+      profileResponse.showPronouns = true;
+    }
 
     // Only include contact fields if visible
     if (isVisible(profile.show_bio)) {

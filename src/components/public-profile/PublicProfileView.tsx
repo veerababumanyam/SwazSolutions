@@ -8,6 +8,7 @@ import { Mail, Phone, Globe, Briefcase, Building2, Download, Share2, ExternalLin
 import { getOptimalTextColor, getOptimalSecondaryTextColor, isLightColor } from '../../utils/wcagValidator';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
 import { ProfileQRCode } from './ProfileQRCode';
+import { LazyImage } from '../LazyImage';
 
 // Header background settings for Visual themes (hero-photo style)
 export interface HeaderBackgroundSettings {
@@ -358,10 +359,11 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
               <div className="flex flex-col items-center">
                 <div className="relative -mt-12 sm:-mt-16">
                   {profile.avatar ? (
-                    <img
+                    <LazyImage
                       src={profile.avatar}
                       alt={profile.displayName}
                       className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                      priority
                     />
                   ) : (
                     <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-4 border-white shadow-lg">
@@ -370,7 +372,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                   )}
                   {profile.logo && (
                     <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md border-2 border-white overflow-hidden">
-                      <img src={profile.logo} alt="Logo" className="w-full h-full object-cover" />
+                      <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
                     </div>
                   )}
                 </div>
@@ -385,14 +387,15 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             <div className="flex flex-col items-center pt-10 sm:pt-12">
               <div className="relative">
                 {profile.avatar ? (
-                  <img
+                  <LazyImage
                     src={profile.avatar}
                     alt={profile.displayName}
                     className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 shadow-xl"
                     style={{ borderColor: settings.buttonColor }}
+                    priority
                   />
                 ) : (
-                  <div 
+                  <div
                     className="w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center text-white text-4xl sm:text-5xl font-bold shadow-xl"
                     style={{ backgroundColor: settings.buttonColor }}
                   >
@@ -401,7 +404,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                 )}
                 {profile.logo && (
                   <div className="absolute -bottom-2 -right-2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-md border-2 border-white overflow-hidden">
-                    <img src={profile.logo} alt="Logo" className="w-full h-full object-cover" />
+                    <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
                   </div>
                 )}
               </div>
@@ -415,13 +418,14 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             <div className="flex items-center gap-4 pt-10 sm:pt-12 px-4">
               <div className="relative flex-shrink-0">
                 {profile.avatar ? (
-                  <img
+                  <LazyImage
                     src={profile.avatar}
                     alt={profile.displayName}
                     className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-md"
+                    priority
                   />
                 ) : (
-                  <div 
+                  <div
                     className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-md"
                     style={{ backgroundColor: settings.buttonColor }}
                   >
@@ -503,7 +507,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
               
               {profile.logo && (
                 <div className="absolute top-8 right-4 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white shadow-lg border-2 border-white overflow-hidden">
-                  <img src={profile.logo} alt="Logo" className="w-full h-full object-cover" />
+                  <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
                 </div>
               )}
             </div>
@@ -547,10 +551,11 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
             <div className="flex flex-col items-center pt-10 sm:pt-12 mb-4">
               <div className="relative">
                 {profile.avatar ? (
-                  <img
+                  <LazyImage
                     src={profile.avatar}
                     alt={profile.displayName}
                     className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                    priority
                   />
                 ) : (
                   <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-4 border-white shadow-lg">
@@ -559,7 +564,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                 )}
                 {profile.logo && (
                   <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md border-2 border-white overflow-hidden">
-                    <img src={profile.logo} alt="Logo" className="w-full h-full object-cover" />
+                    <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
                   </div>
                 )}
               </div>

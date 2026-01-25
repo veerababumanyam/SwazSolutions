@@ -7,7 +7,31 @@ export interface QRCodeOptions {
   errorLevel?: 'L' | 'M' | 'Q' | 'H';
   includeLogo?: boolean;
   content?: 'url' | 'vcard';
+  // Color customization options
+  fgColor?: string; // Foreground (dots) color - hex format
+  bgColor?: string; // Background color - hex format
 }
+
+export interface QRCodeStylePreset {
+  id: string;
+  name: string;
+  fgColor: string;
+  bgColor: string;
+}
+
+// Predefined style presets for QR codes
+export const QR_STYLE_PRESETS: QRCodeStylePreset[] = [
+  { id: 'classic', name: 'Classic', fgColor: '#000000', bgColor: '#FFFFFF' },
+  { id: 'inverted', name: 'Inverted', fgColor: '#FFFFFF', bgColor: '#000000' },
+  { id: 'purple', name: 'Purple', fgColor: '#8B5CF6', bgColor: '#FFFFFF' },
+  { id: 'blue', name: 'Blue', fgColor: '#3B82F6', bgColor: '#FFFFFF' },
+  { id: 'green', name: 'Green', fgColor: '#10B981', bgColor: '#FFFFFF' },
+  { id: 'pink', name: 'Pink', fgColor: '#EC4899', bgColor: '#FFFFFF' },
+  { id: 'orange', name: 'Orange', fgColor: '#F97316', bgColor: '#FFFFFF' },
+  { id: 'dark-purple', name: 'Dark Purple', fgColor: '#A855F7', bgColor: '#1F2937' },
+  { id: 'dark-blue', name: 'Dark Blue', fgColor: '#60A5FA', bgColor: '#1E3A5F' },
+  { id: 'elegant', name: 'Elegant', fgColor: '#374151', bgColor: '#F9FAFB' },
+];
 
 export interface QRCodeResponse {
   message: string;
@@ -27,12 +51,20 @@ export interface QRCodeResponse {
 export const getQRCode = async (
   options: QRCodeOptions = {}
 ): Promise<Blob> => {
-  const { format = 'png', size = 1000, content = 'url' } = options;
+  const {
+    format = 'png',
+    size = 1000,
+    content = 'url',
+    fgColor = '#000000',
+    bgColor = '#FFFFFF',
+  } = options;
 
   const params = new URLSearchParams({
     format,
     size: size.toString(),
     content,
+    fgColor,
+    bgColor,
   });
 
   const token = localStorage.getItem('auth_token');

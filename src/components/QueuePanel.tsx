@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Play, Pause, Trash2, Save, Music } from 'lucide-react';
 import { useMusic } from '../contexts/MusicContext';
 import { Song } from '../types';
+import { LazyImage } from './LazyImage';
 
 interface QueuePanelProps {
     isOpen: boolean;
@@ -134,10 +135,11 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                             <div className="flex items-center gap-3 p-3 bg-accent/10 border border-accent/20 rounded-xl">
                                 <div className="w-12 h-12 rounded-lg overflow-hidden shadow-md flex-shrink-0 bg-surface">
                                     {currentSong.cover ? (
-                                        <img
+                                        <LazyImage
                                             src={currentSong.cover}
                                             alt={currentSong.title}
                                             className="w-full h-full object-cover"
+                                            priority
                                         />
                                     ) : (
                                         <div className="w-full h-full bg-accent/20 flex items-center justify-center">
@@ -177,7 +179,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                                         <div className="w-4 text-xs font-bold text-muted text-center">{idx + 1}</div>
                                         <div className="w-10 h-10 rounded-lg overflow-hidden shadow-sm flex-shrink-0 bg-background">
                                             {song.cover ? (
-                                                <img
+                                                <LazyImage
                                                     src={song.cover}
                                                     alt={song.title}
                                                     className="w-full h-full object-cover"
@@ -245,7 +247,7 @@ export const QueuePanel: React.FC<QueuePanelProps> = ({ isOpen, onClose }) => {
                                         >
                                             <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0 bg-background">
                                                 {song.cover ? (
-                                                    <img src={song.cover} alt={song.title} className="w-full h-full object-cover" />
+                                                    <LazyImage src={song.cover} alt={song.title} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full bg-accent/10 flex items-center justify-center">
                                                         <Music className="w-3 h-3 text-accent" />

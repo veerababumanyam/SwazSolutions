@@ -99,6 +99,7 @@ export const CameraUpdatesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<'date' | 'priority'>('date');
+  const [dateRange, setDateRange] = useState<{ from: string; to: string }>({ from: '', to: '' });
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,15 +107,22 @@ export const CameraUpdatesPage: React.FC = () => {
 
   // Filter and sort updates
   useEffect(() => {
-    let filtered = updates.filter(update => 
-      selectedBrands.includes(update.brand) &&
-      selectedTypes.includes(update.type) &&
-      (searchQuery === '' || 
-        update.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        update.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        update.features.some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
-    );
+    let filtered = updates.filter(update => {
+      // Brand filter
+      if (!selectedBrands.includes(update.brand)) return false;
+      // Type filter
+      if (!selectedTypes.includes(update.type)) return false;
+      // Search filter
+      if (searchQuery !== '' &&
+        !update.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !update.description.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !update.features.some(f => f.toLowerCase().includes(searchQuery.toLowerCase()))
+      ) return false;
+      // Date range filter
+      if (dateRange.from && update.date < dateRange.from) return false;
+      if (dateRange.to && update.date > dateRange.to) return false;
+      return true;
+    });
 
     // Sort
     if (sortBy === 'date') {
@@ -125,7 +133,7 @@ export const CameraUpdatesPage: React.FC = () => {
     }
 
     setFilteredUpdates(filtered);
-  }, [updates, selectedBrands, selectedTypes, searchQuery, sortBy]);
+  }, [updates, selectedBrands, selectedTypes, searchQuery, sortBy, dateRange]);
 
   const toggleBrand = (brand: string) => {
     setSelectedBrands(prev => 
@@ -322,12 +330,27 @@ export const CameraUpdatesPage: React.FC = () => {
 
         {/* Filters */}
         <div className="mb-8 glass-card p-6 rounded-2xl">
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-accent" />
-            <h3 className="text-lg font-bold text-primary">Filters & Sort</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-accent" />
+              <h3 className="text-lg font-bold text-primary">Filters & Sort</h3>
+            </div>
+            {(dateRange.from || dateRange.to || selectedBrands.length < 3 || selectedTypes.length < 3) && (
+              <button
+                onClick={() => {
+                  setSelectedBrands(['Canon', 'Nikon', 'Sony']);
+                  setSelectedTypes(['firmware', 'camera', 'lens']);
+                  setDateRange({ from: '', to: '' });
+                  setSearchQuery('');
+                }}
+                className="text-sm text-accent hover:text-accent-dark font-medium transition-colors"
+              >
+                Reset Filters
+              </button>
+            )}
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-6">
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* Brand Filter */}
             <div>
               <label className="block text-sm font-semibold text-secondary mb-2">Brands</label>
@@ -369,6 +392,31 @@ export const CameraUpdatesPage: React.FC = () => {
                     </span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            {/* Date Filter */}
+            <div>
+              <label className="block text-sm font-semibold text-secondary mb-2">Date Range</label>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs text-muted mb-1">From</label>
+                  <input
+                    type="date"
+                    value={dateRange.from}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-border bg-surface text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">To</label>
+                  <input
+                    type="date"
+                    value={dateRange.to}
+                    onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                    className="w-full px-3 py-1.5 text-sm rounded-lg border border-border bg-surface text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
               </div>
             </div>
 

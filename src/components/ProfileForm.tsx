@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ProfileData } from '../services/profileService';
 import { useProfile } from '../hooks/useProfile';
+import SocialLinksEditor from './SocialLinksEditor';
 
 interface ProfileFormProps {
   initialData?: Partial<ProfileData>;
@@ -38,6 +39,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     showEmail: true,
     showPhone: true,
     showWebsite: true,
+    showBio: true,
+    // Additional field visibility toggles
+    showHeadline: true,
+    showCompany: true,
+    showFirstName: true,
+    showLastName: true,
+    showPronouns: true,
     // Company contact fields
     companyEmail: '',
     companyPhone: '',
@@ -49,14 +57,26 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
     addressCity: '',
     addressState: '',
     addressPostalCode: '',
-    showAddress: true,
+    addressCountry: '',
+    showAddressLine1: true,
+    showAddressLine2: true,
+    showAddressCity: true,
+    showAddressState: true,
+    showAddressPostalCode: true,
+    showAddressCountry: true,
     // Company address fields
     companyAddressLine1: '',
     companyAddressLine2: '',
     companyAddressCity: '',
     companyAddressState: '',
     companyAddressPostalCode: '',
-    showCompanyAddress: true,
+    companyAddressCountry: '',
+    showCompanyAddressLine1: true,
+    showCompanyAddressLine2: true,
+    showCompanyAddressCity: true,
+    showCompanyAddressState: true,
+    showCompanyAddressPostalCode: true,
+    showCompanyAddressCountry: true,
     ...initialData,
   });
 
@@ -267,10 +287,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
 
       {/* First Name & Last Name (T041) */}
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            First Name
-          </label>
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              First Name
+            </label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="showFirstName"
+                checked={formData.showFirstName ?? true}
+                onChange={(e) => setFormData({ ...formData, showFirstName: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                {formData.showFirstName ? 'Visible' : 'Hidden'}
+              </span>
+            </label>
+          </div>
           <input
             type="text"
             id="firstName"
@@ -281,10 +316,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
             placeholder="John"
           />
         </div>
-        <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Last Name
-          </label>
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Last Name
+            </label>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                name="showLastName"
+                checked={formData.showLastName ?? true}
+                onChange={(e) => setFormData({ ...formData, showLastName: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+              <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                {formData.showLastName ? 'Visible' : 'Hidden'}
+              </span>
+            </label>
+          </div>
           <input
             type="text"
             id="lastName"
@@ -298,10 +348,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       </div>
 
       {/* Headline (T042) */}
-      <div>
-        <label htmlFor="headline" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Headline
-        </label>
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <label htmlFor="headline" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Headline
+          </label>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              name="showHeadline"
+              checked={formData.showHeadline ?? true}
+              onChange={(e) => setFormData({ ...formData, showHeadline: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+              {formData.showHeadline ? 'Visible' : 'Hidden'}
+            </span>
+          </label>
+        </div>
         <input
           type="text"
           id="headline"
@@ -316,10 +381,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       </div>
 
       {/* Company (T042) */}
-      <div>
-        <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Company
-        </label>
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Company
+          </label>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              name="showCompany"
+              checked={formData.showCompany ?? true}
+              onChange={(e) => setFormData({ ...formData, showCompany: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+              {formData.showCompany ? 'Visible' : 'Hidden'}
+            </span>
+          </label>
+        </div>
         <input
           type="text"
           id="company"
@@ -332,10 +412,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       </div>
 
       {/* Bio (T042) */}
-      <div>
-        <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Bio
-        </label>
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <label htmlFor="bio" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Bio
+          </label>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              name="showBio"
+              checked={formData.showBio ?? true}
+              onChange={(e) => setFormData({ ...formData, showBio: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+              {formData.showBio ? 'Visible' : 'Hidden'}
+            </span>
+          </label>
+        </div>
         <textarea
           id="bio"
           name="bio"
@@ -353,10 +448,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
       </div>
 
       {/* Pronouns (T042) */}
-      <div>
-        <label htmlFor="pronouns" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Pronouns
-        </label>
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <label htmlFor="pronouns" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Pronouns
+          </label>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              name="showPronouns"
+              checked={formData.showPronouns ?? true}
+              onChange={(e) => setFormData({ ...formData, showPronouns: e.target.checked })}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+              {formData.showPronouns ? 'Visible' : 'Hidden'}
+            </span>
+          </label>
+        </div>
         <input
           type="text"
           id="pronouns"
@@ -461,14 +571,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    name="showAddress"
-                    checked={formData.showAddress ?? true}
-                    onChange={(e) => setFormData({ ...formData, showAddress: e.target.checked })}
+                    name="showAddressAll"
+                    checked={(formData.showAddressLine1 ?? true) && (formData.showAddressCity ?? true)}
+                    onChange={(e) => {
+                      const show = e.target.checked;
+                      setFormData({
+                        ...formData,
+                        showAddressLine1: show,
+                        showAddressLine2: show,
+                        showAddressCity: show,
+                        showAddressState: show,
+                        showAddressPostalCode: show,
+                        showAddressCountry: show
+                      });
+                    }}
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
                   <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formData.showAddress ? 'Visible' : 'Hidden'}
+                    {(formData.showAddressLine1 ?? true) ? 'Visible' : 'Hidden'}
                   </span>
                 </label>
               </div>
@@ -607,14 +728,25 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    name="showCompanyAddress"
-                    checked={formData.showCompanyAddress ?? true}
-                    onChange={(e) => setFormData({ ...formData, showCompanyAddress: e.target.checked })}
+                    name="showCompanyAddressAll"
+                    checked={(formData.showCompanyAddressLine1 ?? true) && (formData.showCompanyAddressCity ?? true)}
+                    onChange={(e) => {
+                      const show = e.target.checked;
+                      setFormData({
+                        ...formData,
+                        showCompanyAddressLine1: show,
+                        showCompanyAddressLine2: show,
+                        showCompanyAddressCity: show,
+                        showCompanyAddressState: show,
+                        showCompanyAddressPostalCode: show,
+                        showCompanyAddressCountry: show
+                      });
+                    }}
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                   <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                    {formData.showCompanyAddress ? 'Visible' : 'Hidden'}
+                    {(formData.showCompanyAddressLine1 ?? true) ? 'Visible' : 'Hidden'}
                   </span>
                 </label>
               </div>
@@ -705,6 +837,13 @@ const ProfileForm: React.FC<ProfileFormProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Social Links Section */}
+      {mode === 'edit' && (
+        <div className="border-t pt-6">
+          <SocialLinksEditor />
+        </div>
+      )}
 
       {/* Publishing Controls (T044) */}
       <div className="border-t pt-6">

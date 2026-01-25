@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Globe, Music, Heart, Wand2, CheckCircle, Activity, Lock, Phone, Server, FileWarning, FileCheck, Feather, Layers, FileCode, Play, Search, Palette, Mic2, Bot, Network, Brain, Radio, Camera, IdCard, QrCode, Users, Share2, Download, Eye, BarChart3, Smartphone, Link2, Mail, UserCheck, Settings } from 'lucide-react';
 import { Schema, localBusinessSchema, dataRecoveryFAQSchema } from '../components/Schema';
 import { UnifiedContactForm } from '../components/UnifiedContactForm';
+import { LazyImage } from '../components/LazyImage';
 
 export const LandingPage: React.FC = () => {
     const [activeHero, setActiveHero] = useState(0);
@@ -556,7 +557,7 @@ export const LandingPage: React.FC = () => {
                                                     <div className="flex flex-wrap gap-2">
                                                         {['whatsapp', 'instagram', 'youtube', 'facebook', 'linkedin', 'x'].map((platform) => (
                                                             <div key={platform} className="w-10 h-10 rounded-lg bg-white border border-border p-2 hover:scale-110 transition-transform shadow-sm">
-                                                                <img src={`/assets/social-logos/${platform}.svg`} alt={platform} className="w-full h-full object-contain" />
+                                                                <LazyImage src={`/assets/social-logos/${platform}.svg`} alt={platform} className="w-full h-full object-contain" />
                                                             </div>
                                                         ))}
                                                     </div>

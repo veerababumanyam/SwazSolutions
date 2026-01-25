@@ -15,11 +15,11 @@ function init(database) {
  */
 router.get('/', async (req, res) => {
     try {
-        const { brand, type, search, sortBy = 'date' } = req.query;
-        
+        const { brand, type, search, sortBy = 'date', dateFrom, dateTo } = req.query;
+
         let whereConditions = [];
         let params = [];
-        
+
         // Filter by brand
         if (brand) {
             const brands = brand.split(',').map(b => b.trim());
@@ -27,7 +27,7 @@ router.get('/', async (req, res) => {
             whereConditions.push(`brand IN (${placeholders})`);
             params.push(...brands);
         }
-        
+
         // Filter by type
         if (type) {
             const types = type.split(',').map(t => t.trim());
@@ -35,7 +35,17 @@ router.get('/', async (req, res) => {
             whereConditions.push(`type IN (${placeholders})`);
             params.push(...types);
         }
-        
+
+        // Filter by date range
+        if (dateFrom) {
+            whereConditions.push(`date >= ?`);
+            params.push(dateFrom);
+        }
+        if (dateTo) {
+            whereConditions.push(`date <= ?`);
+            params.push(dateTo);
+        }
+
         // Search filter
         if (search) {
             whereConditions.push(`(title LIKE ? OR description LIKE ? OR features LIKE ?)`);

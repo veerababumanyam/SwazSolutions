@@ -13,14 +13,29 @@ const crypto = require('crypto');
 // ============================================================================
 const { generateVCard, generateQRVCard } = require('../services/vCardGenerator');
 
+// Helper function to validate hex color
+const isValidHexColor = (color) => {
+  return /^#[0-9A-Fa-f]{6}$/.test(color);
+};
+
 // ============================================================================
 // T119: Get QR Code (GET /api/profiles/me/qr-code)
 // ============================================================================
 router.get('/me/qr-code', auth, async (req, res) => {
-  const { format = 'png', size = 1000, content = 'url' } = req.query;
+  const {
+    format = 'png',
+    size = 1000,
+    content = 'url',
+    fgColor = '#000000',
+    bgColor = '#FFFFFF'
+  } = req.query;
   const userId = req.user.id;
 
   try {
+    // Validate colors
+    const validFgColor = isValidHexColor(fgColor) ? fgColor : '#000000';
+    const validBgColor = isValidHexColor(bgColor) ? bgColor : '#FFFFFF';
+
     // Get user's profile with all fields needed for vCard
     const profileStmt = db.prepare('SELECT * FROM profiles WHERE user_id = ?');
     const profile = profileStmt.get(userId);
@@ -40,10 +55,10 @@ router.get('/me/qr-code', auth, async (req, res) => {
       qrInputData = `${baseUrl}/u/${profile.username}`;
     }
 
-    // Check cache
-    const cacheKey = `${profile.id}-${format}-${size}-${content}`;
+    // Check cache - include colors in cache key
+    const cacheKey = `${profile.id}-${format}-${size}-${content}-${validFgColor}-${validBgColor}`;
     const cacheStmt = db.prepare(`
-      SELECT qr_data, format FROM qr_codes 
+      SELECT qr_data, format FROM qr_codes
       WHERE profile_id = ? AND cache_key = ? AND expires_at > datetime('now')
     `);
     const cached = cacheStmt.get(profile.id, cacheKey);
@@ -60,12 +75,16 @@ router.get('/me/qr-code', auth, async (req, res) => {
       return res.send(buffer);
     }
 
-    // Generate new QR code
+    // Generate new QR code with color customization
     const qrOptions = {
       errorCorrectionLevel: 'M',
       type: format === 'svg' ? 'svg' : 'png',
       width: parseInt(size),
-      margin: 1
+      margin: 1,
+      color: {
+        dark: validFgColor,  // Foreground (dots) color
+        light: validBgColor  // Background color
+      }
     };
 
     let qrData;
@@ -104,7 +123,14 @@ router.get('/me/qr-code', auth, async (req, res) => {
 // T120: Regenerate QR Code (POST /api/profiles/me/qr-code/regenerate)
 // ============================================================================
 router.post('/me/qr-code/regenerate', auth, async (req, res) => {
-  const { format = 'png', size = 1000, errorLevel = 'M', includeLogo = false } = req.body;
+  const {
+    format = 'png',
+    size = 1000,
+    errorLevel = 'M',
+    includeLogo = false,
+    fgColor = '#000000',
+    bgColor = '#FFFFFF'
+  } = req.body;
   const userId = req.user.id;
 
   try {
@@ -123,6 +149,10 @@ router.post('/me/qr-code/regenerate', auth, async (req, res) => {
       });
     }
 
+    // Validate colors
+    const validFgColor = isValidHexColor(fgColor) ? fgColor : '#000000';
+    const validBgColor = isValidHexColor(bgColor) ? bgColor : '#FFFFFF';
+
     // Get user's profile
     const profileStmt = db.prepare('SELECT id, username, avatar_url FROM profiles WHERE user_id = ?');
     const profile = profileStmt.get(userId);
@@ -139,12 +169,16 @@ router.post('/me/qr-code/regenerate', auth, async (req, res) => {
     const deleteStmt = db.prepare('DELETE FROM qr_codes WHERE profile_id = ?');
     deleteStmt.run(profile.id);
 
-    // T121: Generate QR code with customization
+    // T121: Generate QR code with customization including colors
     const qrOptions = {
       errorCorrectionLevel: errorLevel,
       type: format === 'svg' ? 'svg' : 'png',
       width: sizeNum,
-      margin: 1
+      margin: 1,
+      color: {
+        dark: validFgColor,  // Foreground (dots) color
+        light: validBgColor  // Background color
+      }
     };
 
     let qrData;
@@ -155,8 +189,8 @@ router.post('/me/qr-code/regenerate', auth, async (req, res) => {
       qrData = dataUrl.split(',')[1];
     }
 
-    // Cache new QR code
-    const cacheKey = `${profile.id}-${format}-${sizeNum}-${errorLevel}`;
+    // Cache new QR code with colors in cache key
+    const cacheKey = `${profile.id}-${format}-${sizeNum}-${errorLevel}-${validFgColor}-${validBgColor}`;
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const insertStmt = db.prepare(`
       INSERT INTO qr_codes (profile_id, cache_key, qr_data, format, expires_at)
@@ -170,6 +204,8 @@ router.post('/me/qr-code/regenerate', auth, async (req, res) => {
         format,
         size: sizeNum,
         errorLevel,
+        fgColor: validFgColor,
+        bgColor: validBgColor,
         cacheKey,
         dataUrl: format === 'svg'
           ? `data:image/svg+xml;utf8,${encodeURIComponent(qrData)}`

@@ -1,10 +1,21 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const validator = require('validator');
+const encryption = require('../services/encryptionService');
+
+// Fields to encrypt for contact tickets
+const TICKET_ENCRYPTED_FIELDS = ['name', 'email', 'phone', 'symptoms'];
+
+// Fields to encrypt for AI inquiries
+const AI_INQUIRY_ENCRYPTED_FIELDS = ['name', 'email', 'phone', 'company', 'projectDescription', 'projectRequirements'];
+
+// Fields to encrypt for general inquiries
+const GENERAL_INQUIRY_ENCRYPTED_FIELDS = ['name', 'email', 'subject', 'message'];
 
 /**
  * Contact/Ticket Submission Route
  * Handles data recovery ticket submissions with spam protection
+ * All PII is encrypted at rest using AES-256-GCM
  */
 function createContactRoutes(db) {
     const router = express.Router();
@@ -117,14 +128,16 @@ function createContactRoutes(db) {
             }
 
             // 4. DUPLICATE CHECK - Prevent duplicate submissions
+            // Use email hash for searching encrypted data
+            const emailHash = encryption.hashForSearch(email);
             const recentSubmission = db.prepare(`
-                SELECT id, created_at 
-                FROM contact_tickets 
-                WHERE email = ? 
+                SELECT id, created_at
+                FROM contact_tickets
+                WHERE email_hash = ?
                 AND created_at > datetime('now', '-1 hour')
-                ORDER BY created_at DESC 
+                ORDER BY created_at DESC
                 LIMIT 1
-            `).get(email.toLowerCase());
+            `).get(emailHash);
 
             if (recentSubmission) {
                 const minutesAgo = Math.floor((Date.now() - new Date(recentSubmission.created_at).getTime()) / 60000);
@@ -147,20 +160,30 @@ function createContactRoutes(db) {
                 userAgent: req.get('user-agent') || 'Unknown'
             };
 
-            // 6. INSERT INTO DATABASE
+            // 6. ENCRYPT SENSITIVE DATA before storage
+            const encryptedData = {
+                name: encryption.encrypt(sanitizedData.name),
+                email: encryption.encrypt(sanitizedData.email),
+                phone: encryption.encrypt(sanitizedData.phone),
+                symptoms: encryption.encrypt(sanitizedData.symptoms),
+                emailHash: emailHash // Store hash for searching
+            };
+
+            // 7. INSERT INTO DATABASE with encrypted data
             const insertStmt = db.prepare(`
                 INSERT INTO contact_tickets (
-                    name, email, phone, device_type, symptoms, 
+                    name, email, email_hash, phone, device_type, symptoms,
                     is_emergency, ip_address, user_agent, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             const result = insertStmt.run(
-                sanitizedData.name,
-                sanitizedData.email,
-                sanitizedData.phone,
+                encryptedData.name,
+                encryptedData.email,
+                encryptedData.emailHash,
+                encryptedData.phone,
                 sanitizedData.deviceType,
-                sanitizedData.symptoms,
+                encryptedData.symptoms,
                 sanitizedData.isEmergency ? 1 : 0,
                 sanitizedData.ipAddress,
                 sanitizedData.userAgent,
@@ -169,12 +192,18 @@ function createContactRoutes(db) {
 
             const ticketId = `TICK-${result.lastInsertRowid}`;
 
-            // 7. SEND EMAIL NOTIFICATION
+            // 8. SEND EMAIL NOTIFICATIONS
             // Note: Email sending is handled by a separate service
             // This allows for async processing and better error handling
             try {
                 const emailService = require('../services/emailService');
+                // Send notification to team
                 await emailService.sendTicketNotification({
+                    ticketId,
+                    ...sanitizedData
+                });
+                // Send confirmation to customer
+                await emailService.sendCustomerConfirmation({
                     ticketId,
                     ...sanitizedData
                 });
@@ -183,7 +212,7 @@ function createContactRoutes(db) {
                 // Don't fail the request if email fails - ticket is still created
             }
 
-            // 8. SUCCESS RESPONSE
+            // 9. SUCCESS RESPONSE
             console.log(`✅ New ticket created: ${ticketId} from ${sanitizedData.email}`);
             
             res.status(201).json({
@@ -217,7 +246,7 @@ function createContactRoutes(db) {
             }
 
             const ticket = db.prepare(`
-                SELECT 
+                SELECT
                     id,
                     name,
                     email,
@@ -226,7 +255,7 @@ function createContactRoutes(db) {
                     status,
                     created_at,
                     updated_at
-                FROM contact_tickets 
+                FROM contact_tickets
                 WHERE id = ?
             `).get(parseInt(ticketId));
 
@@ -234,12 +263,14 @@ function createContactRoutes(db) {
                 return res.status(404).json({ error: 'Ticket not found' });
             }
 
+            // Note: We don't decrypt sensitive info for public status checks
+            // Only return non-sensitive status info
             res.json({
                 ticketId: `TICK-${ticket.id}`,
                 status: ticket.status,
                 createdAt: ticket.created_at,
                 isEmergency: Boolean(ticket.is_emergency),
-                // Don't expose sensitive info
+                // Sensitive info (name, email, phone, symptoms) is encrypted and not exposed here
             });
 
         } catch (error) {
@@ -260,8 +291,10 @@ function createContactRoutes(db) {
                 phone,
                 company,
                 companySize,
+                teamSize,
                 serviceType,
                 projectDescription,
+                projectRequirements,
                 budget,
                 timeline,
                 honeypot,
@@ -314,6 +347,10 @@ function createContactRoutes(db) {
                 errors.push('Project description must be 20-2000 characters.');
             }
 
+            if (!teamSize) {
+                errors.push('Technical team size is required.');
+            }
+
             // Check for spam patterns
             const spamPatterns = [
                 /viagra|cialis|casino|lottery|prize|crypto|forex/gi,
@@ -338,18 +375,20 @@ function createContactRoutes(db) {
             }
 
             // 4. DUPLICATE CHECK - Prevent duplicate submissions
+            // Use email hash for searching encrypted data
+            const emailHash = encryption.hashForSearch(email);
             const recentInquiry = db.prepare(`
-                SELECT id, created_at 
-                FROM agentic_ai_inquiries 
-                WHERE email = ? 
+                SELECT id, created_at
+                FROM agentic_ai_inquiries
+                WHERE email_hash = ?
                 AND created_at > datetime('now', '-24 hours')
-                ORDER BY created_at DESC 
+                ORDER BY created_at DESC
                 LIMIT 1
-            `).get(email.toLowerCase());
+            `).get(emailHash);
 
             if (recentInquiry) {
                 const hoursAgo = Math.floor((Date.now() - new Date(recentInquiry.created_at).getTime()) / 3600000);
-                return res.status(429).json({ 
+                return res.status(429).json({
                     error: 'Duplicate submission detected',
                     message: `You submitted an inquiry ${hoursAgo} hours ago. Our team will contact you within 24 hours.`,
                     existingInquiryId: `AI-INQ-${recentInquiry.id}`
@@ -363,8 +402,10 @@ function createContactRoutes(db) {
                 phone: phone.replace(/[^\d+\-() ]/g, ''),
                 company: validator.escape(company.trim()),
                 companySize: companySize ? validator.escape(companySize) : null,
+                teamSize: validator.escape(teamSize.trim()),
                 serviceType: validator.escape(serviceType.trim()),
                 projectDescription: validator.escape(projectDescription.trim()),
+                projectRequirements: projectRequirements ? validator.escape(projectRequirements.trim()) : null,
                 budget: budget ? validator.escape(budget) : null,
                 timeline: timeline ? validator.escape(timeline) : null,
                 ipAddress: req.ip || req.connection.remoteAddress,
@@ -380,23 +421,37 @@ function createContactRoutes(db) {
                 priority = 'high';
             }
 
-            // 6. INSERT INTO DATABASE
+            // 6. ENCRYPT SENSITIVE DATA before storage
+            const encryptedData = {
+                name: encryption.encrypt(sanitizedData.name),
+                email: encryption.encrypt(sanitizedData.email),
+                phone: encryption.encrypt(sanitizedData.phone),
+                company: encryption.encrypt(sanitizedData.company),
+                projectDescription: encryption.encrypt(sanitizedData.projectDescription),
+                projectRequirements: sanitizedData.projectRequirements ? encryption.encrypt(sanitizedData.projectRequirements) : null,
+                emailHash: emailHash
+            };
+
+            // 7. INSERT INTO DATABASE with encrypted data
             const insertStmt = db.prepare(`
                 INSERT INTO agentic_ai_inquiries (
-                    name, email, phone, company, company_size,
-                    service_type, project_description, budget, timeline,
+                    name, email, email_hash, phone, company, company_size, team_size,
+                    service_type, project_description, project_requirements, budget, timeline,
                     ip_address, user_agent, status, priority
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
 
             const result = insertStmt.run(
-                sanitizedData.name,
-                sanitizedData.email,
-                sanitizedData.phone,
-                sanitizedData.company,
+                encryptedData.name,
+                encryptedData.email,
+                encryptedData.emailHash,
+                encryptedData.phone,
+                encryptedData.company,
                 sanitizedData.companySize,
+                sanitizedData.teamSize,
                 sanitizedData.serviceType,
-                sanitizedData.projectDescription,
+                encryptedData.projectDescription,
+                encryptedData.projectRequirements,
                 sanitizedData.budget,
                 sanitizedData.timeline,
                 sanitizedData.ipAddress,
@@ -407,10 +462,17 @@ function createContactRoutes(db) {
 
             const inquiryId = `AI-INQ-${result.lastInsertRowid}`;
 
-            // 7. SEND EMAIL NOTIFICATION
+            // 8. SEND EMAIL NOTIFICATIONS
             try {
                 const emailService = require('../services/emailService');
+                // Send notification to team
                 await emailService.sendAgenticAIInquiryNotification({
+                    inquiryId,
+                    ...sanitizedData,
+                    priority
+                });
+                // Send confirmation to customer
+                await emailService.sendAgenticAICustomerConfirmation({
                     inquiryId,
                     ...sanitizedData,
                     priority
@@ -420,7 +482,7 @@ function createContactRoutes(db) {
                 // Don't fail the request if email fails
             }
 
-            // 8. SUCCESS RESPONSE
+            // 9. SUCCESS RESPONSE
             console.log(`✅ New AI inquiry: ${inquiryId} from ${sanitizedData.company} (${sanitizedData.email})`);
             
             const responseTime = priority === 'high' ? '12-24 hours' : '24-48 hours';
@@ -438,6 +500,180 @@ function createContactRoutes(db) {
             res.status(500).json({ 
                 error: 'Failed to submit inquiry',
                 message: 'Please try again or contact us directly at +91-9701087446 or info@swazsolutions.com'
+            });
+        }
+    });
+
+    /**
+     * POST /api/contact/general-inquiry
+     * Submit a general contact inquiry
+     */
+    router.post('/general-inquiry', contactLimiter, validationLimiter, async (req, res) => {
+        try {
+            const {
+                name,
+                email,
+                subject,
+                message,
+                honeypot,
+                timestamp
+            } = req.body;
+
+            // 1. HONEYPOT CHECK - Bot Detection
+            if (honeypot && honeypot.length > 0) {
+                console.log('🤖 Bot detected via honeypot:', req.ip);
+                return res.status(200).json({
+                    success: true,
+                    message: 'Message sent successfully',
+                    inquiryId: 'FAKE-' + Date.now()
+                });
+            }
+
+            // 2. TIMING CHECK - Prevent automated submissions
+            const submissionTime = Date.now();
+            const clientTimestamp = parseInt(timestamp) || submissionTime;
+            const timeDiff = Math.abs(submissionTime - clientTimestamp);
+
+            if (timeDiff < 2000 || timeDiff > 300000) {
+                console.log('⚠️  Suspicious timing detected:', req.ip, timeDiff);
+            }
+
+            // 3. VALIDATION - Strict input validation
+            const errors = [];
+
+            if (!name || name.trim().length < 2 || name.length > 100) {
+                errors.push('Invalid name. Must be 2-100 characters.');
+            }
+
+            if (!email || !validator.isEmail(email)) {
+                errors.push('Invalid email address.');
+            }
+
+            if (!subject || subject.trim().length < 3 || subject.length > 200) {
+                errors.push('Subject must be 3-200 characters.');
+            }
+
+            if (!message || message.trim().length < 10 || message.length > 2000) {
+                errors.push('Message must be 10-2000 characters.');
+            }
+
+            // Check for spam patterns
+            const spamPatterns = [
+                /viagra|cialis|casino|lottery|prize|crypto|forex/gi,
+                /(http|https):\/\/[^\s]+/gi,
+                /(.)\1{10,}/gi,
+            ];
+
+            const combinedText = `${name} ${subject} ${message}`;
+            for (const pattern of spamPatterns) {
+                if (pattern.test(combinedText)) {
+                    errors.push('Suspicious content detected.');
+                    console.log('🚫 Spam pattern detected:', req.ip);
+                    break;
+                }
+            }
+
+            if (errors.length > 0) {
+                return res.status(400).json({
+                    error: 'Validation failed',
+                    errors
+                });
+            }
+
+            // 4. DUPLICATE CHECK - Prevent duplicate submissions
+            // Use email hash for searching encrypted data
+            const emailHash = encryption.hashForSearch(email);
+            const recentInquiry = db.prepare(`
+                SELECT id, created_at
+                FROM general_inquiries
+                WHERE email_hash = ?
+                AND created_at > datetime('now', '-1 hour')
+                ORDER BY created_at DESC
+                LIMIT 1
+            `).get(emailHash);
+
+            if (recentInquiry) {
+                const minutesAgo = Math.floor((Date.now() - new Date(recentInquiry.created_at).getTime()) / 60000);
+                return res.status(429).json({
+                    error: 'Duplicate submission detected',
+                    message: `You sent a message ${minutesAgo} minutes ago. Please wait before sending another.`,
+                    existingInquiryId: `GEN-INQ-${recentInquiry.id}`
+                });
+            }
+
+            // 5. SANITIZE DATA
+            const sanitizedData = {
+                name: validator.escape(name.trim()),
+                email: validator.normalizeEmail(email.toLowerCase()),
+                subject: validator.escape(subject.trim()),
+                message: validator.escape(message.trim()),
+                ipAddress: req.ip || req.connection.remoteAddress,
+                userAgent: req.get('user-agent') || 'Unknown'
+            };
+
+            // 6. ENCRYPT SENSITIVE DATA before storage
+            const encryptedData = {
+                name: encryption.encrypt(sanitizedData.name),
+                email: encryption.encrypt(sanitizedData.email),
+                subject: encryption.encrypt(sanitizedData.subject),
+                message: encryption.encrypt(sanitizedData.message),
+                emailHash: emailHash
+            };
+
+            // 7. INSERT INTO DATABASE with encrypted data
+            const insertStmt = db.prepare(`
+                INSERT INTO general_inquiries (
+                    name, email, email_hash, subject, message,
+                    ip_address, user_agent, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `);
+
+            const result = insertStmt.run(
+                encryptedData.name,
+                encryptedData.email,
+                encryptedData.emailHash,
+                encryptedData.subject,
+                encryptedData.message,
+                sanitizedData.ipAddress,
+                sanitizedData.userAgent,
+                'new'
+            );
+
+            const inquiryId = `GEN-INQ-${result.lastInsertRowid}`;
+
+            // 8. SEND EMAIL NOTIFICATIONS
+            try {
+                const emailService = require('../services/emailService');
+                // Send notification to team
+                await emailService.sendGeneralInquiryNotification({
+                    inquiryId,
+                    ...sanitizedData
+                });
+                // Send confirmation to customer
+                await emailService.sendGeneralInquiryCustomerConfirmation({
+                    inquiryId,
+                    ...sanitizedData
+                });
+            } catch (emailError) {
+                console.error('❌ Email notification failed:', emailError);
+                // Don't fail the request if email fails
+            }
+
+            // 9. SUCCESS RESPONSE
+            console.log(`✅ New general inquiry: ${inquiryId} from ${sanitizedData.email}`);
+
+            res.status(201).json({
+                success: true,
+                message: 'Thank you for reaching out! We\'ll review your message and get back to you within 24-48 hours.',
+                inquiryId,
+                estimatedResponseTime: '24-48 hours'
+            });
+
+        } catch (error) {
+            console.error('❌ General inquiry submission error:', error);
+            res.status(500).json({
+                error: 'Failed to submit message',
+                message: 'Please try again or contact us directly at info@swazsolutions.com'
             });
         }
     });

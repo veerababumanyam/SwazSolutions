@@ -575,9 +575,248 @@ async function sendAgenticAICustomerConfirmation(inquiryData) {
     }
 }
 
+/**
+ * Send general inquiry notification email to Swaz team
+ */
+async function sendGeneralInquiryNotification(inquiryData) {
+    const transport = transporter || initializeTransporter();
+
+    if (!transport) {
+        console.warn('⚠️  Email not sent - service not configured');
+        return { sent: false, reason: 'Email service not configured' };
+    }
+
+    const {
+        inquiryId,
+        name,
+        email,
+        subject,
+        message,
+        ipAddress,
+        userAgent
+    } = inquiryData;
+
+    const emailSubject = `📬 New Inquiry ${inquiryId} - ${subject}`;
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1f2937; }
+        .container { max-width: 700px; margin: 0 auto; padding: 20px; background: #f9fafb; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; }
+        .content { background: white; padding: 30px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .field { margin: 15px 0; padding: 15px; background: #f9fafb; border-left: 4px solid #10b981; border-radius: 6px; }
+        .field strong { display: block; color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .field-value { color: #1f2937; font-size: 15px; }
+        .message-box { background: #f0fdf4; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0; border-radius: 6px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; }
+        .footer { background: #1f2937; color: #d1d5db; padding: 20px; border-radius: 0 0 12px 12px; text-align: center; font-size: 13px; }
+        .btn { display: inline-block; padding: 14px 28px; background: #10b981; color: white; text-decoration: none; border-radius: 8px; margin: 15px 5px; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4); }
+        .btn:hover { background: #059669; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 28px;">📬 New General Inquiry</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.95; font-size: 16px;">${inquiryId}</p>
+        </div>
+
+        <div class="content">
+            <h2 style="margin-top: 0; color: #1f2937; font-size: 22px;">📋 Inquiry Details</h2>
+
+            <div class="field">
+                <strong>Subject</strong>
+                <div class="field-value" style="font-size: 18px; color: #059669;">${subject}</div>
+            </div>
+
+            <h3 style="color: #1f2937; margin-top: 30px;">👤 Contact Information</h3>
+
+            <div class="field">
+                <strong>Full Name</strong>
+                <div class="field-value">${name}</div>
+            </div>
+
+            <div class="field">
+                <strong>Email Address</strong>
+                <div class="field-value"><a href="mailto:${email}" style="color: #10b981; text-decoration: none;">${email}</a></div>
+            </div>
+
+            <h3 style="color: #1f2937; margin-top: 30px;">💬 Message</h3>
+
+            <div class="message-box">
+                ${message}
+            </div>
+
+            <h3 style="color: #1f2937; margin-top: 30px;">🔍 Technical Details</h3>
+
+            <div class="field" style="background: #fef3c7; border-left-color: #f59e0b;">
+                <strong>IP Address</strong>
+                <div class="field-value" style="font-family: monospace;">${ipAddress}</div>
+            </div>
+
+            <div class="field" style="background: #fef3c7; border-left-color: #f59e0b;">
+                <strong>User Agent</strong>
+                <div class="field-value" style="font-family: monospace; font-size: 12px; word-break: break-all;">${userAgent}</div>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0; padding-top: 20px; border-top: 2px solid #e5e7eb;">
+                <a href="mailto:${email}?subject=Re: ${inquiryId} - ${subject}" class="btn">
+                    📧 Reply to Customer
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0; font-weight: 600; font-size: 14px;">Swaz Solutions</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.8;">Automated inquiry notification • Do not reply to this email</p>
+            <p style="margin: 10px 0 0 0; font-size: 12px;">Inquiry received at ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    const textContent = `
+📬 New General Inquiry
+
+Inquiry ID: ${inquiryId}
+
+=== CONTACT INFORMATION ===
+Name: ${name}
+Email: ${email}
+
+=== SUBJECT ===
+${subject}
+
+=== MESSAGE ===
+${message}
+
+=== TECHNICAL INFO ===
+IP: ${ipAddress}
+User Agent: ${userAgent}
+
+Reply to: ${email}
+    `;
+
+    try {
+        const info = await transport.sendMail({
+            from: `"Swaz Solutions Inquiries" <${EMAIL_CONFIG.from}>`,
+            to: EMAIL_CONFIG.to,
+            subject: emailSubject,
+            text: textContent,
+            html: htmlContent
+        });
+
+        console.log('✅ General inquiry email sent:', info.messageId);
+        return { sent: true, messageId: info.messageId };
+
+    } catch (error) {
+        console.error('❌ General inquiry email sending failed:', error.message);
+        throw error;
+    }
+}
+
+/**
+ * Send confirmation email to customer for general inquiry
+ */
+async function sendGeneralInquiryCustomerConfirmation(inquiryData) {
+    const transport = transporter || initializeTransporter();
+
+    if (!transport) {
+        return { sent: false, reason: 'Email service not configured' };
+    }
+
+    const { inquiryId, name, email, subject } = inquiryData;
+
+    const emailSubject = `Message Received: ${inquiryId} - Swaz Solutions`;
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1f2937; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; background: #f9fafb; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 40px; text-align: center; border-radius: 12px 12px 0 0; }
+        .content { background: white; padding: 40px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .footer { background: #1f2937; color: #d1d5db; padding: 25px; border-radius: 0 0 12px 12px; text-align: center; font-size: 13px; }
+        .highlight { background: #d1fae5; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #10b981; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 32px;">✅ Message Received</h1>
+            <p style="margin: 15px 0 0 0; opacity: 0.95; font-size: 16px;">Thank you for contacting us</p>
+        </div>
+
+        <div class="content">
+            <p>Dear ${name},</p>
+
+            <p>Thank you for reaching out to Swaz Solutions. We've successfully received your message regarding <strong>"${subject}"</strong>.</p>
+
+            <div class="highlight">
+                <strong>📋 Reference ID:</strong> ${inquiryId}<br>
+                <strong>⏱️ Response Time:</strong> 24-48 hours<br>
+                <strong>📍 Status:</strong> Under Review
+            </div>
+
+            <h3 style="color: #1f2937;">What happens next?</h3>
+            <ol style="padding-left: 20px;">
+                <li style="margin: 10px 0;">Our team will review your inquiry</li>
+                <li style="margin: 10px 0;">We'll respond to <strong>${email}</strong> with a personalized answer</li>
+                <li style="margin: 10px 0;">If needed, we may reach out for additional details</li>
+            </ol>
+
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #0ea5e9;">
+                <h4 style="margin-top: 0; color: #0c4a6e;">📞 Need faster assistance?</h4>
+                <p style="margin: 10px 0 5px 0;">Call us directly:</p>
+                <p style="margin: 5px 0;"><strong style="font-size: 18px; color: #0284c7;">+91-9701087446</strong></p>
+                <p style="margin: 10px 0 5px 0;">Email:</p>
+                <p style="margin: 5px 0;"><a href="mailto:info@swazsolutions.com" style="color: #0284c7;">info@swazsolutions.com</a></p>
+            </div>
+
+            <p style="margin-top: 30px;">We appreciate you taking the time to reach out and look forward to assisting you.</p>
+
+            <p>Best regards,<br>
+            <strong>The Swaz Solutions Team</strong></p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0; font-weight: 600; font-size: 14px;">Swaz Solutions</p>
+            <p style="margin: 10px 0;">Professional Technology Services</p>
+            <p style="margin: 15px 0 5px 0; opacity: 0.8;">Rajamahendravaram, Andhra Pradesh, India</p>
+            <p style="margin: 5px 0;">© 2025 Swaz Solutions. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    try {
+        const info = await transport.sendMail({
+            from: `"Swaz Solutions" <${EMAIL_CONFIG.from}>`,
+            to: email,
+            subject: emailSubject,
+            html: htmlContent
+        });
+
+        console.log('✅ General inquiry confirmation sent to customer:', info.messageId);
+        return { sent: true, messageId: info.messageId };
+
+    } catch (error) {
+        console.error('❌ General inquiry confirmation email failed:', error.message);
+        return { sent: false, error: error.message };
+    }
+}
+
 module.exports = {
     sendTicketNotification,
     sendCustomerConfirmation,
     sendAgenticAIInquiryNotification,
-    sendAgenticAICustomerConfirmation
+    sendAgenticAICustomerConfirmation,
+    sendGeneralInquiryNotification,
+    sendGeneralInquiryCustomerConfirmation
 };

@@ -79,8 +79,10 @@ async function initializeDatabase() {
       phone TEXT NOT NULL,
       company TEXT NOT NULL,
       company_size TEXT,
+      team_size TEXT,
       service_type TEXT NOT NULL,
       project_description TEXT NOT NULL,
+      project_requirements TEXT,
       budget TEXT,
       timeline TEXT,
       ip_address TEXT,
@@ -96,6 +98,25 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_ai_inquiries_created ON agentic_ai_inquiries(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ai_inquiries_status ON agentic_ai_inquiries(status);
     CREATE INDEX IF NOT EXISTS idx_ai_inquiries_priority ON agentic_ai_inquiries(priority);
+    CREATE INDEX IF NOT EXISTS idx_ai_inquiries_team_size ON agentic_ai_inquiries(team_size);
+
+    -- General Contact Inquiries table
+    CREATE TABLE IF NOT EXISTS general_inquiries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      message TEXT NOT NULL,
+      ip_address TEXT,
+      user_agent TEXT,
+      status TEXT DEFAULT 'new',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_general_inquiries_email ON general_inquiries(email);
+    CREATE INDEX IF NOT EXISTS idx_general_inquiries_created ON general_inquiries(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_general_inquiries_status ON general_inquiries(status);
   `);
 
   // Migration: Add cover_path if it doesn't exist
@@ -134,6 +155,34 @@ async function initializeDatabase() {
       console.log('✅ Added google_id column to users table');
     } catch (alterError) {
       console.error('❌ Failed to add google_id column:', alterError);
+    }
+  }
+
+  // Migration: Add team_size column to agentic_ai_inquiries if it doesn't exist
+  try {
+    const checkTeamSize = db.prepare("SELECT team_size FROM agentic_ai_inquiries LIMIT 1");
+    checkTeamSize.step();
+    checkTeamSize.free();
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE agentic_ai_inquiries ADD COLUMN team_size TEXT");
+      console.log('✅ Added team_size column to agentic_ai_inquiries table');
+    } catch (alterError) {
+      // Column might already exist
+    }
+  }
+
+  // Migration: Add project_requirements column to agentic_ai_inquiries if it doesn't exist
+  try {
+    const checkProjReq = db.prepare("SELECT project_requirements FROM agentic_ai_inquiries LIMIT 1");
+    checkProjReq.step();
+    checkProjReq.free();
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE agentic_ai_inquiries ADD COLUMN project_requirements TEXT");
+      console.log('✅ Added project_requirements column to agentic_ai_inquiries table');
+    } catch (alterError) {
+      // Column might already exist
     }
   }
 
@@ -375,6 +424,23 @@ async function initializeDatabase() {
       console.log('✅ Added show_bio column to profiles table');
     } catch (alterError) {
       // Column might already exist
+    }
+  }
+
+  // Migration: Add additional field visibility columns to profiles
+  // These allow users to control visibility of individual profile fields
+  try {
+    db.exec("SELECT show_headline FROM profiles LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE profiles ADD COLUMN show_headline INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_company INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_first_name INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_last_name INTEGER DEFAULT 1");
+      db.run("ALTER TABLE profiles ADD COLUMN show_pronouns INTEGER DEFAULT 1");
+      console.log('✅ Added additional field visibility columns to profiles table');
+    } catch (alterError) {
+      // Columns might already exist
     }
   }
 
@@ -683,32 +749,375 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_camera_priority ON camera_updates(priority);
     CREATE INDEX IF NOT EXISTS idx_camera_title ON camera_updates(title);
   `);
-  // Playlists and other tables
+  // ========================================
+  // COMPREHENSIVE MUSIC DATABASE SCHEMA
+  // ========================================
+
+  // Artists table - for proper artist management with metadata
   db.run(`
-    -- Playlists table
+    CREATE TABLE IF NOT EXISTS artists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      sort_name TEXT,
+      bio TEXT,
+      image_url TEXT,
+      website_url TEXT,
+      spotify_id TEXT,
+      apple_music_id TEXT,
+      country TEXT,
+      formed_year INTEGER,
+      disbanded_year INTEGER,
+      is_group INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_artists_name ON artists(name);
+    CREATE INDEX IF NOT EXISTS idx_artists_sort_name ON artists(sort_name);
+  `);
+
+  // Genres table - hierarchical genre taxonomy
+  db.run(`
+    CREATE TABLE IF NOT EXISTS genres (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE,
+      slug TEXT NOT NULL UNIQUE,
+      parent_id INTEGER,
+      description TEXT,
+      color TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (parent_id) REFERENCES genres(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_genres_name ON genres(name);
+    CREATE INDEX IF NOT EXISTS idx_genres_slug ON genres(slug);
+    CREATE INDEX IF NOT EXISTS idx_genres_parent ON genres(parent_id);
+  `);
+
+  // Albums table - for album organization
+  db.run(`
+    CREATE TABLE IF NOT EXISTS albums (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      artist_id INTEGER,
+      artist_name TEXT,
+      release_date TEXT,
+      release_year INTEGER,
+      album_type TEXT DEFAULT 'album',
+      total_tracks INTEGER,
+      total_duration INTEGER,
+      cover_url TEXT,
+      cover_small_url TEXT,
+      cover_large_url TEXT,
+      label TEXT,
+      upc TEXT,
+      spotify_id TEXT,
+      apple_music_id TEXT,
+      is_compilation INTEGER DEFAULT 0,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_albums_title ON albums(title);
+    CREATE INDEX IF NOT EXISTS idx_albums_artist_id ON albums(artist_id);
+    CREATE INDEX IF NOT EXISTS idx_albums_artist_name ON albums(artist_name);
+    CREATE INDEX IF NOT EXISTS idx_albums_release_year ON albums(release_year);
+    CREATE INDEX IF NOT EXISTS idx_albums_album_type ON albums(album_type);
+  `);
+
+  // Album genres (many-to-many)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS album_genres (
+      album_id INTEGER NOT NULL,
+      genre_id INTEGER NOT NULL,
+      PRIMARY KEY (album_id, genre_id),
+      FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE,
+      FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_album_genres_album ON album_genres(album_id);
+    CREATE INDEX IF NOT EXISTS idx_album_genres_genre ON album_genres(genre_id);
+  `);
+
+  // Song artists (many-to-many for featuring artists)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS song_artists (
+      song_id INTEGER NOT NULL,
+      artist_id INTEGER NOT NULL,
+      artist_role TEXT DEFAULT 'primary',
+      display_order INTEGER DEFAULT 0,
+      PRIMARY KEY (song_id, artist_id),
+      FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+      FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_song_artists_song ON song_artists(song_id);
+    CREATE INDEX IF NOT EXISTS idx_song_artists_artist ON song_artists(artist_id);
+    CREATE INDEX IF NOT EXISTS idx_song_artists_role ON song_artists(artist_role);
+  `);
+
+  // Song genres (many-to-many)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS song_genres (
+      song_id INTEGER NOT NULL,
+      genre_id INTEGER NOT NULL,
+      PRIMARY KEY (song_id, genre_id),
+      FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+      FOREIGN KEY (genre_id) REFERENCES genres(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_song_genres_song ON song_genres(song_id);
+    CREATE INDEX IF NOT EXISTS idx_song_genres_genre ON song_genres(genre_id);
+  `);
+
+  // Music metadata table - extended song metadata
+  db.run(`
+    CREATE TABLE IF NOT EXISTS music_metadata (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      song_id INTEGER NOT NULL UNIQUE,
+      album_id INTEGER,
+      artist_id INTEGER,
+      track_number INTEGER,
+      disc_number INTEGER DEFAULT 1,
+      bpm INTEGER,
+      key_signature TEXT,
+      time_signature TEXT,
+      isrc TEXT,
+      explicit INTEGER DEFAULT 0,
+      language TEXT,
+      lyrics TEXT,
+      lyrics_synced TEXT,
+      lyrics_source TEXT,
+      composer TEXT,
+      lyricist TEXT,
+      producer TEXT,
+      mixer TEXT,
+      mastering_engineer TEXT,
+      recording_date TEXT,
+      recording_location TEXT,
+      copyright TEXT,
+      label TEXT,
+      catalog_number TEXT,
+      comment TEXT,
+      mood TEXT,
+      energy_level INTEGER,
+      danceability INTEGER,
+      acousticness INTEGER,
+      instrumentalness INTEGER,
+      valence INTEGER,
+      loudness REAL,
+      bit_rate INTEGER,
+      sample_rate INTEGER,
+      channels INTEGER,
+      codec TEXT,
+      file_size INTEGER,
+      file_hash TEXT,
+      replay_gain_track REAL,
+      replay_gain_album REAL,
+      spotify_id TEXT,
+      apple_music_id TEXT,
+      musicbrainz_id TEXT,
+      last_scanned_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+      FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE SET NULL,
+      FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_metadata_song ON music_metadata(song_id);
+    CREATE INDEX IF NOT EXISTS idx_metadata_album ON music_metadata(album_id);
+    CREATE INDEX IF NOT EXISTS idx_metadata_artist ON music_metadata(artist_id);
+    CREATE INDEX IF NOT EXISTS idx_metadata_isrc ON music_metadata(isrc);
+    CREATE INDEX IF NOT EXISTS idx_metadata_bpm ON music_metadata(bpm);
+    CREATE INDEX IF NOT EXISTS idx_metadata_key ON music_metadata(key_signature);
+    CREATE INDEX IF NOT EXISTS idx_metadata_mood ON music_metadata(mood);
+    CREATE INDEX IF NOT EXISTS idx_metadata_language ON music_metadata(language);
+  `);
+
+  // Playback history table - for tracking listening history
+  db.run(`
+    CREATE TABLE IF NOT EXISTS playback_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      song_id INTEGER NOT NULL,
+      playlist_id INTEGER,
+      played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      duration_played INTEGER,
+      completed INTEGER DEFAULT 0,
+      source TEXT,
+      device_type TEXT,
+      audio_quality TEXT,
+      context_type TEXT,
+      context_id TEXT,
+      skip_reason TEXT,
+      shuffle_mode INTEGER DEFAULT 0,
+      repeat_mode TEXT,
+      volume_level INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+      FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_playback_user ON playback_history(user_id);
+    CREATE INDEX IF NOT EXISTS idx_playback_song ON playback_history(song_id);
+    CREATE INDEX IF NOT EXISTS idx_playback_playlist ON playback_history(playlist_id);
+    CREATE INDEX IF NOT EXISTS idx_playback_played_at ON playback_history(played_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_playback_user_played ON playback_history(user_id, played_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_playback_source ON playback_history(source);
+    CREATE INDEX IF NOT EXISTS idx_playback_completed ON playback_history(completed);
+  `);
+
+  // Listening statistics table - aggregated listening data
+  db.run(`
+    CREATE TABLE IF NOT EXISTS listening_stats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      song_id INTEGER NOT NULL,
+      total_plays INTEGER DEFAULT 0,
+      total_duration_played INTEGER DEFAULT 0,
+      completed_plays INTEGER DEFAULT 0,
+      skip_count INTEGER DEFAULT 0,
+      last_played_at DATETIME,
+      first_played_at DATETIME,
+      avg_completion_rate REAL,
+      favorite_time_of_day TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, song_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_stats_user ON listening_stats(user_id);
+    CREATE INDEX IF NOT EXISTS idx_stats_song ON listening_stats(song_id);
+    CREATE INDEX IF NOT EXISTS idx_stats_plays ON listening_stats(total_plays DESC);
+    CREATE INDEX IF NOT EXISTS idx_stats_last_played ON listening_stats(last_played_at DESC);
+  `);
+
+  // User music preferences table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_music_preferences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      favorite_genres TEXT,
+      preferred_audio_quality TEXT DEFAULT 'high',
+      crossfade_duration INTEGER DEFAULT 0,
+      gapless_playback INTEGER DEFAULT 1,
+      normalize_volume INTEGER DEFAULT 0,
+      equalizer_preset TEXT,
+      default_shuffle INTEGER DEFAULT 0,
+      default_repeat TEXT DEFAULT 'off',
+      autoplay_enabled INTEGER DEFAULT 1,
+      explicit_content_enabled INTEGER DEFAULT 1,
+      listening_history_enabled INTEGER DEFAULT 1,
+      recommendations_enabled INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_prefs_user ON user_music_preferences(user_id);
+  `);
+
+  // Recently played queue table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS recently_played (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      item_type TEXT NOT NULL,
+      item_id INTEGER NOT NULL,
+      played_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_recent_user ON recently_played(user_id);
+    CREATE INDEX IF NOT EXISTS idx_recent_played ON recently_played(played_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_recent_type ON recently_played(item_type);
+  `);
+
+  // Play queue table - for persisting current play queue
+  db.run(`
+    CREATE TABLE IF NOT EXISTS play_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      song_id INTEGER NOT NULL,
+      position INTEGER NOT NULL,
+      added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      source TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_queue_user ON play_queue(user_id);
+    CREATE INDEX IF NOT EXISTS idx_queue_position ON play_queue(user_id, position);
+  `);
+
+  // Playlists table - enhanced with more metadata
+  db.run(`
     CREATE TABLE IF NOT EXISTS playlists (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       description TEXT,
-      is_public BOOLEAN DEFAULT 0,
+      cover_url TEXT,
+      is_public INTEGER DEFAULT 0,
+      is_collaborative INTEGER DEFAULT 0,
+      total_duration INTEGER DEFAULT 0,
+      track_count INTEGER DEFAULT 0,
+      plays_count INTEGER DEFAULT 0,
+      likes_count INTEGER DEFAULT 0,
+      color_scheme TEXT,
+      last_modified_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
-    -- Playlist songs (many-to-many)
+    CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
+    CREATE INDEX IF NOT EXISTS idx_playlists_public ON playlists(is_public);
+    CREATE INDEX IF NOT EXISTS idx_playlists_name ON playlists(name);
+  `);
+
+  // Playlist songs (many-to-many) - enhanced
+  db.run(`
     CREATE TABLE IF NOT EXISTS playlist_songs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       playlist_id INTEGER NOT NULL,
       song_id INTEGER NOT NULL,
       position INTEGER NOT NULL,
+      added_by INTEGER,
       added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
       FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+      FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL,
       UNIQUE(playlist_id, song_id)
     );
 
-    -- User likes (favorites)
+    CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist ON playlist_songs(playlist_id);
+    CREATE INDEX IF NOT EXISTS idx_playlist_songs_song ON playlist_songs(song_id);
+    CREATE INDEX IF NOT EXISTS idx_playlist_songs_position ON playlist_songs(playlist_id, position);
+  `);
+
+  // Playlist likes table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS playlist_likes (
+      user_id INTEGER NOT NULL,
+      playlist_id INTEGER NOT NULL,
+      liked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, playlist_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_playlist_likes_user ON playlist_likes(user_id);
+    CREATE INDEX IF NOT EXISTS idx_playlist_likes_playlist ON playlist_likes(playlist_id);
+  `);
+
+  // User likes (favorites) - for songs
+  db.run(`
     CREATE TABLE IF NOT EXISTS user_likes (
       user_id INTEGER NOT NULL,
       song_id INTEGER NOT NULL,
@@ -718,15 +1127,186 @@ async function initializeDatabase() {
       FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
     );
 
-    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_user_likes_user ON user_likes(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_likes_song ON user_likes(song_id);
+    CREATE INDEX IF NOT EXISTS idx_user_likes_date ON user_likes(liked_at DESC);
+  `);
+
+  // Album likes table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS album_likes (
+      user_id INTEGER NOT NULL,
+      album_id INTEGER NOT NULL,
+      liked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, album_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (album_id) REFERENCES albums(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_album_likes_user ON album_likes(user_id);
+    CREATE INDEX IF NOT EXISTS idx_album_likes_album ON album_likes(album_id);
+  `);
+
+  // Artist follows table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS artist_follows (
+      user_id INTEGER NOT NULL,
+      artist_id INTEGER NOT NULL,
+      followed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, artist_id),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+      FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_artist_follows_user ON artist_follows(user_id);
+    CREATE INDEX IF NOT EXISTS idx_artist_follows_artist ON artist_follows(artist_id);
+  `);
+
+  // Songs table additional indexes for efficient querying
+  db.run(`
     CREATE INDEX IF NOT EXISTS idx_songs_album ON songs(album);
     CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist);
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
-    CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
-    CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist ON playlist_songs(playlist_id);
-    CREATE INDEX IF NOT EXISTS idx_play_count ON songs(play_count DESC);
+    CREATE INDEX IF NOT EXISTS idx_songs_genre ON songs(genre);
+    CREATE INDEX IF NOT EXISTS idx_songs_created ON songs(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_songs_duration ON songs(duration);
+    CREATE INDEX IF NOT EXISTS idx_songs_artist_album ON songs(artist, album);
+    CREATE INDEX IF NOT EXISTS idx_songs_play_count ON songs(play_count DESC);
+  `);
 
-    -- Visitors table
+  console.log('✅ Comprehensive music database schema created/verified');
+
+  // ========================================
+  // ENCRYPTION MIGRATION - Add email_hash columns for searchable encrypted data
+  // ========================================
+
+  // Migration: Add email_hash column to contact_tickets if it doesn't exist
+  try {
+    const checkTicketHash = db.prepare("SELECT email_hash FROM contact_tickets LIMIT 1");
+    checkTicketHash.step();
+    checkTicketHash.free();
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE contact_tickets ADD COLUMN email_hash TEXT");
+      db.run("CREATE INDEX IF NOT EXISTS idx_tickets_email_hash ON contact_tickets(email_hash)");
+      console.log('✅ Added email_hash column to contact_tickets table');
+    } catch (alterError) {
+      // Column might already exist
+    }
+  }
+
+  // Migration: Add email_hash column to agentic_ai_inquiries if it doesn't exist
+  try {
+    const checkAIHash = db.prepare("SELECT email_hash FROM agentic_ai_inquiries LIMIT 1");
+    checkAIHash.step();
+    checkAIHash.free();
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE agentic_ai_inquiries ADD COLUMN email_hash TEXT");
+      db.run("CREATE INDEX IF NOT EXISTS idx_ai_inquiries_email_hash ON agentic_ai_inquiries(email_hash)");
+      console.log('✅ Added email_hash column to agentic_ai_inquiries table');
+    } catch (alterError) {
+      // Column might already exist
+    }
+  }
+
+  // Migration: Add email_hash column to general_inquiries if it doesn't exist
+  try {
+    const checkGenHash = db.prepare("SELECT email_hash FROM general_inquiries LIMIT 1");
+    checkGenHash.step();
+    checkGenHash.free();
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE general_inquiries ADD COLUMN email_hash TEXT");
+      db.run("CREATE INDEX IF NOT EXISTS idx_general_inquiries_email_hash ON general_inquiries(email_hash)");
+      console.log('✅ Added email_hash column to general_inquiries table');
+    } catch (alterError) {
+      // Column might already exist
+    }
+  }
+
+  console.log('✅ Encryption schema migration completed');
+
+  // ========================================
+  // SUPPORT TICKET SYSTEM TABLES
+  // ========================================
+
+  // Support Tickets table - tracks support requests from submission to resolution
+  db.run(`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      ticket_number TEXT UNIQUE NOT NULL,
+      subject TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'general',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      status TEXT NOT NULL DEFAULT 'open',
+      assigned_to INTEGER,
+      resolution_notes TEXT,
+      ip_address TEXT,
+      user_agent TEXT,
+      email_hash TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      resolved_at DATETIME,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+      FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_priority ON support_tickets(priority);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_category ON support_tickets(category);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_created ON support_tickets(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_number ON support_tickets(ticket_number);
+    CREATE INDEX IF NOT EXISTS idx_support_tickets_email_hash ON support_tickets(email_hash);
+  `);
+
+  // Support Ticket Messages table - tracks conversation history on tickets
+  db.run(`
+    CREATE TABLE IF NOT EXISTS support_ticket_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL,
+      user_id INTEGER,
+      sender_type TEXT NOT NULL DEFAULT 'user',
+      message TEXT NOT NULL,
+      is_internal INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ticket_id) REFERENCES support_tickets(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket ON support_ticket_messages(ticket_id);
+    CREATE INDEX IF NOT EXISTS idx_ticket_messages_user ON support_ticket_messages(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ticket_messages_created ON support_ticket_messages(created_at);
+  `);
+
+  console.log('✅ Support ticket tables created/verified');
+
+  // Refresh tokens table - for JWT refresh token storage
+  db.run(`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      device_info TEXT,
+      ip_address TEXT,
+      expires_at DATETIME NOT NULL,
+      revoked INTEGER DEFAULT 0,
+      revoked_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_hash ON refresh_tokens(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+  `);
+  console.log('✅ Refresh tokens table created/verified');
+
+  // Visitors table
+  db.run(`
     CREATE TABLE IF NOT EXISTS visitors (
       id INTEGER PRIMARY KEY CHECK (id = 1),
       count INTEGER DEFAULT 0,

@@ -1,10 +1,11 @@
 // QR Code Modal Component (T124-T128)
 // Display QR code with customization and download options
 
-import React, { useState, useEffect } from 'react';
-import { X, Download, Settings, Smartphone, Camera } from 'lucide-react';
-import { getQRCodeDataURL, regenerateQRCode, downloadQRCode, QRCodeOptions } from '../../services/qrCodeService';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, Download, Settings, Smartphone, Camera, Palette, RotateCcw } from 'lucide-react';
+import { getQRCodeDataURL, regenerateQRCode, downloadQRCode, QRCodeOptions, QR_STYLE_PRESETS, QRCodeStylePreset } from '../../services/qrCodeService';
 import { useToast } from '../../contexts/ToastContext';
+import ColorPickerInput from './ColorPickerInput';
 
 interface QRCodeModalProps {
   isOpen: boolean;
@@ -16,17 +17,22 @@ type ErrorLevel = 'L' | 'M' | 'Q' | 'H';
 
 const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, username }) => {
   const { showToast } = useToast();
-  
+
   // QR Code state
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  
+
   // Customization state
   const [showSettings, setShowSettings] = useState(false);
   const [format, setFormat] = useState<'png' | 'svg'>('png');
   const [size, setSize] = useState(1000);
   const [errorLevel, setErrorLevel] = useState<ErrorLevel>('M');
   const [includeLogo, setIncludeLogo] = useState(false);
+
+  // Color customization state
+  const [fgColor, setFgColor] = useState('#000000');
+  const [bgColor, setBgColor] = useState('#FFFFFF');
+  const [selectedPreset, setSelectedPreset] = useState<string>('classic');
 
   // Load QR code on mount or when options change
   useEffect(() => {
@@ -43,7 +49,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, username }) 
   const loadQRCode = async () => {
     setLoading(true);
     try {
-      const options: QRCodeOptions = { format, size };
+      const options: QRCodeOptions = { format, size, fgColor, bgColor };
       const url = await getQRCodeDataURL(options);
       setQrCodeUrl(url);
     } catch (error) {
@@ -56,9 +62,9 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, username }) 
   const handleRegenerate = async () => {
     setLoading(true);
     try {
-      const options: QRCodeOptions = { format, size, errorLevel, includeLogo };
+      const options: QRCodeOptions = { format, size, errorLevel, includeLogo, fgColor, bgColor };
       const response = await regenerateQRCode(options);
-      
+
       // Revoke old URL and set new one
       if (qrCodeUrl) {
         URL.revokeObjectURL(qrCodeUrl);
@@ -74,11 +80,13 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, username }) 
 
   const handleDownload = async (downloadFormat: 'png' | 'svg') => {
     try {
-      const options: QRCodeOptions = { 
-        format: downloadFormat, 
-        size, 
-        errorLevel, 
-        includeLogo 
+      const options: QRCodeOptions = {
+        format: downloadFormat,
+        size,
+        errorLevel,
+        includeLogo,
+        fgColor,
+        bgColor
       };
       const filename = `${username}-qr-code.${downloadFormat}`;
       await downloadQRCode(options, filename);
@@ -87,6 +95,20 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, username }) 
       showToast((error as Error).message || 'Failed to download QR code', 'error');
     }
   };
+
+  // Handle preset selection
+  const handlePresetSelect = useCallback((preset: QRCodeStylePreset) => {
+    setSelectedPreset(preset.id);
+    setFgColor(preset.fgColor);
+    setBgColor(preset.bgColor);
+  }, []);
+
+  // Reset colors to classic
+  const handleResetColors = useCallback(() => {
+    setSelectedPreset('classic');
+    setFgColor('#000000');
+    setBgColor('#FFFFFF');
+  }, []);
 
   if (!isOpen) return null;
 
@@ -180,8 +202,78 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ isOpen, onClose, username }) 
           {/* Customization Controls (T127) */}
           {showSettings && (
             <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+              {/* Color Style Presets */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <Palette size={16} />
+                    Color Style
+                  </label>
+                  <button
+                    onClick={handleResetColors}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-purple-600 dark:text-gray-400 dark:hover:text-purple-400 transition-colors"
+                    title="Reset to classic"
+                  >
+                    <RotateCcw size={12} />
+                    Reset
+                  </button>
+                </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {QR_STYLE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => handlePresetSelect(preset)}
+                      className={`relative w-full aspect-square rounded-lg border-2 transition-all overflow-hidden ${
+                        selectedPreset === preset.id
+                          ? 'border-purple-500 ring-2 ring-purple-300 dark:ring-purple-700 scale-105'
+                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-400'
+                      }`}
+                      title={preset.name}
+                      aria-label={`Select ${preset.name} style`}
+                    >
+                      {/* Mini QR preview representation */}
+                      <div
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ backgroundColor: preset.bgColor }}
+                      >
+                        <div
+                          className="w-3/5 h-3/5 rounded-sm"
+                          style={{ backgroundColor: preset.fgColor }}
+                        />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                  {QR_STYLE_PRESETS.find(p => p.id === selectedPreset)?.name || 'Custom'}
+                </p>
+              </div>
+
+              {/* Custom Color Pickers */}
+              <div className="space-y-4 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                  Custom Colors
+                </p>
+                <ColorPickerInput
+                  label="Foreground Color (Dots)"
+                  value={fgColor}
+                  onChange={(color) => {
+                    setFgColor(color);
+                    setSelectedPreset('custom');
+                  }}
+                />
+                <ColorPickerInput
+                  label="Background Color"
+                  value={bgColor}
+                  onChange={(color) => {
+                    setBgColor(color);
+                    setSelectedPreset('custom');
+                  }}
+                />
+              </div>
+
               {/* Size Control */}
-              <div className="space-y-2">
+              <div className="space-y-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Size: {size}px
                 </label>

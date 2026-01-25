@@ -253,7 +253,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const { songs } = await api.songs.list({ limit: 1000 });
             const albumsData = await api.songs.getAlbums();
 
-            // Convert API response to Song format
+            // Convert API response to Song format (including extended metadata)
             const formattedSongs: Song[] = songs.map((s: ApiSong) => ({
                 id: s.id.toString(),
                 title: s.title,
@@ -265,6 +265,17 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 cover: s.cover_path || '/placeholder-album.png',
                 src: s.file_path,
                 genre: s.genre,
+                // Extended metadata
+                bitRate: s.bit_rate,
+                sampleRate: s.sample_rate,
+                channels: s.channels,
+                codec: s.codec,
+                trackNumber: s.track_number,
+                discNumber: s.disc_number,
+                bpm: s.bpm,
+                fileSize: s.file_size,
+                lyrics: s.lyrics,
+                composer: s.composer,
             }));
 
             // Convert albums and link songs

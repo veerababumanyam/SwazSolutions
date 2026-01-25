@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot, User, LogOut, IdCard } from 'lucide-react';
 import { VisitorCounter } from './VisitorCounter';
 import { useAuth } from '../contexts/AuthContext';
+import { LazyImage } from './LazyImage';
 
 export const Header: React.FC = () => {
     const [isScrolled, setIsScrolled] = useState(false);
@@ -217,7 +218,7 @@ export const Header: React.FC = () => {
                                         <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
                                     </div>
                                     {user.picture ? (
-                                        <img src={user.picture} alt={user.username} className="w-9 h-9 rounded-full border border-border" />
+                                        <LazyImage src={user.picture} alt={user.username} className="w-9 h-9 rounded-full border border-border" priority />
                                     ) : (
                                         <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                                             <User className="w-5 h-5" />
@@ -351,7 +352,7 @@ export const Header: React.FC = () => {
                             <div className="p-4 bg-surface/50 rounded-2xl border border-border">
                                 <div className="flex items-center gap-3 mb-4">
                                     {user.picture ? (
-                                        <img src={user.picture} alt={user.username} className="w-10 h-10 rounded-full" />
+                                        <LazyImage src={user.picture} alt={user.username} className="w-10 h-10 rounded-full" priority />
                                     ) : (
                                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                                             <User className="w-6 h-6" />

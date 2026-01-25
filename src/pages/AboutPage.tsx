@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Shield, Users, Globe, Award, Clock, HardDrive, Brain, ChevronRight } from 'lucide-react';
+import { LazyImage } from '../components/LazyImage';
 
 export const AboutPage: React.FC = () => {
     return (
@@ -112,7 +113,7 @@ export const AboutPage: React.FC = () => {
                         ].map((member, i) => (
                             <div key={i} className="glass-card p-6 rounded-2xl text-center hover:-translate-y-2 transition-transform">
                                 <div className="w-24 h-24 rounded-full mx-auto mb-6 overflow-hidden border-2 border-accent/20">
-                                    <img src={member.img} alt={member.name} className="w-full h-full object-cover" />
+                                    <LazyImage src={member.img} alt={member.name} className="w-full h-full object-cover" />
                                 </div>
                                 <h3 className="font-bold text-lg text-primary">{member.name}</h3>
                                 <p className="text-xs font-bold text-accent uppercase tracking-wider mt-1">{member.role}</p>

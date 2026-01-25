@@ -65,23 +65,39 @@ function createSongRoutes(db) {
             const { page = 1, limit = 100, album, artist, search } = req.query;
             const offset = (page - 1) * limit;
 
-            let query = 'SELECT * FROM songs';
+            // Join with music_metadata to include extended metadata (bitrate, sample rate, etc.)
+            let query = `
+                SELECT
+                    s.*,
+                    m.bit_rate,
+                    m.sample_rate,
+                    m.channels,
+                    m.codec,
+                    m.track_number,
+                    m.disc_number,
+                    m.bpm,
+                    m.file_size,
+                    m.lyrics,
+                    m.composer
+                FROM songs s
+                LEFT JOIN music_metadata m ON s.id = m.song_id
+            `;
             let countQuery = 'SELECT COUNT(*) as total FROM songs';
             const params = [];
             const conditions = [];
 
             if (album) {
-                conditions.push('album = ?');
+                conditions.push('s.album = ?');
                 params.push(album);
             }
 
             if (artist) {
-                conditions.push('artist LIKE ?');
+                conditions.push('s.artist LIKE ?');
                 params.push(`%${artist}%`);
             }
 
             if (search) {
-                conditions.push('(title LIKE ? OR artist LIKE ? OR album LIKE ?)');
+                conditions.push('(s.title LIKE ? OR s.artist LIKE ? OR s.album LIKE ?)');
                 params.push(`%${search}%`, `%${search}%`, `%${search}%`);
             }
 
@@ -91,7 +107,7 @@ function createSongRoutes(db) {
                 countQuery += whereClause;
             }
 
-            query += ' ORDER BY title LIMIT ? OFFSET ?';
+            query += ' ORDER BY s.title LIMIT ? OFFSET ?';
             params.push(parseInt(limit), parseInt(offset));
 
             const songs = db.prepare(query).all(...params);
@@ -136,13 +152,37 @@ function createSongRoutes(db) {
         }
     });
 
-    // Get single song
+    // Get single song with extended metadata
     router.get('/:id', (req, res) => {
         try {
-            const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(req.params.id);
+            const song = db.prepare(`
+                SELECT
+                    s.*,
+                    m.bit_rate,
+                    m.sample_rate,
+                    m.channels,
+                    m.codec,
+                    m.track_number,
+                    m.disc_number,
+                    m.bpm,
+                    m.file_size,
+                    m.lyrics,
+                    m.composer
+                FROM songs s
+                LEFT JOIN music_metadata m ON s.id = m.song_id
+                WHERE s.id = ?
+            `).get(req.params.id);
 
             if (!song) {
                 return res.status(404).json({ error: 'Song not found' });
+            }
+
+            // Enhance with cover_path fallback
+            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
+            if (!song.cover_path) {
+                const filePath = song.file_path.replace('/music/', '');
+                const albumPath = path.join(musicDir, path.dirname(filePath));
+                song.cover_path = findCoverImage(albumPath, musicDir);
             }
 
             res.json(song);

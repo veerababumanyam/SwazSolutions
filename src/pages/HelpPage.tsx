@@ -1,65 +1,332 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { HelpCircle, Music, Database, Sparkles, ChevronRight, Search, Book, Zap, Globe, Shield, Clock, Phone, Mail, CheckCircle, FileText, Play, Download, Settings, Lock, IdCard, QrCode, Palette, Share2, BarChart3, Eye, UserCheck, Link2, Smartphone } from 'lucide-react';
+import {
+    HelpCircle, Music, Database, Sparkles, ChevronRight, Search, Book, Zap, Globe,
+    Shield, Clock, Phone, Mail, CheckCircle, FileText, Play, Download, Settings,
+    Lock, IdCard, QrCode, Palette, Share2, BarChart3, Eye, UserCheck, Link2,
+    Smartphone, ChevronDown, ChevronUp, MessageCircle, CreditCard, AlertCircle,
+    Headphones, RefreshCw, Users, Bookmark, Filter, X, ArrowUp
+} from 'lucide-react';
 import { Schema } from '../components/Schema';
+
+// Types for documentation structure
+interface FAQItem {
+    id: string;
+    question: string;
+    answer: string;
+    category: string;
+    tags: string[];
+}
+
+interface GuideSection {
+    id: string;
+    title: string;
+    description: string;
+    icon: React.ElementType;
+    content: React.ReactNode;
+    category: string;
+    tags: string[];
+}
+
+// FAQ Data
+const faqData: FAQItem[] = [
+    // vCard FAQs
+    {
+        id: 'vcard-1',
+        question: 'What is a Virtual Visiting Card (vCard)?',
+        answer: 'A Virtual Visiting Card is your digital business card that you can share instantly with anyone. Unlike traditional paper cards, your vCard is always up-to-date, accessible 24/7, and can be shared via QR code, link, WhatsApp, or downloaded as a contact file (.vcf).',
+        category: 'vCard',
+        tags: ['vcard', 'digital card', 'business card', 'sharing']
+    },
+    {
+        id: 'vcard-2',
+        question: 'How do I create a Virtual Visiting Card?',
+        answer: 'Sign in to your account, navigate to the vCard section from the header or go to /profile/dashboard. Fill in your profile details including display name, headline, bio, contact info, and social links. Choose from 12+ professional themes, customize colors, and publish your profile to make it live.',
+        category: 'vCard',
+        tags: ['create', 'setup', 'getting started', 'profile']
+    },
+    {
+        id: 'vcard-3',
+        question: 'How do I share my vCard with others?',
+        answer: 'You can share your vCard multiple ways: 1) Show your QR code at networking events - recipients can scan with any smartphone camera. 2) Copy your unique profile URL (swaz.com/u/yourname) and share via email, text, or social media. 3) Use the built-in WhatsApp share button. 4) Download the QR code as PNG for printing.',
+        category: 'vCard',
+        tags: ['share', 'qr code', 'url', 'whatsapp', 'networking']
+    },
+    {
+        id: 'vcard-4',
+        question: 'Can I customize the look of my vCard?',
+        answer: 'Yes! You can choose from 12+ professional pre-designed themes, customize accent colors to match your brand, adjust button styles and corners, and control shadow effects. The appearance settings are available in the Profile Editor under the Appearance tab.',
+        category: 'vCard',
+        tags: ['customize', 'themes', 'colors', 'appearance', 'design']
+    },
+    {
+        id: 'vcard-5',
+        question: 'What social links can I add to my vCard?',
+        answer: 'You can add links to over 100+ social platforms including LinkedIn, GitHub, Twitter/X, Instagram, YouTube, Facebook, TikTok, Discord, Telegram, WhatsApp, Dribbble, Behance, and many more. You can also add custom links with your own icons.',
+        category: 'vCard',
+        tags: ['social links', 'linkedin', 'github', 'instagram', 'platforms']
+    },
+    {
+        id: 'vcard-6',
+        question: 'Is my contact information private?',
+        answer: 'You have full control over your privacy. You can choose which information to display publicly (email, phone, bio) through the Privacy Settings. Only the information you explicitly enable will be visible on your public profile.',
+        category: 'vCard',
+        tags: ['privacy', 'security', 'contact info', 'settings']
+    },
+    // Lyric Studio FAQs
+    {
+        id: 'lyric-1',
+        question: 'How do I use the Lyric Studio?',
+        answer: 'Navigate to the Lyric Studio page from the header. Describe your song requirements in Telugu, Hindi, English or other supported languages. Our AI will generate culturally-aware lyrics with proper structure and meta-tags ready for Suno.com or Udio. You can refine the output and save lyrics to your library.',
+        category: 'Lyric Studio',
+        tags: ['lyric studio', 'ai', 'songwriting', 'getting started']
+    },
+    {
+        id: 'lyric-2',
+        question: 'What languages does Lyric Studio support?',
+        answer: 'Lyric Studio supports 15+ languages including Telugu, Hindi, Tamil, Kannada, Malayalam, English, Marathi, Bengali, Punjabi, Gujarati, Urdu, and Sanskrit. Our Samskara Engine understands cultural context in each language.',
+        category: 'Lyric Studio',
+        tags: ['languages', 'telugu', 'hindi', 'multilingual', 'regional']
+    },
+    {
+        id: 'lyric-3',
+        question: 'Do I need an API key to use Lyric Studio?',
+        answer: 'Yes, you need a Google Gemini API key. Visit https://aistudio.google.com/app/apikey, sign in with your Google account, create an API key, and paste it in the Lyric Studio settings. The key is stored locally in your browser and never sent to our servers.',
+        category: 'Lyric Studio',
+        tags: ['api key', 'gemini', 'setup', 'configuration']
+    },
+    {
+        id: 'lyric-4',
+        question: 'What is the Samskara Engine?',
+        answer: 'The Samskara Engine is our cultural intelligence system that understands deep cultural context. Unlike generic AI, it knows the difference between a Sangeet celebration and a sacred ritual, injects appropriate Navarasa (9 emotions) based on context, and understands cinematic tropes like Hero Intros and Mass Beats.',
+        category: 'Lyric Studio',
+        tags: ['samskara', 'cultural', 'ai', 'intelligence', 'emotions']
+    },
+    {
+        id: 'lyric-5',
+        question: 'How do I export lyrics to Suno or Udio?',
+        answer: 'After generating lyrics, click the "Copy to Clipboard" button. The lyrics are automatically formatted with proper structure tags like [Verse], [Chorus], [Bridge], etc. Paste directly into Suno.com or Udio for music generation.',
+        category: 'Lyric Studio',
+        tags: ['export', 'suno', 'udio', 'copy', 'music generation']
+    },
+    // Data Recovery FAQs
+    {
+        id: 'recovery-1',
+        question: 'What data recovery services do you offer?',
+        answer: 'We provide professional data recovery for hard drives (HDD), solid state drives (SSD/NVMe/M.2), RAID arrays, servers, flash media, SD cards, and USB drives. Services include mechanical repairs, logical recovery, ransomware reversal, and emergency 24/7 recovery.',
+        category: 'Data Recovery',
+        tags: ['data recovery', 'services', 'hdd', 'ssd', 'raid']
+    },
+    {
+        id: 'recovery-2',
+        question: 'Is the data recovery evaluation really free?',
+        answer: 'Yes, absolutely. We provide a free diagnostic evaluation within 4-6 hours. You will receive a detailed report with a file list and a firm price quote. If you decide not to proceed, there is no charge.',
+        category: 'Data Recovery',
+        tags: ['free', 'evaluation', 'diagnostic', 'quote']
+    },
+    {
+        id: 'recovery-3',
+        question: 'What should I do if my drive is making clicking sounds?',
+        answer: 'Power off the device immediately! Continued use can cause permanent damage to the platters. Do not attempt DIY recovery software. Keep the device in a safe, dry place and contact us for shipping instructions.',
+        category: 'Data Recovery',
+        tags: ['clicking', 'emergency', 'damaged', 'tips']
+    },
+    {
+        id: 'recovery-4',
+        question: 'Do you offer emergency data recovery?',
+        answer: 'Yes, we offer 24/7 emergency data recovery services. Our emergency engineers work around the clock to minimize downtime for critical business data loss. Call our emergency hotline at +91-9701087446.',
+        category: 'Data Recovery',
+        tags: ['emergency', '24/7', 'urgent', 'business']
+    },
+    // Account & General FAQs
+    {
+        id: 'account-1',
+        question: 'How do I create an account?',
+        answer: 'Click "Sign In" in the header and then "Create Account". You can sign up using Google Sign-In for quick access or create a local account with your email and password.',
+        category: 'Account',
+        tags: ['account', 'register', 'sign up', 'login']
+    },
+    {
+        id: 'account-2',
+        question: 'I forgot my password. How do I reset it?',
+        answer: 'On the login page, click "Forgot Password". Enter your registered email address and we will send you a password reset link. Check your spam folder if you don\'t see the email.',
+        category: 'Account',
+        tags: ['password', 'reset', 'forgot', 'login']
+    },
+    {
+        id: 'account-3',
+        question: 'How do I delete my account?',
+        answer: 'To delete your account, go to Profile Settings and scroll to the bottom. Click "Delete Account" and confirm. This action is permanent and will remove all your data including saved lyrics and vCard profile.',
+        category: 'Account',
+        tags: ['delete', 'account', 'remove', 'data']
+    },
+    {
+        id: 'general-1',
+        question: 'Which browsers are supported?',
+        answer: 'Swaz Solutions works best on modern browsers: Chrome 90+ (Recommended), Firefox 88+, Safari 14+ (macOS/iOS), and Edge 90+. We recommend keeping your browser updated for the best experience.',
+        category: 'General',
+        tags: ['browser', 'compatibility', 'chrome', 'firefox', 'safari']
+    },
+    {
+        id: 'general-2',
+        question: 'Is my data secure?',
+        answer: 'Yes, your data is protected with enterprise-grade security including 256-bit encryption for all communications, HIPAA & GDPR compliance, and biometric access control for our data recovery facilities.',
+        category: 'General',
+        tags: ['security', 'privacy', 'encryption', 'gdpr']
+    }
+];
+
+// Categories for filtering
+const categories = ['All', 'vCard', 'Lyric Studio', 'Data Recovery', 'Account', 'General'];
+
+// Expandable FAQ Component
+const FAQAccordion: React.FC<{ item: FAQItem; isExpanded: boolean; onToggle: () => void }> = ({ item, isExpanded, onToggle }) => {
+    return (
+        <div className="border border-border rounded-xl overflow-hidden transition-all hover:border-accent/30">
+            <button
+                onClick={onToggle}
+                className="w-full flex items-center justify-between p-4 text-left bg-surface hover:bg-surface/80 transition-colors"
+                aria-expanded={isExpanded}
+            >
+                <span className="font-semibold text-primary pr-4">{item.question}</span>
+                {isExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-accent flex-shrink-0" />
+                ) : (
+                    <ChevronDown className="w-5 h-5 text-muted flex-shrink-0" />
+                )}
+            </button>
+            <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}
+            >
+                <div className="p-4 pt-0 bg-surface">
+                    <p className="text-secondary leading-relaxed">{item.answer}</p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                        {item.tags.slice(0, 4).map((tag, i) => (
+                            <span key={i} className="text-xs px-2 py-1 bg-accent/10 text-accent rounded-full">
+                                {tag}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Search Results Component
+const SearchResults: React.FC<{
+    results: FAQItem[];
+    query: string;
+    onItemClick: (id: string) => void;
+    expandedItems: Set<string>;
+}> = ({ results, query, onItemClick, expandedItems }) => {
+    if (query.length === 0) return null;
+
+    if (results.length === 0) {
+        return (
+            <div className="glass-card p-8 rounded-2xl text-center mb-8">
+                <AlertCircle className="w-12 h-12 text-muted mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-primary mb-2">No results found</h3>
+                <p className="text-secondary">
+                    Try different keywords or browse the categories below.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="glass-card p-6 rounded-2xl mb-8 animate-fade-in">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-primary">
+                    {results.length} result{results.length !== 1 ? 's' : ''} found
+                </h3>
+                <span className="text-sm text-muted">for "{query}"</span>
+            </div>
+            <div className="space-y-3">
+                {results.map((item) => (
+                    <FAQAccordion
+                        key={item.id}
+                        item={item}
+                        isExpanded={expandedItems.has(item.id)}
+                        onToggle={() => onItemClick(item.id)}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+};
 
 export const HelpPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+    const [showScrollTop, setShowScrollTop] = useState(false);
+
+    // Handle scroll to show/hide scroll-to-top button
+    React.useEffect(() => {
+        const handleScroll = () => {
+            setShowScrollTop(window.scrollY > 500);
+        };
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    // Search functionality
+    const searchResults = useMemo(() => {
+        if (searchQuery.length < 2) return [];
+
+        const query = searchQuery.toLowerCase();
+        return faqData.filter(item =>
+            item.question.toLowerCase().includes(query) ||
+            item.answer.toLowerCase().includes(query) ||
+            item.tags.some(tag => tag.toLowerCase().includes(query)) ||
+            item.category.toLowerCase().includes(query)
+        );
+    }, [searchQuery]);
+
+    // Filter FAQs by category
+    const filteredFAQs = useMemo(() => {
+        if (selectedCategory === 'All') return faqData;
+        return faqData.filter(item => item.category === selectedCategory);
+    }, [selectedCategory]);
+
+    // Toggle FAQ expansion
+    const toggleItem = useCallback((id: string) => {
+        setExpandedItems(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
+    }, []);
+
+    // Scroll to top function
+    const scrollToTop = () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Clear search
+    const clearSearch = () => {
+        setSearchQuery('');
+    };
 
     const helpFAQSchema = {
         '@context': 'https://schema.org',
         '@type': 'FAQPage',
-        mainEntity: [
-            {
-                '@type': 'Question',
-                name: 'How do I use the Lyric Studio?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Navigate to the Lyric Studio page, describe your song requirements in Telugu, Hindi, English or other supported languages, and our AI will generate culturally-aware lyrics with proper structure and meta-tags ready for Suno.com or Udio.'
-                }
-            },
-            {
-                '@type': 'Question',
-                name: 'What data recovery services do you offer?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'We provide professional data recovery for hard drives, SSDs, RAID arrays, flash media, and NVMe drives. Services include mechanical repairs, logical recovery, ransomware reversal, and emergency 24/7 recovery.'
-                }
-            },
-            {
-                '@type': 'Question',
-                name: 'Is the data recovery evaluation really free?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Yes, absolutely. We provide a free diagnostic evaluation within 4-6 hours.'
-                }
-            },
-            {
-                '@type': 'Question',
-                name: 'What languages does Lyric Studio support?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Lyric Studio supports 15+ languages including Telugu, Hindi, Tamil, Kannada, Malayalam, English, and more. Our Samskara Engine understands cultural context in each language.'
-                }
-            },
-            {
-                '@type': 'Question',
-                name: 'What is a Virtual Visiting Card (vCard)?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'A Virtual Visiting Card is a digital business card that you can share via QR code or link. It includes your contact information, social links, and can be exported as a .vcf file for easy saving to contacts.'
-                }
-            },
-            {
-                '@type': 'Question',
-                name: 'How do I create a Virtual Visiting Card?',
-                acceptedAnswer: {
-                    '@type': 'Answer',
-                    text: 'Sign in to your account, navigate to the vCard section, and fill in your profile details. Choose from 12+ themes, add your social links, and share your unique profile URL or QR code.'
-                }
+        mainEntity: faqData.map(item => ({
+            '@type': 'Question',
+            name: item.question,
+            acceptedAnswer: {
+                '@type': 'Answer',
+                text: item.answer
             }
-        ]
+        }))
     };
 
     return (
@@ -68,7 +335,7 @@ export const HelpPage: React.FC = () => {
 
             <main className="min-h-screen bg-background pt-20 pb-20">
                 {/* Hero Section */}
-                <section className="container mx-auto px-4 mb-20">
+                <section className="container mx-auto px-4 mb-12">
                     <div className="max-w-4xl mx-auto text-center animate-fade-in">
                         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/5 border border-accent/10 mb-6">
                             <HelpCircle className="w-4 h-4 text-accent" />
@@ -78,22 +345,52 @@ export const HelpPage: React.FC = () => {
                             How Can We <span className="bg-brand-gradient bg-clip-text text-transparent">Help You?</span>
                         </h1>
                         <p className="text-xl text-secondary max-w-2xl mx-auto leading-relaxed mb-8">
-                            Find answers about our AI-powered Lyric Studio and professional Data Recovery Services.
+                            Find answers, guides, and tutorials for all our services. Search below or browse by category.
                         </p>
 
-                        {/* Search Bar */}
-                        <div className="relative max-w-2xl mx-auto mb-12">
+                        {/* Enhanced Search Bar */}
+                        <div className="relative max-w-2xl mx-auto mb-8">
                             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-muted" />
                             <input
                                 type="text"
-                                placeholder="Search for help articles..."
+                                placeholder="Search FAQs, guides, and documentation..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="input rounded-2xl pl-12 pr-4 py-4 w-full text-lg shadow-lg"
+                                className="input rounded-2xl pl-12 pr-12 py-4 w-full text-lg shadow-lg"
+                                aria-label="Search help documentation"
                             />
+                            {searchQuery && (
+                                <button
+                                    onClick={clearSearch}
+                                    className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 hover:bg-surface rounded-full transition-colors"
+                                    aria-label="Clear search"
+                                >
+                                    <X className="w-5 h-5 text-muted hover:text-primary" />
+                                </button>
+                            )}
                         </div>
 
-                        {/* Quick Links */}
+                        {/* Category Filter Pills */}
+                        <div className="flex flex-wrap justify-center gap-2 mb-8">
+                            {categories.map((category) => (
+                                <button
+                                    key={category}
+                                    onClick={() => {
+                                        setSelectedCategory(category);
+                                        setSearchQuery('');
+                                    }}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                                        selectedCategory === category
+                                            ? 'bg-accent text-white shadow-lg'
+                                            : 'bg-surface text-secondary hover:bg-accent/10 hover:text-accent border border-border'
+                                    }`}
+                                >
+                                    {category}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Quick Navigation Cards */}
                         <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
                             <button
                                 onClick={() => document.getElementById('vcard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
@@ -123,8 +420,58 @@ export const HelpPage: React.FC = () => {
                     </div>
                 </section>
 
+                {/* Search Results */}
+                {searchQuery.length >= 2 && (
+                    <section className="container mx-auto px-4 mb-8">
+                        <div className="max-w-4xl mx-auto">
+                            <SearchResults
+                                results={searchResults}
+                                query={searchQuery}
+                                onItemClick={toggleItem}
+                                expandedItems={expandedItems}
+                            />
+                        </div>
+                    </section>
+                )}
+
+                {/* FAQ Section by Category */}
+                {searchQuery.length < 2 && (
+                    <section className="py-12 bg-surface border-y border-border">
+                        <div className="container mx-auto px-4">
+                            <div className="max-w-4xl mx-auto">
+                                <div className="flex items-center gap-3 mb-8">
+                                    <div className="p-3 bg-accent/10 rounded-xl">
+                                        <MessageCircle className="w-6 h-6 text-accent" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl md:text-3xl font-black text-primary">
+                                            Frequently Asked Questions
+                                        </h2>
+                                        <p className="text-secondary">
+                                            {selectedCategory === 'All'
+                                                ? 'Browse all FAQs or filter by category above'
+                                                : `Showing ${selectedCategory} FAQs`}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {filteredFAQs.map((item) => (
+                                        <FAQAccordion
+                                            key={item.id}
+                                            item={item}
+                                            isExpanded={expandedItems.has(item.id)}
+                                            onToggle={() => toggleItem(item.id)}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                )}
+
                 {/* Virtual Visiting Card (vCard) Guide Section */}
-                <section id="vcard" className="py-20 bg-surface border-y border-border scroll-mt-20">
+                <section id="vcard" className="py-20 bg-background scroll-mt-20">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
                             <div className="flex items-center gap-3 mb-12">
@@ -146,8 +493,8 @@ export const HelpPage: React.FC = () => {
                                     <div className="flex-1">
                                         <h3 className="text-2xl font-bold text-primary mb-4">What is a Virtual Visiting Card?</h3>
                                         <p className="text-secondary mb-6">
-                                            A Virtual Visiting Card (vCard) is your digital business card that you can share instantly with anyone. 
-                                            Unlike traditional paper cards, your vCard is always up-to-date, accessible 24/7, and can be shared via 
+                                            A Virtual Visiting Card (vCard) is your digital business card that you can share instantly with anyone.
+                                            Unlike traditional paper cards, your vCard is always up-to-date, accessible 24/7, and can be shared via
                                             QR code, link, WhatsApp, or downloaded as a contact file (.vcf).
                                         </p>
 
@@ -273,7 +620,7 @@ export const HelpPage: React.FC = () => {
                                                     QR Code
                                                 </h4>
                                                 <p className="text-sm text-secondary mb-3">
-                                                    Show your QR code at networking events, conferences, or meetings. 
+                                                    Show your QR code at networking events, conferences, or meetings.
                                                     Recipients can scan with any smartphone camera.
                                                 </p>
                                                 <ul className="text-xs text-muted space-y-1">
@@ -336,7 +683,7 @@ export const HelpPage: React.FC = () => {
                 </section>
 
                 {/* Lyric Studio Guide Section */}
-                <section id="lyric-studio" className="py-20 bg-background scroll-mt-20">
+                <section id="lyric-studio" className="py-20 bg-surface border-y border-border scroll-mt-20">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
                             <div className="flex items-center gap-3 mb-12">
@@ -637,7 +984,7 @@ export const HelpPage: React.FC = () => {
                 </section>
 
                 {/* Data Recovery Services Section */}
-                <section id="data-recovery" className="py-20 bg-surface border-y border-border scroll-mt-20">
+                <section id="data-recovery" className="py-20 bg-background scroll-mt-20">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
                             <div className="flex items-center gap-3 mb-12">
@@ -697,8 +1044,6 @@ export const HelpPage: React.FC = () => {
                                 </div>
                             </div>
 
-
-
                             {/* Emergency Services */}
                             <div className="glass-card p-8 rounded-3xl mb-8 bg-surface/50">
                                 <div className="flex items-start gap-4">
@@ -756,12 +1101,12 @@ export const HelpPage: React.FC = () => {
                 </section>
 
                 {/* General Help & FAQs */}
-                <section id="general-help" className="py-20 bg-background">
+                <section id="general-help" className="py-20 bg-surface border-y border-border scroll-mt-20">
                     <div className="container mx-auto px-4">
                         <div className="max-w-6xl mx-auto">
                             <div className="text-center mb-12">
-                                <h2 className="text-3xl md:text-4xl font-black text-primary mb-4">General Help & FAQs</h2>
-                                <p className="text-secondary">Additional information and common questions</p>
+                                <h2 className="text-3xl md:text-4xl font-black text-primary mb-4">General Help & Resources</h2>
+                                <p className="text-secondary">Additional information and support options</p>
                             </div>
 
                             <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -781,7 +1126,6 @@ export const HelpPage: React.FC = () => {
                                             <CheckCircle className="w-4 h-4 text-emerald-500" />
                                             HIPAA & GDPR compliant
                                         </li>
-
                                         <li className="flex items-center gap-2 text-sm text-secondary">
                                             <CheckCircle className="w-4 h-4 text-emerald-500" />
                                             Biometric access control
@@ -877,19 +1221,27 @@ export const HelpPage: React.FC = () => {
                                         <Music className="w-5 h-5" />
                                         Try Lyric Studio
                                     </Link>
-                                    <button
-                                        onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-                                        className="btn bg-white/10 text-white hover:bg-white/20 border-2 border-white/30 px-8 py-3 rounded-xl inline-flex items-center justify-center gap-2"
-                                    >
+                                    <Link to="/contact" className="btn bg-white/10 text-white hover:bg-white/20 border-2 border-white/30 px-8 py-3 rounded-xl inline-flex items-center justify-center gap-2">
                                         <Database className="w-5 h-5" />
                                         Get Data Recovery
-                                    </button>
+                                    </Link>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </section>
             </main>
+
+            {/* Scroll to Top Button */}
+            {showScrollTop && (
+                <button
+                    onClick={scrollToTop}
+                    className="fixed bottom-8 right-8 p-3 bg-accent text-white rounded-full shadow-lg hover:bg-accent-hover transition-all animate-fade-in z-50"
+                    aria-label="Scroll to top"
+                >
+                    <ArrowUp className="w-5 h-5" />
+                </button>
+            )}
         </>
     );
 };

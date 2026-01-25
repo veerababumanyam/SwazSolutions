@@ -6,6 +6,7 @@ import {
     Play, Pause, Edit3, Code, Eye, RefreshCw, Music,
     Clock, ListMusic, Mic2, User, Users, Baby, ShieldCheck, AlertTriangle, X
 } from 'lucide-react';
+import { LazyImage } from './LazyImage';
 import { GeneratedLyrics, SavedSong, ComplianceReport } from '../agents/types';
 // import { runArtAgent } from '../agents/art'; // TODO: Create art agent
 // import { runStyleAgent } from '../agents/style'; // TODO: Create style agent
@@ -245,7 +246,7 @@ export const LyricResultViewer: React.FC<LyricResultViewerProps> = ({
                         <div className="group relative w-32 h-32 sm:w-40 sm:h-40 aspect-square rounded-2xl shadow-lg bg-gradient-to-br from-surface to-background border border-border flex items-center justify-center overflow-hidden flex-shrink-0">
                             {coverArt ? (
                                 <>
-                                    <img src={coverArt} alt="Cover" className="w-full h-full object-cover" />
+                                    <LazyImage src={coverArt} alt="Cover" className="w-full h-full object-cover" blurPlaceholder />
                                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                         <button onClick={() => { const a = document.createElement('a'); a.href = coverArt; a.download = 'cover.jpg'; a.click(); }} className="p-2 bg-white rounded-full hover:scale-110 transition-transform"><Download className="w-4 h-4 text-black" /></button>
                                     </div>

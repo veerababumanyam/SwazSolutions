@@ -2,6 +2,68 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const encryption = require('../services/encryptionService');
+
+// Sensitive profile fields that should be encrypted at rest
+const PROFILE_ENCRYPTED_FIELDS = [
+  'public_email', 'public_phone',
+  'company_email', 'company_phone',
+  'address_line1', 'address_line2', 'address_city', 'address_state', 'address_postal_code', 'address_country',
+  'company_address_line1', 'company_address_line2', 'company_address_city', 'company_address_state', 'company_address_postal_code', 'company_address_country'
+];
+
+/**
+ * Decrypt sensitive profile fields from database record
+ * @param {Object} profile - Raw profile from database
+ * @returns {Object} - Profile with decrypted sensitive fields
+ */
+function decryptProfileFields(profile) {
+  if (!profile) return profile;
+
+  const decrypted = { ...profile };
+  for (const field of PROFILE_ENCRYPTED_FIELDS) {
+    if (decrypted[field]) {
+      decrypted[field] = encryption.decrypt(decrypted[field]);
+    }
+  }
+  return decrypted;
+}
+
+/**
+ * Encrypt sensitive profile fields for database storage
+ * @param {Object} data - Profile data to encrypt
+ * @returns {Object} - Data with encrypted sensitive fields
+ */
+function encryptProfileFields(data) {
+  if (!data) return data;
+
+  const encrypted = { ...data };
+  const fieldMapping = {
+    publicEmail: 'public_email',
+    publicPhone: 'public_phone',
+    companyEmail: 'company_email',
+    companyPhone: 'company_phone',
+    addressLine1: 'address_line1',
+    addressLine2: 'address_line2',
+    addressCity: 'address_city',
+    addressState: 'address_state',
+    addressPostalCode: 'address_postal_code',
+    addressCountry: 'address_country',
+    companyAddressLine1: 'company_address_line1',
+    companyAddressLine2: 'company_address_line2',
+    companyAddressCity: 'company_address_city',
+    companyAddressState: 'company_address_state',
+    companyAddressPostalCode: 'company_address_postal_code',
+    companyAddressCountry: 'company_address_country'
+  };
+
+  for (const [camelCase, snakeCase] of Object.entries(fieldMapping)) {
+    if (encrypted[camelCase] !== undefined && encrypted[camelCase] !== null) {
+      encrypted[camelCase] = encryption.encrypt(encrypted[camelCase]);
+    }
+  }
+  return encrypted;
+}
 
 // Apply auth middleware to all routes
 router.use(authenticateToken);
@@ -53,13 +115,16 @@ router.get('/me', async (req, res) => {
   try {
     const db = require('../config/database');
 
-    const profile = db.prepare(
+    const rawProfile = db.prepare(
       `SELECT * FROM profiles WHERE user_id = ?`
     ).get(req.user.id);
 
-    if (!profile) {
+    if (!rawProfile) {
       return res.status(404).json({ error: 'Profile not found' });
     }
+
+    // Decrypt sensitive fields before returning
+    const profile = decryptProfileFields(rawProfile);
 
     // Get social profiles
     const socialProfiles = db.prepare(
@@ -138,6 +203,12 @@ router.get('/me', async (req, res) => {
         contactPreferences: profile.contact_preferences,
         published: Boolean(profile.published),
         indexingOptIn: Boolean(profile.indexing_opt_in),
+        // Additional field visibility toggles
+        showHeadline: profile.show_headline !== 0,
+        showCompany: profile.show_company !== 0,
+        showFirstName: profile.show_first_name !== 0,
+        showLastName: profile.show_last_name !== 0,
+        showPronouns: profile.show_pronouns !== 0,
         activeThemeId: profile.active_theme_id,
         backgroundImageUrl: profile.background_image_url,
         logoUrl: profile.logo_url,
@@ -332,8 +403,22 @@ router.put('/me', async (req, res) => {
       timezone,
       contactPreferences,
       published,
-      indexingOptIn
+      indexingOptIn,
+      // Additional field visibility toggles
+      showHeadline,
+      showCompany,
+      showFirstName,
+      showLastName,
+      showPronouns
     } = req.body;
+
+    // Helper function to encrypt value if provided, otherwise use existing (which may already be encrypted)
+    const encryptIfProvided = (newValue, existingValue) => {
+      if (newValue !== undefined) {
+        return newValue ? encryption.encrypt(newValue) : newValue;
+      }
+      return existingValue; // Keep existing (already encrypted) value
+    };
 
     db.prepare(
       `UPDATE profiles SET
@@ -349,6 +434,7 @@ router.put('/me', async (req, res) => {
         show_company_address_line1 = ?, show_company_address_line2 = ?, show_company_address_city = ?, show_company_address_state = ?, show_company_address_postal_code = ?, show_company_address_country = ?,
         languages = ?, pronouns = ?, timezone = ?, contact_preferences = ?,
         published = ?, indexing_opt_in = ?,
+        show_headline = ?, show_company = ?, show_first_name = ?, show_last_name = ?, show_pronouns = ?,
         updated_at = datetime('now')
       WHERE id = ?`
     ).run(
@@ -360,37 +446,38 @@ router.put('/me', async (req, res) => {
       company !== undefined ? company : profile.company,
       bio !== undefined ? bio : profile.bio,
       profileTags !== undefined ? JSON.stringify(profileTags) : profile.profile_tags,
-      publicEmail !== undefined ? publicEmail : profile.public_email,
-      publicPhone !== undefined ? publicPhone : profile.public_phone,
+      // Encrypt sensitive contact fields
+      encryptIfProvided(publicEmail, profile.public_email),
+      encryptIfProvided(publicPhone, profile.public_phone),
       website !== undefined ? website : profile.website,
       showEmail !== undefined ? (showEmail ? 1 : 0) : (profile.show_email ?? 1),
       showPhone !== undefined ? (showPhone ? 1 : 0) : (profile.show_phone ?? 1),
       showWebsite !== undefined ? (showWebsite ? 1 : 0) : (profile.show_website ?? 1),
       showBio !== undefined ? (showBio ? 1 : 0) : (profile.show_bio ?? 1),
-      companyEmail !== undefined ? companyEmail : profile.company_email,
-      companyPhone !== undefined ? companyPhone : profile.company_phone,
+      encryptIfProvided(companyEmail, profile.company_email),
+      encryptIfProvided(companyPhone, profile.company_phone),
       showCompanyEmail !== undefined ? (showCompanyEmail ? 1 : 0) : (profile.show_company_email ?? 1),
       showCompanyPhone !== undefined ? (showCompanyPhone ? 1 : 0) : (profile.show_company_phone ?? 1),
-      // Personal address
-      addressLine1 !== undefined ? addressLine1 : profile.address_line1,
-      addressLine2 !== undefined ? addressLine2 : profile.address_line2,
-      addressCity !== undefined ? addressCity : profile.address_city,
-      addressState !== undefined ? addressState : profile.address_state,
-      addressPostalCode !== undefined ? addressPostalCode : profile.address_postal_code,
-      addressCountry !== undefined ? addressCountry : profile.address_country,
+      // Personal address - encrypt all fields
+      encryptIfProvided(addressLine1, profile.address_line1),
+      encryptIfProvided(addressLine2, profile.address_line2),
+      encryptIfProvided(addressCity, profile.address_city),
+      encryptIfProvided(addressState, profile.address_state),
+      encryptIfProvided(addressPostalCode, profile.address_postal_code),
+      encryptIfProvided(addressCountry, profile.address_country),
       showAddressLine1 !== undefined ? (showAddressLine1 ? 1 : 0) : (profile.show_address_line1 ?? 0),
       showAddressLine2 !== undefined ? (showAddressLine2 ? 1 : 0) : (profile.show_address_line2 ?? 0),
       showAddressCity !== undefined ? (showAddressCity ? 1 : 0) : (profile.show_address_city ?? 0),
       showAddressState !== undefined ? (showAddressState ? 1 : 0) : (profile.show_address_state ?? 0),
       showAddressPostalCode !== undefined ? (showAddressPostalCode ? 1 : 0) : (profile.show_address_postal_code ?? 0),
       showAddressCountry !== undefined ? (showAddressCountry ? 1 : 0) : (profile.show_address_country ?? 0),
-      // Company address
-      companyAddressLine1 !== undefined ? companyAddressLine1 : profile.company_address_line1,
-      companyAddressLine2 !== undefined ? companyAddressLine2 : profile.company_address_line2,
-      companyAddressCity !== undefined ? companyAddressCity : profile.company_address_city,
-      companyAddressState !== undefined ? companyAddressState : profile.company_address_state,
-      companyAddressPostalCode !== undefined ? companyAddressPostalCode : profile.company_address_postal_code,
-      companyAddressCountry !== undefined ? companyAddressCountry : profile.company_address_country,
+      // Company address - encrypt all fields
+      encryptIfProvided(companyAddressLine1, profile.company_address_line1),
+      encryptIfProvided(companyAddressLine2, profile.company_address_line2),
+      encryptIfProvided(companyAddressCity, profile.company_address_city),
+      encryptIfProvided(companyAddressState, profile.company_address_state),
+      encryptIfProvided(companyAddressPostalCode, profile.company_address_postal_code),
+      encryptIfProvided(companyAddressCountry, profile.company_address_country),
       showCompanyAddressLine1 !== undefined ? (showCompanyAddressLine1 ? 1 : 0) : (profile.show_company_address_line1 ?? 0),
       showCompanyAddressLine2 !== undefined ? (showCompanyAddressLine2 ? 1 : 0) : (profile.show_company_address_line2 ?? 0),
       showCompanyAddressCity !== undefined ? (showCompanyAddressCity ? 1 : 0) : (profile.show_company_address_city ?? 0),
@@ -403,12 +490,20 @@ router.put('/me', async (req, res) => {
       contactPreferences !== undefined ? contactPreferences : profile.contact_preferences,
       published !== undefined ? (published ? 1 : 0) : profile.published,
       indexingOptIn !== undefined ? (indexingOptIn ? 1 : 0) : profile.indexing_opt_in,
+      // Additional field visibility toggles
+      showHeadline !== undefined ? (showHeadline ? 1 : 0) : (profile.show_headline ?? 1),
+      showCompany !== undefined ? (showCompany ? 1 : 0) : (profile.show_company ?? 1),
+      showFirstName !== undefined ? (showFirstName ? 1 : 0) : (profile.show_first_name ?? 1),
+      showLastName !== undefined ? (showLastName ? 1 : 0) : (profile.show_last_name ?? 1),
+      showPronouns !== undefined ? (showPronouns ? 1 : 0) : (profile.show_pronouns ?? 1),
       profile.id
     );
 
-    const updated = db.prepare(`SELECT * FROM profiles WHERE id = ?`).get(profile.id);
+    const rawUpdated = db.prepare(`SELECT * FROM profiles WHERE id = ?`).get(profile.id);
+    // Decrypt sensitive fields before returning
+    const updated = decryptProfileFields(rawUpdated);
 
-    res.json({ 
+    res.json({
       profile: {
         id: updated.id,
         userId: updated.user_id,
@@ -464,6 +559,12 @@ router.put('/me', async (req, res) => {
         contactPreferences: updated.contact_preferences,
         published: Boolean(updated.published),
         indexingOptIn: Boolean(updated.indexing_opt_in),
+        // Additional field visibility toggles
+        showHeadline: updated.show_headline !== 0,
+        showCompany: updated.show_company !== 0,
+        showFirstName: updated.show_first_name !== 0,
+        showLastName: updated.show_last_name !== 0,
+        showPronouns: updated.show_pronouns !== 0,
         activeThemeId: updated.active_theme_id,
         backgroundImageUrl: updated.background_image_url,
         logoUrl: updated.logo_url,

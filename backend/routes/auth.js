@@ -3,20 +3,76 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
 const { OAuth2Client } = require('google-auth-library');
-const { authenticateToken, JWT_SECRET } = require('../middleware/auth');
+const {
+    authenticateToken,
+    JWT_SECRET,
+    ACCESS_TOKEN_EXPIRY,
+    REFRESH_TOKEN_EXPIRY_DAYS,
+    generateRefreshToken,
+    hashRefreshToken
+} = require('../middleware/auth');
+const { strictAuthLimiter, authLimiter } = require('../middleware/rateLimit');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 function createAuthRoutes(db) {
     const router = express.Router();
 
+    // Set access token cookie (short-lived)
     const setTokenCookie = (res, token) => {
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // Secure in production
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+            maxAge: 15 * 60 * 1000 // 15 minutes (matches ACCESS_TOKEN_EXPIRY)
         });
+    };
+
+    // Set refresh token cookie (long-lived)
+    const setRefreshTokenCookie = (res, refreshToken) => {
+        res.cookie('refresh_token', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            path: '/api/auth', // Restrict to auth routes only
+            maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+        });
+    };
+
+    // Store refresh token in database
+    const storeRefreshToken = (userId, refreshToken, req) => {
+        const tokenHash = hashRefreshToken(refreshToken);
+        const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000)
+            .toISOString().replace('T', ' ').substring(0, 19);
+        const deviceInfo = req.headers['user-agent'] || 'Unknown';
+        const ipAddress = req.ip || req.connection.remoteAddress;
+
+        db.prepare(
+            `INSERT INTO refresh_tokens (user_id, token_hash, device_info, ip_address, expires_at)
+             VALUES (?, ?, ?, ?, ?)`
+        ).run(userId, tokenHash, deviceInfo, ipAddress, expiresAt);
+    };
+
+    // Generate both access and refresh tokens
+    const generateTokens = (user, req, res) => {
+        // Generate short-lived access token
+        const accessToken = jwt.sign(
+            { id: user.id, username: user.username, role: user.role || 'user' },
+            JWT_SECRET,
+            { expiresIn: ACCESS_TOKEN_EXPIRY }
+        );
+
+        // Generate refresh token
+        const refreshToken = generateRefreshToken();
+
+        // Store refresh token in database
+        storeRefreshToken(user.id, refreshToken, req);
+
+        // Set cookies
+        setTokenCookie(res, accessToken);
+        setRefreshTokenCookie(res, refreshToken);
+
+        return { accessToken, refreshToken };
     };
 
     // Helper function to auto-create a basic profile for new users
@@ -43,8 +99,8 @@ function createAuthRoutes(db) {
         }
     };
 
-    // Register new user
-    router.post('/register', async (req, res) => {
+    // Register new user - Protected with strict rate limiting
+    router.post('/register', strictAuthLimiter, async (req, res) => {
         const { username, password, email } = req.body;
 
         if (!username || !password) {
@@ -87,20 +143,16 @@ function createAuthRoutes(db) {
             // Fetch user to get ID (reliable way)
             const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 
-            const token = jwt.sign(
-                { id: user.id, username, role: 'user' },
-                JWT_SECRET,
-                { expiresIn: '7d' }
-            );
-
-            setTokenCookie(res, token);
+            // Generate access and refresh tokens
+            const { accessToken, refreshToken } = generateTokens(user, req, res);
 
             // Auto-create a basic profile for the new user
             ensureProfileExists(user.id, username, username);
 
             res.status(201).json({
                 message: 'User registered successfully',
-                token,
+                token: accessToken,
+                refreshToken,
                 user: {
                     id: user.id,
                     username,
@@ -118,8 +170,8 @@ function createAuthRoutes(db) {
         }
     });
 
-    // Login
-    router.post('/login', async (req, res) => {
+    // Login - Protected with strict rate limiting to prevent brute force
+    router.post('/login', strictAuthLimiter, async (req, res) => {
         const { username, password } = req.body;
 
         if (!username || !password) {
@@ -144,17 +196,13 @@ function createAuthRoutes(db) {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
 
-            const token = jwt.sign(
-                { id: user.id, username: user.username, role: user.role || 'user' },
-                JWT_SECRET,
-                { expiresIn: '7d' }
-            );
-
-            setTokenCookie(res, token);
+            // Generate access and refresh tokens
+            const { accessToken, refreshToken } = generateTokens(user, req, res);
 
             res.json({
                 message: 'Login successful',
-                token,
+                token: accessToken,
+                refreshToken,
                 user: {
                     id: user.id,
                     username: user.username,
@@ -168,8 +216,8 @@ function createAuthRoutes(db) {
         }
     });
 
-    // Google Login
-    router.post('/google', async (req, res) => {
+    // Google Login - Protected with strict rate limiting
+    router.post('/google', strictAuthLimiter, async (req, res) => {
         console.log('📧 Google OAuth request received');
         const { credential } = req.body;
 
@@ -221,13 +269,8 @@ function createAuthRoutes(db) {
                 };
             }
 
-            const token = jwt.sign(
-                { id: user.id, username: user.username, role: user.role || 'pro' },
-                JWT_SECRET,
-                { expiresIn: '7d' }
-            );
-
-            setTokenCookie(res, token);
+            // Generate access and refresh tokens
+            const { accessToken, refreshToken } = generateTokens(user, req, res);
 
             // Auto-create profile for Google users (using Google display name)
             ensureProfileExists(user.id, user.username, name || user.username);
@@ -235,7 +278,8 @@ function createAuthRoutes(db) {
             console.log(`✅ Google OAuth successful for user: ${user.username}`);
             res.json({
                 message: 'Google login successful',
-                token,
+                token: accessToken,
+                refreshToken,
                 user: {
                     id: user.id,
                     username: user.username,
@@ -255,14 +299,134 @@ function createAuthRoutes(db) {
         }
     });
 
-    // Logout
-    router.post('/logout', (req, res) => {
-        res.clearCookie('token');
-        res.json({ message: 'Logged out successfully' });
+    // Logout - revokes refresh tokens and clears cookies (with rate limiting)
+    router.post('/logout', authLimiter, (req, res) => {
+        try {
+            // Get refresh token from cookie or body
+            const refreshToken = req.cookies.refresh_token || req.body.refreshToken;
+
+            if (refreshToken) {
+                // Revoke the refresh token in database
+                const tokenHash = hashRefreshToken(refreshToken);
+                db.prepare(
+                    `UPDATE refresh_tokens SET revoked = 1, revoked_at = datetime('now') WHERE token_hash = ?`
+                ).run(tokenHash);
+            }
+
+            // Clear all auth cookies
+            res.clearCookie('token');
+            res.clearCookie('refresh_token', { path: '/api/auth' });
+
+            res.json({ message: 'Logged out successfully' });
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Still clear cookies even if DB operation fails
+            res.clearCookie('token');
+            res.clearCookie('refresh_token', { path: '/api/auth' });
+            res.json({ message: 'Logged out successfully' });
+        }
     });
 
-    // Get current user
-    router.get('/me', authenticateToken, (req, res) => {
+    // Logout from all devices - revokes all refresh tokens for user (with rate limiting)
+    router.post('/logout-all', authLimiter, authenticateToken, (req, res) => {
+        try {
+            // Revoke all refresh tokens for this user
+            db.prepare(
+                `UPDATE refresh_tokens SET revoked = 1, revoked_at = datetime('now') WHERE user_id = ? AND revoked = 0`
+            ).run(req.user.id);
+
+            // Clear current session cookies
+            res.clearCookie('token');
+            res.clearCookie('refresh_token', { path: '/api/auth' });
+
+            res.json({ message: 'Logged out from all devices successfully' });
+        } catch (error) {
+            console.error('Logout all error:', error);
+            res.status(500).json({ error: 'Failed to logout from all devices' });
+        }
+    });
+
+    // Refresh access token using refresh token - Standard auth rate limiting
+    router.post('/refresh', authLimiter, (req, res) => {
+        try {
+            // Get refresh token from cookie or body
+            const refreshToken = req.cookies.refresh_token || req.body.refreshToken;
+
+            if (!refreshToken) {
+                return res.status(401).json({
+                    error: 'Refresh token required',
+                    code: 'REFRESH_TOKEN_MISSING'
+                });
+            }
+
+            // Hash the token to look it up
+            const tokenHash = hashRefreshToken(refreshToken);
+
+            // Find the refresh token in database
+            const storedToken = db.prepare(
+                `SELECT * FROM refresh_tokens WHERE token_hash = ? AND revoked = 0`
+            ).get(tokenHash);
+
+            if (!storedToken) {
+                return res.status(401).json({
+                    error: 'Invalid or revoked refresh token',
+                    code: 'REFRESH_TOKEN_INVALID'
+                });
+            }
+
+            // Check if token is expired
+            const expiresAt = new Date(storedToken.expires_at);
+            if (expiresAt < new Date()) {
+                // Mark as revoked since it's expired
+                db.prepare(
+                    `UPDATE refresh_tokens SET revoked = 1, revoked_at = datetime('now') WHERE id = ?`
+                ).run(storedToken.id);
+
+                return res.status(401).json({
+                    error: 'Refresh token has expired',
+                    code: 'REFRESH_TOKEN_EXPIRED'
+                });
+            }
+
+            // Get the user
+            const user = db.prepare(
+                'SELECT id, username, email, role FROM users WHERE id = ?'
+            ).get(storedToken.user_id);
+
+            if (!user) {
+                return res.status(401).json({
+                    error: 'User not found',
+                    code: 'USER_NOT_FOUND'
+                });
+            }
+
+            // Revoke old refresh token (token rotation for security)
+            db.prepare(
+                `UPDATE refresh_tokens SET revoked = 1, revoked_at = datetime('now') WHERE id = ?`
+            ).run(storedToken.id);
+
+            // Generate new tokens
+            const { accessToken, refreshToken: newRefreshToken } = generateTokens(user, req, res);
+
+            res.json({
+                message: 'Token refreshed successfully',
+                token: accessToken,
+                refreshToken: newRefreshToken,
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    role: user.role || 'user'
+                }
+            });
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            res.status(500).json({ error: 'Failed to refresh token' });
+        }
+    });
+
+    // Get current user (with rate limiting)
+    router.get('/me', authLimiter, authenticateToken, (req, res) => {
         try {
             const user = db.prepare(
                 'SELECT id, username, email, role, created_at FROM users WHERE id = ?'
