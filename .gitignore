@@ -45,3 +45,6 @@ ecosystem.config.js.bak
 *.tmp
 *.temp
 .cache
+
+test-results/
+nul
