@@ -13,6 +13,8 @@ import {
     THEME_CATEGORY_META
 } from '../types/theme.types';
 import { generateAITheme } from '../agents/themeAgent';
+// NEW: Import mobile-first themes
+import { MOBILE_FIRST_THEMES } from '../data/mobileFirstThemes';
 
 // Use relative URL for Vite proxy to work correctly in development
 const API_BASE_URL = '/api';
@@ -282,6 +284,23 @@ class ThemeService {
             console.error('Error fetching all themes:', error);
             throw error;
         }
+    }
+
+    /**
+     * Get mobile-first themes (frontend-based themes)
+     * These are defined in the frontend and don't require database storage
+     */
+    getMobileFirstThemes(): Theme[] {
+        return MOBILE_FIRST_THEMES;
+    }
+
+    /**
+     * Get all available themes including mobile-first themes
+     */
+    getAllAvailableThemes(): Theme[] {
+        // Combine database themes (if available) with mobile-first themes
+        // For now, return mobile-first themes as they're the most up-to-date
+        return MOBILE_FIRST_THEMES;
     }
 }
 

@@ -1,9 +1,9 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-// JWT_SECRET is optional - auth system is disabled for open access
-// Keeping code structure for future use if authentication is needed
-const JWT_SECRET = process.env.JWT_SECRET || 'placeholder-not-used';
+// JWT_SECRET must be set in production - no weak fallback
+// Generate a secure secret with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Refresh token secret (separate from access token for extra security)
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || JWT_SECRET + '_refresh';
@@ -13,9 +13,29 @@ const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || '15m';  // Short-
 const REFRESH_TOKEN_EXPIRY_DAYS = parseInt(process.env.REFRESH_TOKEN_EXPIRY_DAYS) || 30; // 30 days default
 const TOKEN_REFRESH_THRESHOLD = 24 * 60 * 60; // Refresh if less than 24 hours remaining
 
-if (process.env.ENABLE_AUTH === 'true' && (!JWT_SECRET || JWT_SECRET.length < 32)) {
-    console.error('❌ CRITICAL: JWT_SECRET not set or too weak. Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
-    process.exit(1);
+// Validate JWT_SECRET on startup
+const ENABLE_AUTH = process.env.ENABLE_AUTH === 'true';
+
+if (ENABLE_AUTH) {
+    if (!JWT_SECRET) {
+        console.error('❌ CRITICAL: JWT_SECRET must be set when ENABLE_AUTH=true');
+        console.error('Generate a secure secret with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+        console.error('Then add to .env: JWT_SECRET=<generated-secret>');
+        process.exit(1);
+    }
+    if (JWT_SECRET.length < 32) {
+        console.error('❌ CRITICAL: JWT_SECRET must be at least 32 characters');
+        console.error(`Current length: ${JWT_SECRET.length} characters`);
+        process.exit(1);
+    }
+    if (JWT_SECRET.includes('placeholder') || JWT_SECRET.includes('example') || JWT_SECRET.includes('secret')) {
+        console.error('❌ CRITICAL: JWT_SECRET appears to be a weak placeholder value');
+        process.exit(1);
+    }
+    console.log('✅ JWT_SECRET validated successfully');
+} else {
+    console.warn('⚠️  WARNING: Authentication disabled (ENABLE_AUTH not set to true)');
+    console.warn('⚠️  This is not recommended for production deployments');
 }
 
 /**
@@ -246,6 +266,45 @@ function getTokenTimeRemaining(token) {
     return remaining > 0 ? remaining : 0;
 }
 
+/**
+ * Role-based access control middleware
+ * Requires the user to have one of the specified roles
+ * @param  {...string} roles - Array of allowed roles (e.g., 'admin', 'pro', 'user')
+ * @returns {Function} - Express middleware function
+ */
+const requireRole = (...roles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({
+                error: 'Authentication required',
+                code: 'AUTH_REQUIRED'
+            });
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                error: 'Insufficient permissions',
+                code: 'INSUFFICIENT_PERMISSIONS',
+                required: roles,
+                provided: req.user.role
+            });
+        }
+
+        next();
+    };
+};
+
+/**
+ * Require admin role middleware
+ * Shortcut for requireRole('admin')
+ */
+const requireAdmin = requireRole('admin');
+
+/**
+ * Require pro or admin role middleware
+ */
+const requirePro = requireRole('pro', 'admin');
+
 module.exports = {
     authenticateToken,
     optionalAuth,
@@ -258,10 +317,14 @@ module.exports = {
     generateRefreshToken,
     hashRefreshToken,
     mapJwtError,
+    requireRole,
+    requireAdmin,
+    requirePro,
     JWT_SECRET,
     REFRESH_TOKEN_SECRET,
     ACCESS_TOKEN_EXPIRY,
     REFRESH_TOKEN_EXPIRY_DAYS,
     TOKEN_REFRESH_THRESHOLD,
-    AUTH_ERRORS
+    AUTH_ERRORS,
+    ENABLE_AUTH
 };

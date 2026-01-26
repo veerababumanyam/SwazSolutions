@@ -143,6 +143,18 @@ function createAuthRoutes(db) {
             // Fetch user to get ID (reliable way)
             const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
 
+            // Initialize subscription (Free Trial)
+            const trialDetails = {
+                status: 'free',
+                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            };
+
+            db.prepare('UPDATE users SET subscription_status = ?, subscription_end_date = ? WHERE id = ?')
+                .run(trialDetails.status, trialDetails.endDate, user.id);
+
+            user.subscription_status = trialDetails.status;
+            user.subscription_end_date = trialDetails.endDate;
+
             // Generate access and refresh tokens
             const { accessToken, refreshToken } = generateTokens(user, req, res);
 
@@ -157,7 +169,9 @@ function createAuthRoutes(db) {
                     id: user.id,
                     username,
                     email: email || null,
-                    role: 'user'
+                    role: 'user',
+                    subscriptionStatus: user.subscription_status,
+                    subscriptionEnd: user.subscription_end_date
                 }
             });
         } catch (error) {
@@ -207,7 +221,9 @@ function createAuthRoutes(db) {
                     id: user.id,
                     username: user.username,
                     email: user.email,
-                    role: user.role || 'user'
+                    role: user.role || 'user',
+                    subscriptionStatus: user.subscription_status,
+                    subscriptionEnd: user.subscription_end_date
                 }
             });
         } catch (error) {
@@ -267,6 +283,18 @@ function createAuthRoutes(db) {
                     email,
                     role: 'pro'
                 };
+
+                // Initialize subscription (Free Trial) - even for Google users
+                const trialDetails = {
+                    status: 'free',
+                    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+                };
+
+                db.prepare('UPDATE users SET subscription_status = ?, subscription_end_date = ? WHERE id = ?')
+                    .run(trialDetails.status, trialDetails.endDate, user.id);
+
+                user.subscription_status = trialDetails.status;
+                user.subscription_end_date = trialDetails.endDate;
             }
 
             // Generate access and refresh tokens
@@ -285,16 +313,21 @@ function createAuthRoutes(db) {
                     username: user.username,
                     email: user.email,
                     role: user.role || 'pro',
-                    picture
+                    picture,
+                    subscriptionStatus: user.subscription_status,
+                    subscriptionEnd: user.subscription_end_date
                 }
             });
 
         } catch (error) {
             console.error('❌ Google login error:', error.message);
-            console.error('Stack:', error.stack);
+            // In development, log more details for debugging
+            if (process.env.NODE_ENV === 'development') {
+                console.error('Error details:', error);
+            }
             res.status(401).json({
                 error: 'Google authentication failed',
-                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+                code: 'GOOGLE_AUTH_FAILED'
             });
         }
     });
@@ -390,7 +423,7 @@ function createAuthRoutes(db) {
 
             // Get the user
             const user = db.prepare(
-                'SELECT id, username, email, role FROM users WHERE id = ?'
+                'SELECT id, username, email, role, subscription_status, subscription_end_date FROM users WHERE id = ?'
             ).get(storedToken.user_id);
 
             if (!user) {
@@ -429,7 +462,7 @@ function createAuthRoutes(db) {
     router.get('/me', authLimiter, authenticateToken, (req, res) => {
         try {
             const user = db.prepare(
-                'SELECT id, username, email, role, created_at FROM users WHERE id = ?'
+                'SELECT id, username, email, role, created_at, subscription_status, subscription_end_date FROM users WHERE id = ?'
             ).get(req.user.id);
 
             if (!user) {
@@ -439,7 +472,7 @@ function createAuthRoutes(db) {
             // Check if user has a profile
             const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.user.id);
 
-            res.json({ 
+            res.json({
                 user,
                 hasProfile: !!profile
             });

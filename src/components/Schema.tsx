@@ -2,7 +2,7 @@ import React from 'react';
 import { Helmet } from 'react-helmet-async';
 
 interface SchemaProps {
-    type: 'Organization' | 'LocalBusiness' | 'SoftwareApplication' | 'FAQPage' | 'BreadcrumbList' | 'WebApplication';
+    type: 'Organization' | 'LocalBusiness' | 'SoftwareApplication' | 'FAQPage' | 'BreadcrumbList' | 'WebApplication' | 'WebPage';
     data: any;
 }
 

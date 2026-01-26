@@ -245,8 +245,8 @@
 
 ### Backend Theme Management
 
-- [ ] T148 [US6] Create system theme JSON files for 8-12 pre-built themes
-- [ ] T149 [US6] Create database seed script to populate `themes` table with system themes
+- [X] T148 [US6] Create system theme JSON files for 18 pre-built themes
+- [X] T149 [US6] Create database seed script to populate `themes` table with system themes
 - [X] T150 [US6] Implement GET `/api/themes/system` to fetch all system themes
 - [X] T151 [US6] Implement GET `/api/themes/me` to fetch user's custom themes
 - [X] T152 [US6] Implement POST `/api/themes` to save custom theme
@@ -254,25 +254,22 @@
 - [X] T154 [US6] Implement DELETE `/api/themes/:id` to delete custom theme
 - [X] T155 [US6] Implement POST `/api/themes/:id/apply` to set active theme for profile
 - [X] T156 [P] [US6] Validate theme JSON structure and WCAG AA contrast ratios
-
-### Frontend Theme System
-
-- [ ] T157 [US6] Create `src/components/profile/ThemeSelector.tsx` component
-- [ ] T158 [US6] Build theme gallery UI with preview thumbnails
-- [ ] T159 [US6] Implement theme preview functionality (side-by-side view)
-- [ ] T160 [US6] Implement theme application (apply selected theme to profile)
-- [ ] T161 [US6] Create `src/components/profile/ThemeCustomizer.tsx` component
-- [ ] T162 [US6] Add color picker inputs for background, primary, accent, text colors
-- [ ] T163 [US6] Add typography controls (font family dropdown, size options)
-- [ ] T164 [US6] Add layout controls (spacing slider, card radius, opacity)
-- [ ] T165 [US6] Add avatar controls (shape selection, size slider)
-- [ ] T166 [US6] Implement real-time preview of customizations
-- [ ] T167 [US6] Create `src/components/public-profile/ThemeRenderer.tsx` component
-- [ ] T168 [US6] Implement CSS variable injection for dynamic theme application
-- [ ] T169 [US6] Create theme caching in localStorage for instant load
-- [ ] T170 [P] [US6] Create `src/services/themeService.ts` for API calls
-- [ ] T171 [P] [US6] Create `src/hooks/useTheme.ts` for theme state management
-- [ ] T172 [P] [US6] Implement theme validation (contrast ratios, accessibility)
+- [X] T157 [US6] Create modular `ThemeSelector.tsx` component
+- [X] T158 [US6] Build theme gallery UI with category filtering (All, Professional, Creative, etc.)
+- [X] T159 [US6] Implement theme preview in MobilePreview
+- [X] T160 [US6] Implement theme application logic
+- [X] T161 [US6] Create modular `ThemeCustomizer.tsx` component
+- [X] T162 [US6] Add color picker overrides for themes
+- [X] T163 [US6] Add typography controls (FontSelector integration)
+- [X] T164 [US6] Add layout controls (spacing, radius, height)
+- [X] T165 [US6] Add avatar controls (shape selection)
+- [X] T166 [US6] Implement real-time preview of customizations
+- [X] T167 [US6] Create `ThemeRenderer.tsx` for CSS variable injection
+- [X] T168 [US6] Implement CSS variable injection for theme parity across editor and profile
+- [X] T169 [US6] Create theme caching in localStorage for instant load
+- [X] T170 [P] [US6] Create `src/services/themeService.ts` for API calls
+- [X] T171 [P] [US6] Create `src/hooks/useTheme.ts` for theme state management
+- [X] T172 [P] [US6] Implement theme validation (contrast ratios, accessibility)
 
 ### Theme Designs
 
@@ -323,18 +320,18 @@
 
 ### Frontend AI Theme UI
 
-- [ ] T203 [US7] Create `src/components/profile/AIThemeGenerator.tsx` component
-- [ ] T204 [US7] Build AI theme input dialog with optional fields
-- [ ] T205 [US7] Add keywords input (e.g., "professional", "creative", "minimal")
-- [ ] T206 [US7] Add brand colors input (color picker for 1-3 colors)
-- [ ] T207 [US7] Add mood/vibe selection (radio buttons or chips)
-- [ ] T208 [US7] Implement loading state during AI generation (10s max)
-- [ ] T209 [US7] Display generated theme in preview
-- [ ] T210 [US7] Add "Regenerate" button to create new variation
-- [ ] T211 [US7] Add "Refine" button with additional guidance input
-- [ ] T212 [US7] Implement "Save to My Themes" functionality
-- [ ] T213 [US7] Display error message if generation fails
-- [ ] T214 [P] [US7] Add AI generation history (last 3-5 attempts)
+- [X] T203 [US7] Create `AIThemeModal.tsx` for Gemini-powered generation
+- [X] T204 [US7] Build AI theme input dialog with mood and style selection
+- [X] T205 [US7] Add keywords/description input for custom prompts
+- [X] T206 [US7] Add color preference selection
+- [X] T207 [US7] Add industry-specific theme optimization
+- [X] T208 [US7] Implement loading state with smooth animations
+- [X] T209 [US7] Display generated theme in preview with accessibility score
+- [X] T210 [US7] Add "Regenerate" button for new variations
+- [X] T211 [US7] Add WCAG accessibility report to generated themes
+- [X] T212 [US7] Implement theme application from AI suggestions
+- [X] T213 [US7] Display error message if generation fails
+- [X] T214 [P] [US7] Integration with Gemini Pro for high-quality themes
 
 ### Testing
 

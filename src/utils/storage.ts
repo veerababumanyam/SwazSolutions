@@ -117,7 +117,7 @@ export interface UserPreferences {
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
   hqTags: ['High Fidelity', 'Masterpiece', 'Studio Quality'],
-  defaultModel: 'gemini-2.5-flash',
+  defaultModel: 'gemini-3.0-flash',
   autoSave: true,
   theme: 'system',
   fontSize: 14

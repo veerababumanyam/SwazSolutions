@@ -1,60 +1,8 @@
 const express = require('express');
-const fs = require('fs');
 const path = require('path');
 const validator = require('validator');
 const { optionalAuth } = require('../middleware/auth');
-
-/**
- * Find cover image in album directory
- * Supports: jpg, jpeg, png, webp
- * Priority: cover > folder > album > any image
- */
-function findCoverImage(albumPath, musicDir) {
-    if (!fs.existsSync(albumPath)) {
-        return null;
-    }
-
-    const coverNames = ['cover', 'folder', 'album'];
-    const formats = ['jpg', 'jpeg', 'png', 'webp'];
-
-    // Try priority names first
-    for (const name of coverNames) {
-        for (const fmt of formats) {
-            const coverPath = path.join(albumPath, `${name}.${fmt}`);
-            if (fs.existsSync(coverPath)) {
-                const relativePath = path.relative(musicDir, coverPath);
-                return '/music/' + relativePath.replace(/\\/g, '/');
-            }
-        }
-    }
-
-    // Fallback: any image file in the directory
-    try {
-        const files = fs.readdirSync(albumPath);
-        for (const file of files) {
-            const ext = path.extname(file).toLowerCase();
-            if (['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) {
-                const coverPath = path.join(albumPath, file);
-                const relativePath = path.relative(musicDir, coverPath);
-                return '/music/' + relativePath.replace(/\\/g, '/');
-            }
-        }
-    } catch (error) {
-        console.warn('Error reading album directory:', error);
-    }
-
-    // Final fallback: check for default cover in MusicFiles root
-    const defaultCovers = ['default-cover.png', 'default-cover.jpg', 'cover.png', 'cover.jpg'];
-    for (const coverFile of defaultCovers) {
-        const defaultCoverPath = path.join(musicDir, coverFile);
-        if (fs.existsSync(defaultCoverPath)) {
-            return `/music/${coverFile}`;
-        }
-    }
-
-    // Ultimate fallback: placeholder image
-    return '/placeholder-album.png';
-}
+const fs = require('fs');
 
 function createSongRoutes(db) {
     const router = express.Router();
@@ -113,27 +61,22 @@ function createSongRoutes(db) {
             const songs = db.prepare(query).all(...params);
             const { total } = db.prepare(countQuery).get(...params.slice(0, -2));
 
-            // Enhance songs with cover_path using three-tier fallback:
-            // 1. Metadata embedded cover (from DB)
-            // 2. Folder image (cover.jpg, folder.jpg, etc.)
-            // 3. Default placeholder
-            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
+            // Enhance songs with cover_path fallback
+            // Cover paths are now set during R2 scanning, but provide fallback for legacy data
+            // SECURITY: Remove file_path from response - use secure streaming endpoint instead
             const enhancedSongs = songs.map(song => {
-                let coverPath = null;
-                
-                // Priority 1: Metadata embedded cover from database
-                if (song.cover_path) {
-                    coverPath = song.cover_path;
-                } else {
-                    // Priority 2: Look for cover in album folder
-                    const filePath = song.file_path.replace('/music/', '');
-                    const albumPath = path.join(musicDir, path.dirname(filePath));
-                    coverPath = findCoverImage(albumPath, musicDir);
-                }
+                // Use cover_path from database (set during scan)
+                // Fallback to placeholder if not set
+                const coverPath = song.cover_path || '/placeholder-album.png';
 
+                // Create secure response without exposing R2 URLs
+                const { file_path, ...songWithoutPath } = song;
+                
                 return {
-                    ...song,
-                    cover_path: coverPath
+                    ...songWithoutPath,
+                    cover_path: coverPath,
+                    // Use secure streaming endpoint instead of direct file_path
+                    stream_url: `/api/songs/${song.id}/stream`
                 };
             });
 
@@ -178,14 +121,17 @@ function createSongRoutes(db) {
             }
 
             // Enhance with cover_path fallback
-            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
+            // Cover paths are now set during R2 scanning
             if (!song.cover_path) {
-                const filePath = song.file_path.replace('/music/', '');
-                const albumPath = path.join(musicDir, path.dirname(filePath));
-                song.cover_path = findCoverImage(albumPath, musicDir);
+                song.cover_path = '/placeholder-album.png';
             }
 
-            res.json(song);
+            // SECURITY: Remove file_path from response - use secure streaming endpoint instead
+            const { file_path, ...songWithoutPath } = song;
+            res.json({
+                ...songWithoutPath,
+                stream_url: `/api/songs/${song.id}/stream`
+            });
         } catch (error) {
             console.error('Get song error:', error);
             res.status(500).json({ error: 'Failed to fetch song' });
@@ -214,16 +160,18 @@ function createSongRoutes(db) {
         }
     });
 
-    // Scan music folder and update database
+    // Scan R2 bucket and update database
     router.post('/scan', async (req, res) => {
         try {
-            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
             const { scanMusicDirectory } = require('../services/musicScanner');
+            // musicDir parameter is deprecated but kept for compatibility
+            // Scanner now uses R2 directly
+            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../../data/MusicFiles');
 
             const result = await scanMusicDirectory(db, musicDir);
 
             res.json({
-                message: 'Scan complete',
+                message: 'R2 scan complete',
                 ...result
             });
         } catch (error) {
@@ -249,6 +197,187 @@ function createSongRoutes(db) {
         }
     });
 
+    // Secure audio streaming endpoint - returns presigned URL on-demand
+    // This endpoint ensures users can only access audio through the music player
+    // Presigned URLs expire after 1 hour, preventing long-term direct access
+    router.get('/:id/stream', async (req, res) => {
+        try {
+            const { getObjectUrl } = require('../services/r2Service');
+            const { r2Config } = require('../config/r2Config');
+            
+            const song = db.prepare('SELECT file_path FROM songs WHERE id = ?').get(req.params.id);
+            
+            if (!song) {
+                return res.status(404).json({ error: 'Song not found' });
+            }
+
+            // Extract R2 key from stored URL
+            const filePath = song.file_path;
+            let r2Key = null;
+            
+            // Try to extract key from URL
+            const r2UrlPattern = /https?:\/\/[^\/]+\/[^\/]+\/(.+)$/;
+            const match = filePath.match(r2UrlPattern);
+            
+            if (match) {
+                let extractedKey = decodeURIComponent(match[1]);
+                if (extractedKey.startsWith(`${r2Config.bucketName}/`)) {
+                    extractedKey = extractedKey.replace(`${r2Config.bucketName}/`, '');
+                }
+                r2Key = extractedKey;
+            } else {
+                // If it's not a full URL, assume it's already a key
+                r2Key = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+            }
+            
+            if (!r2Key) {
+                return res.status(400).json({ error: 'Invalid song path' });
+            }
+            
+            // Generate presigned URL (expires in 1 hour for security)
+            // This URL is never logged or exposed in console
+            const presignedUrl = await getObjectUrl(r2Key, true);
+            
+            // Set security headers
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+            
+            // Return presigned URL in JSON (Howler.js can use this)
+            // The URL expires, preventing long-term direct access
+            res.json({ url: presignedUrl });
+            
+        } catch (error) {
+            // Don't log R2 URLs or file paths in errors
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Failed to generate stream URL' });
+            }
+        }
+    });
+
+    // Get presigned URL for a song (for private R2 buckets) - DEPRECATED, use /stream instead
+    router.get('/:id/presigned-url', async (req, res) => {
+        try {
+            const { getObjectUrl } = require('../services/r2Service');
+            const { r2Config } = require('../config/r2Config');
+            
+            const song = db.prepare('SELECT file_path FROM songs WHERE id = ?').get(req.params.id);
+            
+            if (!song) {
+                return res.status(404).json({ error: 'Song not found' });
+            }
+
+            // #region agent log
+            const logPath = path.join(__dirname, '../../.cursor/debug.log');
+            const logEntry = JSON.stringify({
+                location: 'backend/routes/songs.js:189',
+                message: 'Generating presigned URL',
+                data: {
+                    songId: req.params.id,
+                    filePath: song.file_path,
+                    bucketName: r2Config.bucketName
+                },
+                timestamp: Date.now(),
+                sessionId: 'debug-session',
+                runId: 'run1',
+                hypothesisId: 'H1'
+            }) + '\n';
+            try {
+                fs.appendFileSync(logPath, logEntry);
+            } catch (e) {}
+            // #endregion
+
+            // Extract R2 key from URL
+            // URL format: https://{endpoint}/{bucket}/{key}
+            const filePath = song.file_path;
+            
+            // Try to extract key from URL
+            let r2Key = null;
+            
+            // Pattern 1: https://{endpoint}/{bucket}/{key}
+            const r2UrlPattern = /https?:\/\/[^\/]+\/[^\/]+\/(.+)$/;
+            const match = filePath.match(r2UrlPattern);
+            
+            if (match) {
+                // Remove bucket name if it's in the path
+                let extractedKey = decodeURIComponent(match[1]);
+                if (extractedKey.startsWith(`${r2Config.bucketName}/`)) {
+                    extractedKey = extractedKey.replace(`${r2Config.bucketName}/`, '');
+                }
+                r2Key = extractedKey;
+            } else {
+                // If it's not a full URL, assume it's already a key
+                r2Key = filePath.startsWith('/') ? filePath.slice(1) : filePath;
+            }
+            
+            if (!r2Key) {
+                return res.status(400).json({ error: 'Invalid R2 URL format', filePath });
+            }
+
+            // #region agent log
+            const logEntry2 = JSON.stringify({
+                location: 'backend/routes/songs.js:230',
+                message: 'Extracted R2 key',
+                data: {
+                    songId: req.params.id,
+                    extractedKey: r2Key
+                },
+                timestamp: Date.now(),
+                sessionId: 'debug-session',
+                runId: 'run1',
+                hypothesisId: 'H1'
+            }) + '\n';
+            try {
+                fs.appendFileSync(logPath, logEntry2);
+            } catch (e) {}
+            // #endregion
+            
+            // Generate presigned URL
+            const presignedUrl = await getObjectUrl(r2Key, true);
+            
+            // #region agent log
+            const logEntry3 = JSON.stringify({
+                location: 'backend/routes/songs.js:245',
+                message: 'Generated presigned URL',
+                data: {
+                    songId: req.params.id,
+                    presignedUrlLength: presignedUrl?.length
+                },
+                timestamp: Date.now(),
+                sessionId: 'debug-session',
+                runId: 'run1',
+                hypothesisId: 'H1'
+            }) + '\n';
+            try {
+                fs.appendFileSync(logPath, logEntry3);
+            } catch (e) {}
+            // #endregion
+            
+            res.json({ url: presignedUrl });
+        } catch (error) {
+            // #region agent log
+            const logPath = path.join(__dirname, '../../.cursor/debug.log');
+            const logEntry = JSON.stringify({
+                location: 'backend/routes/songs.js:260',
+                message: 'Presigned URL generation error',
+                data: {
+                    songId: req.params.id,
+                    error: error.message,
+                    stack: error.stack
+                },
+                timestamp: Date.now(),
+                sessionId: 'debug-session',
+                runId: 'run1',
+                hypothesisId: 'H1'
+            }) + '\n';
+            try {
+                fs.appendFileSync(logPath, logEntry);
+            } catch (e) {}
+            // #endregion
+            console.error('Get presigned URL error:', error);
+            res.status(500).json({ error: 'Failed to generate presigned URL', details: error.message });
+        }
+    });
+
     // Search songs
     router.get('/search/query', (req, res) => {
         try {
@@ -271,7 +400,16 @@ function createSongRoutes(db) {
         LIMIT 50
       `).all(`%${sanitizedQuery}%`, `%${sanitizedQuery}%`, `%${sanitizedQuery}%`);
 
-            res.json({ results: songs, query: q });
+            // SECURITY: Remove file_path from search results
+            const sanitizedSongs = songs.map(song => {
+                const { file_path, ...songWithoutPath } = song;
+                return {
+                    ...songWithoutPath,
+                    stream_url: `/api/songs/${song.id}/stream`
+                };
+            });
+
+            res.json({ results: sanitizedSongs, query: q });
         } catch (error) {
             console.error('Search error:', error);
             res.status(500).json({ error: 'Search failed' });

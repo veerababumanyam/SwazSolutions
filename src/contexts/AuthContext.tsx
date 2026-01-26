@@ -6,6 +6,8 @@ interface User {
     email: string;
     role: 'user' | 'pro' | 'admin';
     picture?: string;
+    subscriptionStatus?: string;
+    subscriptionEnd?: string;
 }
 
 interface AuthContextType {
@@ -166,20 +168,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }
             }
         } catch (error) {
+            // #region agent log
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:170',message:'checkAuth error',data:{error:errorMsg},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+            // #endregion
             console.error('Auth check failed:', error);
             setUser(null);
         } finally {
+            // #region agent log
+            fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:174',message:'checkAuth completed',data:{user:user?.username||null,loading:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+            // #endregion
             setLoading(false);
         }
     }, [refreshAccessToken, scheduleTokenRefresh]);
 
     useEffect(() => {
+        // #region agent log
+        const token = localStorage.getItem('auth_token');
+        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:178',message:'AuthContext useEffect - checkAuth starting',data:{hasToken:!!token},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+        // #endregion
         checkAuth();
 
         // Cleanup timer on unmount
         return () => {
             if (refreshTimerRef.current) {
                 clearTimeout(refreshTimerRef.current);
+                refreshTimerRef.current = null;
             }
         };
     }, [checkAuth]);

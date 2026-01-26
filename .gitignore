@@ -48,3 +48,13 @@ ecosystem.config.js.bak
 
 test-results/
 nul
+
+# Agent
+.claude/
+.agent/
+.cache/
+.playwright-mcp/
+.specify
+.vdcode/
+.github/
+

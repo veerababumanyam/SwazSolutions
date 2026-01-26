@@ -158,6 +158,29 @@ async function initializeDatabase() {
     }
   }
 
+  // Migration: Add subscription columns to users if they don't exist
+  try {
+    db.exec("SELECT subscription_status FROM users LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE users ADD COLUMN subscription_status TEXT DEFAULT 'free'");
+      db.run("ALTER TABLE users ADD COLUMN subscription_end_date DATETIME");
+      db.run("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT");
+      db.run("ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT");
+
+      // Set default subscription end date for existing users to 30 days from now (Free trial for existing users too?)
+      // or set them as 'free' and expired? The requirement says "free users can be valid for only one month".
+      // Let's give existing users a fresh month of free trial, or set it to now if we want to force upgrade.
+      // Assuming generous approach: give 1 month free from upgrade.
+      const oneMonthFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      db.run("UPDATE users SET subscription_status = 'free', subscription_end_date = ?", [oneMonthFromNow]);
+
+      console.log('✅ Added subscription columns to users table');
+    } catch (alterError) {
+      console.error('❌ Failed to add subscription columns:', alterError);
+    }
+  }
+
   // Migration: Add team_size column to agentic_ai_inquiries if it doesn't exist
   try {
     const checkTeamSize = db.prepare("SELECT team_size FROM agentic_ai_inquiries LIMIT 1");
@@ -1077,6 +1100,7 @@ async function initializeDatabase() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_playlists_user ON playlists(user_id);
+    CREATE INDEX IF NOT EXISTS idx_playlists_user_created ON playlists(user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_playlists_public ON playlists(is_public);
     CREATE INDEX IF NOT EXISTS idx_playlists_name ON playlists(name);
   `);
@@ -1171,6 +1195,7 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_songs_created ON songs(created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_songs_duration ON songs(duration);
     CREATE INDEX IF NOT EXISTS idx_songs_artist_album ON songs(artist, album);
+    CREATE INDEX IF NOT EXISTS idx_songs_genre_year ON songs(genre);
     CREATE INDEX IF NOT EXISTS idx_songs_play_count ON songs(play_count DESC);
   `);
 
@@ -1316,9 +1341,9 @@ async function initializeDatabase() {
 
   // Initialize visitors count if not exists
   try {
-    const visitorCount = db.exec("SELECT count FROM visitors WHERE id = 1");
-    if (visitorCount.length === 0 || visitorCount[0].values.length === 0) {
-      db.run("INSERT INTO visitors (id, count) VALUES (1, 0)");
+    const visitorCount = db.prepare("SELECT count FROM visitors WHERE id = 1").get();
+    if (!visitorCount) {
+      db.run("INSERT OR IGNORE INTO visitors (id, count) VALUES (1, 0)");
       console.log('✅ Initialized visitor counter');
     }
   } catch (e) {
@@ -1330,11 +1355,50 @@ async function initializeDatabase() {
   console.log('✅ Database initialized successfully');
 }
 
-// Save database to file
-function saveDatabase() {
-  if (db) {
+// Debounced save timer
+let saveTimer = null;
+const SAVE_DEBOUNCE_MS = 1000; // Save at most once per second
+
+// Save database to file with debouncing
+function saveDatabase(immediate = false) {
+  if (!db) return;
+
+  // Clear any pending save
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+  }
+
+  const performSave = () => {
+    try {
+      const data = db.export();
+      fs.writeFileSync(dbPath, Buffer.from(data));
+      saveTimer = null;
+    } catch (error) {
+      console.error('Failed to save database:', error);
+    }
+  };
+
+  if (immediate) {
+    performSave();
+  } else {
+    saveTimer = setTimeout(performSave, SAVE_DEBOUNCE_MS);
+  }
+}
+
+// Force immediate save (for critical operations)
+function saveDatabaseSync() {
+  if (!db) return;
+
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+
+  try {
     const data = db.export();
     fs.writeFileSync(dbPath, Buffer.from(data));
+  } catch (error) {
+    console.error('Failed to save database sync:', error);
   }
 }
 
@@ -1416,6 +1480,32 @@ const dbWrapper = {
 
 // Initialize database on module load
 let dbReady = initializeDatabase();
+
+// Graceful shutdown handler - ensures database is saved before exit
+const gracefulShutdown = (signal) => {
+  console.log(`\n${signal} received, saving database before shutdown...`);
+  saveDatabaseSync(); // Force immediate save
+
+  if (db) {
+    try {
+      db.close();
+      console.log('✅ Database saved and closed successfully');
+    } catch (error) {
+      console.error('❌ Error closing database:', error);
+    }
+  }
+
+  process.exit(0);
+};
+
+// Register shutdown handlers
+process.on('SIGINT', () => gracefulShutdown('SIGINT')); // Ctrl+C
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM')); // kill command
+process.on('beforeExit', (code) => {
+  if (code === 0) {
+    saveDatabaseSync(); // Final save on clean exit
+  }
+});
 
 module.exports = new Proxy(dbWrapper, {
   get: (target, prop) => {

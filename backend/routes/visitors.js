@@ -25,6 +25,14 @@ module.exports = (db) => {
             db.prepare('UPDATE visitors SET count = count + 1, last_updated = CURRENT_TIMESTAMP WHERE id = 1').run();
 
             const result = db.prepare('SELECT count FROM visitors WHERE id = 1').get();
+            
+            if (!result) {
+                // Row doesn't exist, initialize it
+                db.prepare('INSERT OR IGNORE INTO visitors (id, count) VALUES (1, 1)').run();
+                const newResult = db.prepare('SELECT count FROM visitors WHERE id = 1').get();
+                return res.json({ count: newResult ? newResult.count : 1 });
+            }
+            
             res.json({ count: result.count });
         } catch (error) {
             console.error('Error incrementing visitor count:', error);

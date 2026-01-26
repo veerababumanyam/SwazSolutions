@@ -13,9 +13,17 @@ import { useProfile } from '../hooks/useProfile';
 import { useToast } from '../contexts/ToastContext';
 import { ProfileData } from '../services/profileService';
 import { LinkCard } from '../components/profile/LinkCard';
-import { MobilePreview, AppearanceSettings } from '../components/profile/MobilePreview';
+import { MobilePreview, AppearanceSettings as OldAppearanceSettings } from '../components/profile/MobilePreview';
 import { AddLinkModal } from '../components/profile/AddLinkModal';
 import { AppearancePanel } from '../components/profile/AppearancePanel';
+import { EnhancedMobilePreview } from '../components/profile/MobilePreview.enhanced';
+import { EnhancedAppearancePanel } from '../components/profile/AppearancePanel.enhanced';
+// NEW: Mobile-first components and shared types
+import { MobileFirstAppearancePanel } from '../components/profile/AppearancePanel.mobile';
+import { MobileFirstProfileRenderer, AppearanceSettings } from '../components/public-profile/ProfileRenderer.mobile';
+import { MOBILE_FIRST_THEMES } from '../data/mobileFirstThemes';
+import { allModernThemes } from '../data/modernThemes';
+import { Theme } from '../types/theme.types';
 import { getQRCodeDataURL } from '../services/qrCodeService';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../constants/platforms';
 import { ImageCropper, AspectRatioPreset } from '../components/common/ImageCropper';
@@ -78,6 +86,15 @@ const DEFAULT_APPEARANCE: AppearanceSettings = {
   footerText: '',
   showPoweredBy: true,
   themeId: '',
+  // NEW: Mobile-first background settings
+  background: {
+    type: 'solid',
+    value: '#F9FAFB',
+    opacity: 100,
+    blur: 0,
+  },
+  spacing: 'comfortable',
+  linkStyle: 'card',
 };
 
 // Address Tab Component with local state to prevent auto-save issues
@@ -483,6 +500,7 @@ export const UnifiedProfileEditor: React.FC = () => {
 
   // Appearance state
   const [appearance, setAppearance] = useState<AppearanceSettings>(DEFAULT_APPEARANCE);
+  const appearanceSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // QR Code state (auto-generated, persistent URL)
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -759,6 +777,9 @@ export const UnifiedProfileEditor: React.FC = () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
+      if (appearanceSaveTimeoutRef.current) {
+        clearTimeout(appearanceSaveTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -932,31 +953,40 @@ export const UnifiedProfileEditor: React.FC = () => {
     }
   };
 
-  const handleAppearanceChange = async (newSettings: AppearanceSettings) => {
+  const handleAppearanceChange = (newSettings: AppearanceSettings) => {
+    // Update local state immediately for smooth UI
     setAppearance(newSettings);
 
-    // Save to API (persistent storage)
-    try {
-      const response = await authFetch('/api/profiles/me/appearance', {
-        method: 'PUT',
-        body: JSON.stringify({ settings: newSettings })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save appearance settings');
-      }
-
-      // Also save to localStorage as backup
-      if (profile?.username) {
-        localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
-      }
-    } catch (error) {
-      console.error('Failed to save appearance settings to API:', error);
-      // Fallback to localStorage only
-      if (profile?.username) {
-        localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
-      }
+    // Clear any pending save timeout
+    if (appearanceSaveTimeoutRef.current) {
+      clearTimeout(appearanceSaveTimeoutRef.current);
     }
+
+    // Debounce the API save call (wait 800ms after user stops interacting)
+    appearanceSaveTimeoutRef.current = setTimeout(async () => {
+      // Save to API (persistent storage)
+      try {
+        const response = await authFetch('/api/profiles/me/appearance', {
+          method: 'PUT',
+          body: JSON.stringify({ settings: newSettings })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save appearance settings');
+        }
+
+        // Also save to localStorage as backup
+        if (profile?.username) {
+          localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+        }
+      } catch (error) {
+        console.error('Failed to save appearance settings to API:', error);
+        // Fallback to localStorage only
+        if (profile?.username) {
+          localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
+        }
+      }
+    }, 800);
   };
 
   const handleDownloadQR = async (format: 'png' | 'svg') => {
@@ -1743,22 +1773,16 @@ export const UnifiedProfileEditor: React.FC = () => {
                 />
               )}
 
-              {/* Appearance Tab */}
+              {/* Appearance Tab - Using Mobile-First Appearance Panel */}
               {activeTab === 'appearance' && (
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Palette className="w-6 h-6 text-purple-500" />
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Customize Appearance</h2>
-                  </div>
-                  <AppearancePanel
+                <div className="h-full flex flex-col">
+                  <MobileFirstAppearancePanel
                     settings={appearance}
                     onChange={handleAppearanceChange}
                     profileData={{
                       username: formData.username || '',
                       displayName: formData.displayName || '',
-                      bio: formData.bio,
                       avatar: avatarUrl,
-                      logo: logoUrl,
                     }}
                   />
                 </div>
@@ -1841,7 +1865,7 @@ export const UnifiedProfileEditor: React.FC = () => {
           <div className="hidden lg:block w-80 flex-shrink-0">
             <div className="sticky top-24">
               <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-4 text-center">Live Preview</h3>
-              <MobilePreview
+              <EnhancedMobilePreview
                 profile={{
                   username: formData.username || '',
                   displayName: formData.displayName || '',

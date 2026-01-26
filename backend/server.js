@@ -4,10 +4,14 @@ const path = require('path');
 const fs = require('fs');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Import centralized rate limiters
 const { apiLimiter, authLimiter } = require('./middleware/rateLimit');
+
+// Import authentication middleware
+const { authenticateToken, optionalAuth, ENABLE_AUTH } = require('./middleware/auth');
+const { checkSubscription } = require('./middleware/subscription');
 
 // CORS Configuration - Origin Whitelisting
 const parseAllowedOrigins = () => {
@@ -194,7 +198,10 @@ app.use(helmet({
 
     // Cross-Origin policies for enhanced isolation
     crossOriginEmbedderPolicy: false, // Disabled to allow Google OAuth iframes
-    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }, // Allow OAuth popups
+    // COOP: Disabled in development to allow Vite HMR postMessage, enabled in production for security
+    crossOriginOpenerPolicy: process.env.NODE_ENV === 'production'
+        ? { policy: 'same-origin-allow-popups' } // Allow OAuth popups in production
+        : false, // Disabled in development for Vite HMR compatibility
     crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow cross-origin resources (needed for OAuth)
 }));
 
@@ -209,6 +216,10 @@ app.use((req, res, next) => {
     );
     next();
 });
+
+// Webhook handler can be added here if needed, or handled via API routes.
+// For Cashfree, we currently handle verification synchronously via /api/subscription/verify-payment.
+
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -225,7 +236,10 @@ app.use((req, res, next) => {
     next();
 });
 
-// Logging middleware
+// Import security logging middleware
+const { securityLogger } = require('./middleware/securityLogger');
+
+// Logging middleware - development only (replaced by securityLogger in production)
 app.use((req, res, next) => {
     if (process.env.NODE_ENV !== 'production') {
         console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
@@ -233,13 +247,21 @@ app.use((req, res, next) => {
     next();
 });
 
-// Serve music files
+// Security logging middleware - logs all security-relevant events
+// Always enabled in production for incident response and compliance
+if (process.env.NODE_ENV === 'production' || process.env.ENABLE_SECURITY_LOGGING === 'true') {
+    app.use(securityLogger);
+    console.log('🔒 Security logging enabled');
+}
+
+// Music files are now served from Cloudflare R2
+// Local /music static serving is deprecated - files are accessed via R2 URLs directly
+// Keeping musicDir for backward compatibility with scanner (deprecated parameter)
 const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../data/MusicFiles');
-if (fs.existsSync(musicDir)) {
-    app.use('/music', express.static(musicDir));
-    console.log(`📁 Serving music from: ${musicDir}`);
+if (process.env.R2_BUCKET_NAME) {
+    console.log(`☁️  Music files served from Cloudflare R2 bucket: ${process.env.R2_BUCKET_NAME}`);
 } else {
-    console.warn(`⚠️  Music directory not found: ${musicDir}`);
+    console.warn(`⚠️  R2 not configured - music files will not be accessible`);
 }
 
 // Serve cover art
@@ -261,34 +283,47 @@ console.log(`📤 Serving uploads from: ${uploadsDir}`);
 // Initialize camera updates routes with database
 initCameraRoutes(db);
 
+// Conditional authentication middleware wrapper
+// Only applies authentication when ENABLE_AUTH=true
+const withAuth = ENABLE_AUTH ? authenticateToken : (req, res, next) => next();
+const withOptionalAuth = optionalAuth;
+
 // API Routes with rate limiting
-// Note: Authentication is disabled for open access
-// Auth routes kept for future use but not enforced
-// Auth routes have their own stricter rate limiting applied at the route level
-app.use('/api/auth', createAuthRoutes(db));
-app.use('/api/songs', apiLimiter, createSongRoutes(db));
-app.use('/api/playlists', apiLimiter, createPlaylistRoutes(db));
-app.use('/api/visitors', apiLimiter, createVisitorRoutes(db));
-app.use('/api/contact', createContactRoutes(db)); // Contact has its own rate limiter
-app.use('/api/lyrics', apiLimiter, createLyricsRoutes(db)); // AI Lyrics generation
-app.use('/api/album-covers', apiLimiter, createAlbumCoverRoutes(db)); // AI Album cover generation
-app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter);
+// Authentication applied conditionally based on ENABLE_AUTH environment variable
+// Set ENABLE_AUTH=true in .env to enable authentication for protected routes
+const authRoutes = createAuthRoutes(db);
+app.use('/api/auth', authRoutes);
+
+// Subscription routes
+const { createSubscriptionRoutes } = require('./routes/subscription');
+app.use('/api/subscription', createSubscriptionRoutes(db));
+
+// Protected routes (require authentication when ENABLE_AUTH=true)
+// Apply checkSubscription to core services
+app.use('/api/songs', apiLimiter, withAuth, checkSubscription, createSongRoutes(db));
+app.use('/api/playlists', apiLimiter, withAuth, checkSubscription, createPlaylistRoutes(db));
+app.use('/api/visitors', apiLimiter, withOptionalAuth, createVisitorRoutes(db)); // Optional auth for tracking
+app.use('/api/contact', createContactRoutes(db)); // Contact has its own rate limiter, public access
+app.use('/api/lyrics', apiLimiter, withAuth, checkSubscription, createLyricsRoutes(db)); // AI Lyrics generation
+app.use('/api/album-covers', apiLimiter, withAuth, checkSubscription, createAlbumCoverRoutes(db)); // AI Album cover generation
+app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter); // Public camera updates
 
 // Virtual Profile routes
-app.use('/api/public', publicProfilesRouter); // No auth required - includes public profile
+app.use('/api/public', publicProfilesRouter); // No auth required - public profiles
 app.use('/api/public/profile', vcardsRouter); // vCard downloads (mounted at /api/public/profile/:username/vcard)
 app.use('/api/appearance', appearanceRouter); // Public appearance route (no auth for public/:username/appearance)
-app.use('/api/profiles', apiLimiter, profilesRouter); // Auth required - profile CRUD
-app.use('/api/profiles', apiLimiter, socialLinksRouter); // Auth required - social links (mounted under /api/profiles)
-app.use('/api/profiles', apiLimiter, appearanceRouter); // Auth required - appearance settings (mounted under /api/profiles)
-app.use('/api/themes', themesRouter); // System themes public, custom themes auth
-app.use('/api/fonts', fontsRouter); // Font options public  
-app.use('/api/qr-codes', apiLimiter, qrCodesRouter); // Auth required - QR generation
-app.use('/api/analytics', apiLimiter, analyticsRouter); // Auth required - analytics
-app.use('/api/uploads', apiLimiter, uploadsRouter); // Auth required - file uploads
+// Profiles editing requires subscription
+app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, profilesRouter); // Auth required - profile CRUD
+app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, socialLinksRouter); // Auth required - social links
+app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, appearanceRouter); // Auth required - appearance settings
+app.use('/api/themes', withAuth, checkSubscription, themesRouter); // Auth required for custom themes
+app.use('/api/fonts', fontsRouter); // Font options public
+app.use('/api/qr-codes', apiLimiter, withAuth, qrCodesRouter); // Auth required - QR generation
+app.use('/api/analytics', apiLimiter, withAuth, analyticsRouter); // Auth required - analytics
+app.use('/api/uploads', apiLimiter, withAuth, uploadsRouter); // Auth required - file uploads
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check (always public, with rate limiting)
+app.get('/api/health', apiLimiter, (req, res) => {
     res.json({
         status: 'ok',
         uptime: process.uptime(),
@@ -303,6 +338,7 @@ if (fs.existsSync(frontendDist)) {
     app.use(express.static(frontendDist));
 
     // SPA fallback - serve index.html for all non-API routes
+    // Note: /music route is deprecated (music now served from R2)
     app.get('*', (req, res) => {
         if (!req.path.startsWith('/api') && !req.path.startsWith('/music')) {
             res.sendFile(path.join(frontendDist, 'index.html'));
@@ -359,6 +395,7 @@ let scanIntervalId = null;
 let scanRetryTimeoutId = null;
 let isScanning = false;
 let cameraScraperIntervalId = null;
+let subscriptionExpirationIntervalId = null;
 
 // Cleanup function for graceful shutdown
 const cleanupScheduledTasks = () => {
@@ -373,6 +410,10 @@ const cleanupScheduledTasks = () => {
     if (cameraScraperIntervalId) {
         clearInterval(cameraScraperIntervalId);
         cameraScraperIntervalId = null;
+    }
+    if (subscriptionExpirationIntervalId) {
+        clearInterval(subscriptionExpirationIntervalId);
+        subscriptionExpirationIntervalId = null;
     }
 };
 
@@ -403,12 +444,20 @@ server.listen(PORT, '0.0.0.0', () => {
   `);
 
     console.log('🎯 Ready to serve music!');
-    console.log('⚠️  Running in OPEN ACCESS mode - no authentication required');
-    console.log(`🔒 CORS: Whitelisted origins: ${allowedOrigins.join(', ')}`);
+
+    if (ENABLE_AUTH) {
+        console.log('🔒 Authentication: ENABLED ✅');
+        console.log('   Protected routes require valid JWT token');
+    } else {
+        console.warn('⚠️  Authentication: DISABLED - OPEN ACCESS MODE');
+        console.warn('   Set ENABLE_AUTH=true in .env to enable authentication');
+    }
+
+    console.log(`🌐 CORS: Whitelisted origins: ${allowedOrigins.join(', ')}`);
     console.log('');
 
-    // Schedule music scan (every 12 hours) with safety boundaries and retry logic
-    const SCAN_INTERVAL_MS = 12 * 60 * 60 * 1000; // 12 hours
+    // Schedule music scan (every 24 hours) with safety boundaries and retry logic
+    const SCAN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
     const MAX_RETRIES = 3;
     const RETRY_DELAY_MS = 5000; // 5 seconds between retries
     const { scanMusicDirectory } = require('./services/musicScanner');
@@ -430,11 +479,13 @@ server.listen(PORT, '0.0.0.0', () => {
         console.log(`🔄 Starting scheduled music scan (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})...`);
 
         try {
+            // musicDir parameter is deprecated - scanner now uses R2 directly
+            // Kept for backward compatibility
             const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../data/MusicFiles');
 
-            // Run the scan
+            // Run the R2 scan
             const result = await scanMusicDirectory(db, musicDir);
-            console.log('✅ Scheduled scan complete:', result);
+            console.log('✅ Scheduled R2 scan complete:', result);
 
         } catch (error) {
             console.error(`❌ Scheduled scan failed (Attempt ${retryCount + 1}):`, error.message);
@@ -456,9 +507,16 @@ server.listen(PORT, '0.0.0.0', () => {
         }
     }
 
-    console.log('⏰ Scheduling music scan (Every 12 hours)...');
+    console.log('⏰ Scheduling music scan (Every 24 hours)...');
 
-    // Start the interval
+    // Run initial scan on startup (after a short delay to ensure DB is ready)
+    setTimeout(() => {
+        runSafeScan().catch(err => {
+            console.error('❌ Critical error during initial scan:', err);
+        });
+    }, 5000); // 5 second delay
+
+    // Start the interval for periodic scans
     scanIntervalId = setInterval(() => {
         // Wrap in top-level try-catch to guarantee server stability
         try {
@@ -509,6 +567,44 @@ server.listen(PORT, '0.0.0.0', () => {
     const CAMERA_SCRAPE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
     cameraScraperIntervalId = setInterval(runCameraScraper, CAMERA_SCRAPE_INTERVAL);
     console.log('⏰ Camera updates scheduled (Daily)');
+
+    // Subscription Expiration Check - Run every hour
+    console.log('💳 Initializing Subscription Expiration Check...');
+
+    async function checkExpiredSubscriptions() {
+        try {
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                UPDATE users 
+                SET subscription_status = 'expired'
+                WHERE subscription_status IN ('free', 'active', 'paid')
+                  AND subscription_end_date < ?
+                  AND subscription_status != 'expired'
+            `).run(now);
+
+            if (result.changes > 0) {
+                console.log(`✅ Updated ${result.changes} expired subscription(s) to 'expired' status`);
+            }
+        } catch (error) {
+            console.error('❌ Error checking expired subscriptions:', error.message);
+            console.error(error.stack);
+        }
+    }
+
+    // Run immediately on startup, then every hour
+    setTimeout(() => {
+        checkExpiredSubscriptions().catch(err => {
+            console.error('❌ Initial subscription expiration check failed:', err);
+        });
+    }, 3000);
+
+    const SUBSCRIPTION_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
+    subscriptionExpirationIntervalId = setInterval(() => {
+        checkExpiredSubscriptions().catch(err => {
+            console.error('❌ Subscription expiration check error:', err);
+        });
+    }, SUBSCRIPTION_CHECK_INTERVAL);
+    console.log('⏰ Subscription expiration check scheduled (Hourly)');
 });
 
 // Graceful shutdown

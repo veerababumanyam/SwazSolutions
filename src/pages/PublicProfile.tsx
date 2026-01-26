@@ -7,6 +7,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { profileService, PublicProfileResponse } from '../services/profileService';
 import PublicProfileView from '../components/public-profile/PublicProfileView';
+import { EnhancedPublicProfileView } from '../components/public-profile/PublicProfileView.enhanced';
+// NEW: Mobile-first profile renderer
+import { MobileFirstProfileRenderer } from '../components/public-profile/ProfileRenderer.mobile';
 import { ProfileSEO } from '../components/ProfileSEO';
 
 interface PublicProfileProps { }
@@ -207,7 +210,7 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
   // Build profile URL for SEO and sharing
   const profileUrl = `${window.location.origin}/u/${encodeURIComponent(profile.username)}`;
 
-  // Success state - display profile using PublicProfileView
+  // Success state - display profile using MobileFirstProfileRenderer
   return (
     <>
       {/* SEO: Schema.org structured data and meta tags */}
@@ -216,13 +219,14 @@ export const PublicProfile: React.FC<PublicProfileProps> = () => {
         links={allLinks}
         profileUrl={profileUrl}
       />
-      <PublicProfileView
+      <MobileFirstProfileRenderer
         profile={profileData}
         links={allLinks}
         appearance={profile.appearance}
         profileUrl={profileUrl}
         onDownloadVCard={handleDownloadVCard}
         onShare={handleShare}
+        isPreview={false}
       />
     </>
   );

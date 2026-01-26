@@ -29,12 +29,10 @@ export function loadLocalFonts(): Promise<void> {
 
         link.onload = () => {
             fontsLoaded = true;
-            console.log('✅ Local fonts loaded successfully');
             resolve();
         };
 
         link.onerror = () => {
-            console.error('❌ Failed to load local fonts from /fonts/fonts.css');
             reject(new Error('Failed to load local fonts'));
         };
 
@@ -54,8 +52,8 @@ export function areFontsLoaded(): boolean {
  * Call this in your main App component on mount
  */
 export function preloadFonts(): void {
-    loadLocalFonts().catch(err => {
-        console.warn('Failed to preload fonts:', err);
+    loadLocalFonts().catch(() => {
+        // Silently handle font loading errors
     });
 }
 

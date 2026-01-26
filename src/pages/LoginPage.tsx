@@ -17,6 +17,7 @@ export const LoginPage: React.FC = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [googleLoaded, setGoogleLoaded] = useState(false);
+    const [googleError, setGoogleError] = useState<string | null>(null);
     const [focusedField, setFocusedField] = useState<string | null>(null);
     const { login } = useAuth();
     const { showToast } = useToast();
@@ -68,14 +69,48 @@ export const LoginPage: React.FC = () => {
     }, [handleGoogleCallback]);
 
     useEffect(() => {
+        // #region agent log
+        const origin = window.location.origin;
+        const fullUrl = window.location.href;
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LoginPage.tsx:70',message:'LoginPage mounted - capturing origin',data:{origin,fullUrl,clientId,protocol:window.location.protocol,host:window.location.host,port:window.location.port},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
+        // Suppress Google OAuth console errors
+        const originalError = console.error;
+        const errorFilter = (message: any, ...args: any[]) => {
+            if (typeof message === 'string' && (
+                message.includes('GSI_LOGGER') ||
+                message.includes('The given origin is not allowed') ||
+                message.includes('credential_button_library')
+            )) {
+                // #region agent log
+                const origin = window.location.origin;
+                const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+                fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LoginPage.tsx:75',message:'Google OAuth origin error detected',data:{origin,clientId,errorMessage:message,errorArgs:args.map(a=>String(a))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                // Set user-facing error message
+                if (message.includes('The given origin is not allowed')) {
+                    setGoogleError(`Google Sign-In is not configured for ${origin}. Please add this origin to your Google Cloud Console OAuth client settings.`);
+                }
+                return; // Suppress Google OAuth configuration errors
+            }
+            originalError(message, ...args);
+        };
+        console.error = errorFilter;
+
         // Check if script already exists
         const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
         
         const initializeGoogleSignIn = () => {
             if (window.google && googleButtonRef.current && !initializedRef.current) {
                 try {
+                    // #region agent log
+                    const origin = window.location.origin;
+                    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LoginPage.tsx:91',message:'Google OAuth initialization start',data:{origin,clientId,fullUrl:window.location.href},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
                     window.google.accounts.id.initialize({
-                        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "",
+                        client_id: clientId,
                         callback: (response: any) => {
                             if (window.handleGoogleCredentialResponse) {
                                 window.handleGoogleCredentialResponse(response);
@@ -84,22 +119,33 @@ export const LoginPage: React.FC = () => {
                         auto_select: false,
                         cancel_on_tap_outside: true,
                     });
+                    // #region agent log
+                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LoginPage.tsx:103',message:'Google OAuth initialize() called successfully',data:{origin,clientId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
                     
                     window.google.accounts.id.renderButton(
                         googleButtonRef.current,
                         { 
                             theme: "outline", 
                             size: "large", 
-                            width: 380,
                             text: "continue_with",
                             shape: "pill",
                             logo_alignment: "center"
                         }
                     );
+                    // #region agent log
+                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LoginPage.tsx:114',message:'Google OAuth renderButton() called successfully',data:{origin,clientId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
                     initializedRef.current = true;
                     setGoogleLoaded(true);
                 } catch (error) {
-                    console.error('Error initializing Google Sign-In:', error);
+                    // #region agent log
+                    const origin = window.location.origin;
+                    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'LoginPage.tsx:116',message:'Google OAuth initialization error',data:{origin,clientId,error:error instanceof Error?error.message:String(error),errorStack:error instanceof Error?error.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
+                    // #endregion
+                    // Silently handle initialization errors
+                    setGoogleLoaded(false);
                 }
             }
         };
@@ -124,6 +170,7 @@ export const LoginPage: React.FC = () => {
 
         return () => {
             initializedRef.current = false;
+            console.error = originalError; // Restore original console.error
         };
     }, []);
 
@@ -190,6 +237,29 @@ export const LoginPage: React.FC = () => {
 
                     {/* Google Sign In - Primary CTA - Always Highlighted */}
                     <div className="mb-8">
+                        {/* Error message for Google OAuth configuration issues */}
+                        {googleError && (
+                            <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
+                                <p className="text-sm text-yellow-600 dark:text-yellow-400 mb-2">
+                                    <strong>Google Sign-In Configuration Issue:</strong>
+                                </p>
+                                <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-3">
+                                    {googleError}
+                                </p>
+                                <details className="text-xs">
+                                    <summary className="cursor-pointer text-yellow-600 dark:text-yellow-400 hover:underline mb-2">
+                                        How to fix this
+                                    </summary>
+                                    <ol className="list-decimal list-inside space-y-1 text-yellow-700 dark:text-yellow-300 ml-2">
+                                        <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console Credentials</a></li>
+                                        <li>Click on your OAuth 2.0 Client ID</li>
+                                        <li>Under "Authorized JavaScript origins", add: <code className="bg-yellow-500/20 px-1 rounded">{window.location.origin}</code></li>
+                                        <li>Click "SAVE" and wait 30-60 seconds</li>
+                                        <li>Refresh this page</li>
+                                    </ol>
+                                </details>
+                            </div>
+                        )}
                         {/* Prominent Google Button with animated glow */}
                         <div className="relative group">
                             {/* Animated gradient glow - always visible, stronger on hover */}
@@ -203,11 +273,11 @@ export const LoginPage: React.FC = () => {
                             ></div>
                             
                             {/* Button container */}
-                            <div className="relative bg-surface rounded-xl p-3 shadow-xl transition-all duration-300 group-hover:shadow-2xl border border-border/50 min-h-[56px]">
+                            <div className="relative bg-surface rounded-xl p-3 shadow-xl transition-all duration-300 group-hover:shadow-2xl border border-border/50 min-h-[56px] overflow-hidden">
                                 {/* Google's rendered button */}
                                 <div 
                                     ref={googleButtonRef} 
-                                    className="w-full flex justify-center items-center [&>div]:w-full [&>div>div]:w-full [&>div>div>div]:justify-center"
+                                    className="w-full max-w-full flex justify-center items-center [&>div]:w-full [&>div]:max-w-full [&>div>div]:w-full [&>div>div]:max-w-full [&>div>div>div]:justify-center [&>div>div>div]:max-w-full"
                                 ></div>
                                 
                                 {/* Fallback custom button if Google button doesn't load */}

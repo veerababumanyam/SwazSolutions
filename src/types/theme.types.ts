@@ -68,13 +68,16 @@ export interface ThemeHeaderBackground {
 
 // Theme categories - WCAG 2.1 AA compliant design system
 export type ThemeCategory =
-    | 'aurora'      // Soft, flowing gradient themes
-    | 'gradient'    // Bold, vibrant modern gradients
-    | 'glass'       // Glassmorphism 2.0 with frosted effects
-    | 'minimal'     // Clean, typography-focused
-    | 'dark'        // Rich dark mode themes
-    | 'visual'      // Hero photo themes
-    | 'custom'      // User-created or AI-generated themes
+    | 'aurora'        // Soft, flowing gradient themes
+    | 'gradient'      // Bold, vibrant modern gradients
+    | 'glass'         // Glassmorphism 2.0 with frosted effects
+    | 'minimal'       // Clean, typography-focused
+    | 'dark'          // Rich dark mode themes
+    | 'visual'        // Hero photo themes
+    | 'pastel'        // Soft, dreamy color palettes
+    | 'neon'          // Vibrant, cyber-inspired themes
+    | 'brutal'        // Modern brutalist aesthetics
+    | 'custom'        // User-created or AI-generated themes
     | 'ai-generated'; // AI-generated themes
 
 export interface Theme {
@@ -172,6 +175,21 @@ export const THEME_CATEGORY_META: Record<ThemeCategory, { label: string; descrip
         label: 'Visual',
         description: 'Hero photo themes with profile image as header',
         icon: '📷'
+    },
+    pastel: {
+        label: 'Pastel',
+        description: 'Soft, dreamy color palettes',
+        icon: '🌸'
+    },
+    neon: {
+        label: 'Neon',
+        description: 'Vibrant, cyber-inspired themes',
+        icon: '💡'
+    },
+    brutal: {
+        label: 'Brutal',
+        description: 'Modern brutalist aesthetics',
+        icon: '🔲'
     },
     custom: {
         label: 'Custom',

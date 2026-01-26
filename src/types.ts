@@ -186,7 +186,8 @@ export interface ApiSong {
     artist?: string;
     album?: string;
     duration?: number;
-    file_path: string;
+    file_path?: string; // Deprecated - use stream_url instead for security
+    stream_url?: string; // Secure streaming endpoint
     genre?: string;
     cover_path?: string | null;
     // Extended metadata from music_metadata table

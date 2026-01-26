@@ -4,11 +4,32 @@
 const db = require('../config/database');
 
 /**
- * Verify profile ownership
- * Checks that req.user.id matches the user_id of the profile being accessed
- * Expects profile identifier in req.params.profileId or req.params.username
- * Attaches profile to req.profile if found and owned by user
+ * Pre-defined prepared statements for resource ownership checks
+ * This approach eliminates SQL injection risk by avoiding dynamic SQL
+ * Map table names to their prepared statements
  */
+const RESOURCE_QUERIES = Object.freeze({
+    social_profiles: 'SELECT * FROM social_profiles WHERE id = ? AND profile_id = ?',
+    custom_links: 'SELECT * FROM custom_links WHERE id = ? AND profile_id = ?',
+    themes: 'SELECT * FROM themes WHERE id = ? AND profile_id = ?',
+    profile_appearance: 'SELECT * FROM profile_appearance WHERE id = ? AND profile_id = ?',
+    fonts: 'SELECT * FROM fonts WHERE id = ? AND profile_id = ?',
+    profile_views: 'SELECT * FROM profile_views WHERE id = ? AND profile_id = ?',
+    share_events: 'SELECT * FROM share_events WHERE id = ? AND profile_id = ?',
+    vcard_downloads: 'SELECT * FROM vcard_downloads WHERE id = ? AND profile_id = ?'
+});
+
+/**
+ * Get safe query for table name
+ * @param {string} tableName - Table name to get query for
+ * @returns {string|null} - SQL query string or null if table not allowed
+ */
+function getSafeResourceQuery(tableName) {
+    if (!tableName || typeof tableName !== 'string') {
+        return null;
+    }
+    return RESOURCE_QUERIES[tableName] || null;
+}
 const profileOwnership = (req, res, next) => {
   const userId = req.user?.id;
   const { profileId, username } = req.params;
@@ -57,52 +78,63 @@ const profileOwnership = (req, res, next) => {
 /**
  * Verify ownership of related resources (social links, themes, etc.)
  * Generic middleware that checks if a resource belongs to user's profile
+ * @param {string} tableName - Name of the table to query (MUST be in RESOURCE_QUERIES)
+ * @param {string} resourceIdParam - Name of the route parameter containing the resource ID
  */
 const resourceOwnership = (tableName, resourceIdParam = 'id') => {
-  return (req, res, next) => {
-    const userId = req.user?.id;
-    const resourceId = req.params[resourceIdParam];
+    return (req, res, next) => {
+        const userId = req.user?.id;
+        const resourceId = req.params[resourceIdParam];
 
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
+        if (!userId) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
 
-    if (!resourceId) {
-      return res.status(400).json({ error: `${resourceIdParam} is required` });
-    }
+        if (!resourceId) {
+            return res.status(400).json({ error: `${resourceIdParam} is required` });
+        }
 
-    try {
-      // Get user's profile ID
-      const profileStmt = db.prepare('SELECT id FROM profiles WHERE user_id = ?');
-      const profile = profileStmt.get(userId);
+        // Get safe pre-defined query for this table
+        const safeQuery = getSafeResourceQuery(tableName);
 
-      if (!profile) {
-        return res.status(404).json({ error: 'Profile not found' });
-      }
+        if (!safeQuery) {
+            console.error(`Security Alert: Invalid table name attempted: "${tableName}" by user ${userId}`);
+            return res.status(400).json({
+                error: 'Invalid resource type',
+                code: 'INVALID_RESOURCE_TYPE'
+            });
+        }
 
-      // Check resource ownership
-      const resourceStmt = db.prepare(
-        `SELECT * FROM ${tableName} WHERE id = ? AND profile_id = ?`
-      );
-      const resource = resourceStmt.get(resourceId, profile.id);
+        try {
+            // Get user's profile ID
+            const profileStmt = db.prepare('SELECT id FROM profiles WHERE user_id = ?');
+            const profile = profileStmt.get(userId);
 
-      if (!resource) {
-        return res.status(404).json({ 
-          error: `Resource not found or access denied`,
-          resourceId: parseInt(resourceId)
-        });
-      }
+            if (!profile) {
+                return res.status(404).json({ error: 'Profile not found' });
+            }
 
-      // Attach resource to request
-      req.resource = resource;
-      req.profile = profile;
-      next();
+            // Check resource ownership using safe pre-defined query
+            const resourceStmt = db.prepare(safeQuery);
+            const resource = resourceStmt.get(resourceId, profile.id);
 
-    } catch (error) {
-      console.error(`Error verifying ${tableName} ownership:`, error);
-      res.status(500).json({ error: 'Failed to verify resource ownership' });
-    }
-  };
+            if (!resource) {
+                return res.status(404).json({
+                    error: `Resource not found or access denied`,
+                    code: 'RESOURCE_NOT_FOUND'
+                });
+            }
+
+            // Attach resource to request
+            req.resource = resource;
+            req.profile = profile;
+            next();
+
+        } catch (error) {
+            console.error(`Error verifying ${tableName} ownership:`, error);
+            res.status(500).json({ error: 'Failed to verify resource ownership' });
+        }
+    };
 };
 
 module.exports = { profileOwnership, resourceOwnership };

@@ -9,8 +9,8 @@
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 
 // Model Configuration
-const DEFAULT_MODEL_FAST = process.env.GEMINI_MODEL_FAST || 'gemini-2.5-flash';
-const DEFAULT_MODEL_QUALITY = process.env.GEMINI_MODEL_QUALITY || 'gemini-2.5-pro';
+const DEFAULT_MODEL_FAST = process.env.GEMINI_MODEL_FAST || 'gemini-3.0-flash';
+const DEFAULT_MODEL_QUALITY = process.env.GEMINI_MODEL_QUALITY || 'gemini-3.0-pro';
 
 /**
  * Language Metadata for 23 languages including all Indian languages

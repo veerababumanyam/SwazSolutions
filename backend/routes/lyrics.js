@@ -334,8 +334,8 @@ function createLyricsRoutes(db) {
     res.json({
       success: true,
       data: {
-        modelFast: process.env.GEMINI_MODEL_FAST || 'gemini-2.5-flash',
-        modelQuality: process.env.GEMINI_MODEL_QUALITY || 'gemini-2.5-pro',
+        modelFast: process.env.GEMINI_MODEL_FAST || 'gemini-3.0-flash',
+        modelQuality: process.env.GEMINI_MODEL_QUALITY || 'gemini-3.0-pro',
         hasServerKey: !!process.env.GEMINI_API_KEY,
         requiresClientKey: !process.env.GEMINI_API_KEY
       }

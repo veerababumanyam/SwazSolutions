@@ -65,6 +65,48 @@ const generateFilename = (extension) => {
 };
 
 /**
+ * Safely resolve a file path within the uploads directory
+ * Prevents path traversal attacks by validating the resolved path
+ * @param {string} userPath - User-provided path (relative to /uploads/)
+ * @param {string} uploadDir - Base upload directory (absolute path)
+ * @returns {string|null} - Resolved safe path or null if invalid
+ */
+const safeResolvePath = (userPath, uploadDir) => {
+  // Validate inputs
+  if (!userPath || typeof userPath !== 'string') {
+    return null;
+  }
+
+  // Normalize the user path to remove any directory traversal attempts
+  const normalizedUserPath = path.normalize(userPath).replace(/^(\.\.(\/|\\|$))+/, '');
+
+  // Check for suspicious patterns
+  if (normalizedUserPath.includes('..') || normalizedUserPath.includes('~') || normalizedUserPath.startsWith('/')) {
+    console.error('Security Alert: Suspicious path pattern detected:', normalizedUserPath);
+    return null;
+  }
+
+  // Construct the full file path
+  const fullPath = path.join(uploadDir, path.basename(normalizedUserPath));
+
+  // Resolve to absolute path and normalize
+  const resolvedPath = path.resolve(fullPath);
+  const resolvedUploadDir = path.resolve(uploadDir);
+
+  // Verify the resolved path is within the upload directory
+  if (!resolvedPath.startsWith(resolvedUploadDir)) {
+    console.error('Security Alert: Path traversal attempt detected:', {
+      userPath,
+      resolvedPath,
+      uploadDir: resolvedUploadDir
+    });
+    return null;
+  }
+
+  return resolvedPath;
+};
+
+/**
  * Convert image to WebP format for optimization
  * Only used for header backgrounds to reduce file size while maintaining quality
  * @param {Buffer} imageData - The original image buffer
@@ -401,10 +443,13 @@ router.delete('/avatar', async (req, res) => {
     // Get current avatar URL to delete the file
     const profile = db.prepare('SELECT avatar_url FROM profiles WHERE user_id = ?').get(req.user.id);
 
-    if (profile && profile.avatar_url && profile.avatar_url.startsWith('/uploads/')) {
-      const filepath = path.join(__dirname, '../../public', profile.avatar_url);
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
+    if (profile && profile.avatar_url && profile.avatar_url.startsWith('/uploads/avatars/')) {
+      // Extract filename from URL and validate path
+      const filename = path.basename(profile.avatar_url);
+      const safePath = safeResolvePath(filename, UPLOAD_DIRS.avatars);
+
+      if (safePath && fs.existsSync(safePath)) {
+        fs.unlinkSync(safePath);
       }
     }
 
@@ -436,10 +481,13 @@ router.delete('/logo', async (req, res) => {
     // Get current logo URL to delete the file
     const profile = db.prepare('SELECT logo_url FROM profiles WHERE user_id = ?').get(req.user.id);
 
-    if (profile && profile.logo_url && profile.logo_url.startsWith('/uploads/')) {
-      const filepath = path.join(__dirname, '../../public', profile.logo_url);
-      if (fs.existsSync(filepath)) {
-        fs.unlinkSync(filepath);
+    if (profile && profile.logo_url && profile.logo_url.startsWith('/uploads/logos/')) {
+      // Extract filename from URL and validate path
+      const filename = path.basename(profile.logo_url);
+      const safePath = safeResolvePath(filename, UPLOAD_DIRS.logos);
+
+      if (safePath && fs.existsSync(safePath)) {
+        fs.unlinkSync(safePath);
       }
     }
 
@@ -545,9 +593,12 @@ router.delete('/social-logo', async (req, res) => {
       return res.status(400).json({ error: 'Invalid logo URL' });
     }
 
-    const filepath = path.join(__dirname, '../../public', url);
-    if (fs.existsSync(filepath)) {
-      fs.unlinkSync(filepath);
+    // Extract filename from URL and validate path
+    const filename = path.basename(url);
+    const safePath = safeResolvePath(filename, UPLOAD_DIRS.socialLogos);
+
+    if (safePath && fs.existsSync(safePath)) {
+      fs.unlinkSync(safePath);
     }
 
     res.json({ success: true, message: 'Social logo removed' });

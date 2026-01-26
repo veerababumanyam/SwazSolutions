@@ -87,8 +87,8 @@ export const validateModelName = (modelName: string): ValidationResult => {
   }
 
   const validModels = [
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
+    'gemini-3.0-flash',
+    'gemini-3.0-pro',
     'gemini-3-pro-preview',
     'imagen-3.0-generate-001',
     'imagen-4.0-generate-001'

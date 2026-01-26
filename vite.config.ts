@@ -14,10 +14,7 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:3000',
           changeOrigin: true
         },
-        '/music': {
-          target: 'http://localhost:3000',
-          changeOrigin: true
-        },
+        // /music proxy removed - music files are now served directly from Cloudflare R2
         '/uploads': {
           target: 'http://localhost:3000',
           changeOrigin: true
@@ -33,7 +30,12 @@ export default defineConfig(({ mode }) => {
         port: 5173
       }
     },
-    plugins: [react()],
+    plugins: [
+      react({
+        // Allow Fast Refresh for files with mixed component/hook exports
+        exclude: /node_modules/
+      })
+    ],
     css: {
       postcss: './postcss.config.cjs',
     },

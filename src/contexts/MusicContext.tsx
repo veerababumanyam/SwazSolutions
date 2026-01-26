@@ -4,6 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import { Howl, Howler } from 'howler';
 import { Song, RepeatMode, Playlist, Album, EqualizerSettings, ApiSong, ApiAlbum } from '../types'; // Fixed import path
 import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface MusicContextType {
     // Playback State
@@ -60,7 +61,7 @@ interface MusicContextType {
     toggleLike: (id: string) => void;
     addToQueue: (song: Song) => void;
     setQueue: React.Dispatch<React.SetStateAction<Song[]>>;
-    playTrackByIndex: (index: number, list: Song[]) => void;
+    playTrackByIndex: (index: number, list: Song[]) => Promise<void>;
     clearError: () => void;
 
     // Data Actions
@@ -81,7 +82,10 @@ const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
 const DEFAULT_EQ: EqualizerSettings = { bass: 0, mid: 0, treble: 0, preamp: 0 };
 
-export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children }) => {
+    // Get authentication state
+    const { isAuthenticated, loading: authLoading } = useAuth();
+    
     // Refs
     const soundRef = useRef<Howl | null>(null);
     const soundIdRef = useRef<number | null>(null);
@@ -244,26 +248,43 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // --- Library Management ---
     const refreshLibrary = async () => {
-        setIsScanning(true);
-        try {
-            // Trigger backend scan first
-            await api.songs.scan();
+        // #region agent log
+        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MusicContext.tsx:250',message:'refreshLibrary called',data:{authLoading,isAuthenticated},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
+        // #endregion
 
-            // Then fetch songs from API
+        // Wait for auth to finish loading before making requests
+        if (authLoading) {
+            setIsScanning(false);
+            return;
+        }
+
+        // Skip library loading if not authenticated (when auth is required)
+        // Note: If backend has ENABLE_AUTH=false, this will still attempt the request
+        // and handle 401 gracefully in the catch block
+        if (!isAuthenticated) {
+            setIsScanning(false);
+            return;
+        }
+
+        setIsScanning(false); // Don't show scanning - backend handles it automatically
+        try {
+            // Load existing songs and albums (backend scans automatically every 24 hours)
+            // No need to trigger scan manually - just fetch what's already in the database
             const { songs } = await api.songs.list({ limit: 1000 });
             const albumsData = await api.songs.getAlbums();
 
             // Convert API response to Song format (including extended metadata)
-            const formattedSongs: Song[] = songs.map((s: ApiSong) => ({
+            // SECURITY: Use secure streaming endpoint instead of direct file paths
+            const formattedSongs: Song[] = songs.map((s: ApiSong) => {
+                return {
                 id: s.id.toString(),
                 title: s.title,
                 artist: s.artist || 'Unknown Artist',
                 album: s.album || 'Unknown Album',
                 duration: s.duration || 0,
-                // Use relative URLs in development to leverage Vite proxy
-                // In production, these should be absolute URLs
                 cover: s.cover_path || '/placeholder-album.png',
-                src: s.file_path,
+                // Use secure streaming endpoint - never expose R2 URLs directly
+                src: s.stream_url || `/api/songs/${s.id}/stream`,
                 genre: s.genre,
                 // Extended metadata
                 bitRate: s.bit_rate,
@@ -276,7 +297,8 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 fileSize: s.file_size,
                 lyrics: s.lyrics,
                 composer: s.composer,
-            }));
+            };
+            });
 
             // Convert albums and link songs
             const formattedAlbums: Album[] = albumsData.map((a: ApiAlbum) => {
@@ -301,8 +323,21 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             setAlbums(formattedAlbums);
             setLastScanTime(Date.now());
         } catch (e) {
-            console.error("Failed to load library:", e);
-            setError("Failed to connect to backend server.");
+            // Handle authentication errors gracefully - don't show error for expected 401s
+            const isAuthError = e instanceof Error && (
+                e.message.includes('Authentication required') || 
+                e.message.includes('401') ||
+                e.message.includes('Unauthorized')
+            );
+            
+            if (isAuthError) {
+                // Silently skip - user is not authenticated, which is expected
+                console.log("Library loading skipped - authentication required");
+            } else {
+                // Only show error for non-auth failures
+                console.error("Failed to load library:", e);
+                setError("Failed to connect to backend server.");
+            }
         } finally {
             setIsScanning(false);
         }
@@ -314,18 +349,37 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // --- Initialization ---
     useEffect(() => {
-        const initialize = async () => {
-            await refreshLibrary();
-            // Setup Audio Nodes
-            setupAudioNodes();
-            // Session restore now happens in separate useEffect when library loads
-        };
+        // Setup Audio Nodes (always, regardless of auth)
+        setupAudioNodes();
+        
+        // Only start polling after auth finishes loading
+        if (authLoading) {
+            return;
+        }
 
-        initialize();
+        // Only try to load library if authenticated
+        // If not authenticated, refreshLibrary will skip anyway, but this avoids unnecessary calls
+        if (isAuthenticated) {
+            refreshLibrary();
+        }
 
-        const pollInterval = setInterval(refreshLibrary, 60000);
+        // Poll for library updates every 5 minutes (only if authenticated)
+        // Backend scans every 24 hours, so we just check for new data periodically
+        const pollInterval = setInterval(() => {
+            if (isAuthenticated) {
+                refreshLibrary();
+            }
+        }, 5 * 60 * 1000); // 5 minutes
+        
         return () => clearInterval(pollInterval);
-    }, []);
+    }, [isAuthenticated, authLoading]);
+
+    // Load library when user becomes authenticated
+    useEffect(() => {
+        if (!authLoading && isAuthenticated && library.length === 0) {
+            refreshLibrary();
+        }
+    }, [isAuthenticated, authLoading]);
 
     // Event-based session restore - triggers when library loads
     useEffect(() => {
@@ -363,16 +417,41 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
                     // Validate the audio source
                     if (!song.src || typeof song.src !== 'string') {
-                        console.warn('Invalid audio source in session, clearing session');
+                        // Don't log URLs - just clear invalid session
                         localStorage.removeItem('swaz_music_session');
                         return;
                     }
+
+                    // Clean up any existing sound before creating new one
+                    if (soundRef.current) {
+                        try {
+                            soundRef.current.stop();
+                            soundRef.current.unload();
+                        } catch (e) {
+                            // Ignore cleanup errors
+                        }
+                        soundRef.current = null;
+                    }
+
+                    // Determine format from URL extension or default to common formats
+                    const getFormatFromUrl = (url: string): string[] => {
+                        const extension = url.split('.').pop()?.toLowerCase();
+                        const formatMap: Record<string, string[]> = {
+                            'mp3': ['mp3'],
+                            'wav': ['wav'],
+                            'ogg': ['ogg'],
+                            'm4a': ['m4a'],
+                            'aac': ['aac'],
+                            'flac': ['flac'],
+                        };
+                        return formatMap[extension || ''] || ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
+                    };
 
                     const sound = new Howl({
                         src: [song.src],
                         html5: true,
                         volume: 0, // Start muted to prevent autoplay
-                        format: ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'],
+                        format: getFormatFromUrl(song.src),
                         onload: () => {
                             // Seek to saved position once loaded
                             if (session.progress && session.progress > 0) {
@@ -384,22 +463,24 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                             sound.volume(session.volume || 0.8);
                         },
                         onloaderror: (_id, err) => {
-                            console.warn('Session restore skipped - audio unavailable');
+                            console.log("Session restore skipped - audio unavailable");
                             // Clear invalid session to prevent repeated errors
                             localStorage.removeItem('swaz_music_session');
                             // Unload the failed sound
-                            sound.unload();
-                            soundRef.current = null;
+                            if (soundRef.current === sound) {
+                                try {
+                                    sound.unload();
+                                    soundRef.current = null;
+                                } catch (e) {
+                                    // Ignore cleanup errors
+                                }
+                            }
                         }
                     });
 
                     soundRef.current = sound;
 
-                    console.log('✅ Session restored:', {
-                        song: song.title,
-                        position: session.progress,
-                        queueLength: restoredQueue.length
-                    });
+                    // Session restored successfully (no URL logging for security)
                 }
             }
 
@@ -471,22 +552,63 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         localStorage.setItem('swaz_liked_songs', JSON.stringify(Array.from(likedSongs)));
     }, [likedSongs]);
 
-    // --- Session Persistence: Save state on every change ---
+    // --- Session Persistence: Debounced save to avoid excessive localStorage writes ---
     useEffect(() => {
         if (!currentSong) return; // Don't save empty session
 
-        const session = {
-            currentSongId: currentSong.id,
-            progress: progress,
-            queueIds: queue.map(s => s.id),
-            currentIndex,
-            volume,
-            isShuffling,
-            repeatMode,
-            // Don't save isPlaying - user must manually resume
+        // Debounce timer ref for session persistence
+        let saveTimeout: NodeJS.Timeout | null = null;
+
+        const saveSession = () => {
+            const session = {
+                currentSongId: currentSong.id,
+                progress: progress,
+                queueIds: queue.map(s => s.id),
+                currentIndex,
+                volume,
+                isShuffling,
+                repeatMode,
+                // Don't save isPlaying - user must manually resume
+            };
+            localStorage.setItem('swaz_music_session', JSON.stringify(session));
         };
-        localStorage.setItem('swaz_music_session', JSON.stringify(session));
-    }, [currentSong, progress, queue, currentIndex, volume, isShuffling, repeatMode]);
+
+        // Clear any existing timeout
+        if (saveTimeout) {
+            clearTimeout(saveTimeout);
+        }
+
+        // Debounce save by 500ms to avoid excessive writes during rapid state changes
+        saveTimeout = setTimeout(saveSession, 500);
+
+        // Cleanup: clear timeout on unmount or before next effect
+        return () => {
+            if (saveTimeout) {
+                clearTimeout(saveTimeout);
+            }
+        };
+    }, [currentSong, queue, currentIndex, volume, isShuffling, repeatMode]); // Removed 'progress' to avoid saves during playback
+
+    // --- Progress Persistence: Save progress less frequently during playback ---
+    useEffect(() => {
+        if (!currentSong || !isPlaying) return;
+
+        // Save progress every 5 seconds during playback
+        const progressSaveInterval = setInterval(() => {
+            const currentSession = localStorage.getItem('swaz_music_session');
+            if (currentSession) {
+                try {
+                    const session = JSON.parse(currentSession);
+                    session.progress = progress;
+                    localStorage.setItem('swaz_music_session', JSON.stringify(session));
+                } catch (e) {
+                    console.error('Failed to update session progress:', e);
+                }
+            }
+        }, 5000); // Save every 5 seconds instead of on every progress update
+
+        return () => clearInterval(progressSaveInterval);
+    }, [currentSong, isPlaying, progress]);
 
     // --- Persist Individual Settings ---
     useEffect(() => {
@@ -553,7 +675,7 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // Timer for progress update
     useEffect(() => {
-        let rafId: number;
+        let rafId: number | null = null;
         const updateProgress = () => {
             if (soundRef.current && isPlaying) {
                 const seek = soundRef.current.seek();
@@ -566,19 +688,25 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (isPlaying) {
             rafId = requestAnimationFrame(updateProgress);
         }
-        return () => cancelAnimationFrame(rafId);
+        return () => {
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+            }
+        };
     }, [isPlaying]);
 
-    const playTrackByIndex = (index: number, list: Song[]) => {
+    const playTrackByIndex = async (index: number, list: Song[]) => {
         if (!list[index]) return;
 
-        // Stop previous sound
+        // Stop and unload previous sound immediately to prevent audio pool exhaustion
         if (soundRef.current) {
-            // Crossfade out?
-            soundRef.current.fade(volume, 0, 500); // 500ms fade out
-            // Stop after fade
-            const oldSound = soundRef.current;
-            setTimeout(() => oldSound.unload(), 500);
+            try {
+                soundRef.current.stop();
+                soundRef.current.unload();
+            } catch (e) {
+                // Ignore errors during cleanup
+            }
+            soundRef.current = null;
         }
 
         const song = list[index];
@@ -591,7 +719,6 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
         setError(null);
         setProgress(0);
-
         setDuration(song.duration);
 
         // Add to history
@@ -601,14 +728,58 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return newHistory;
         });
 
+        // Validate audio source
+        if (!song.src || typeof song.src !== 'string') {
+            console.error("Invalid audio source");
+            setError("Invalid audio source.");
+            return;
+        }
+
+        // Fetch presigned URL from secure endpoint if using stream_url
+        let audioSrc = song.src;
+        if (song.src?.startsWith('/api/songs/') && song.src.includes('/stream')) {
+            try {
+                const response = await fetch(song.src);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                const data = await response.json();
+                audioSrc = data.url; // Use presigned URL (never logged)
+            } catch (err) {
+                console.error("Failed to fetch presigned URL:", err);
+                setError("Error loading track.");
+                return;
+            }
+        }
+
+        // Determine format from URL extension or default to common formats
+        const getFormatFromUrl = (url: string): string[] => {
+            const extension = url.split('.').pop()?.toLowerCase();
+            const formatMap: Record<string, string[]> = {
+                'mp3': ['mp3'],
+                'wav': ['wav'],
+                'ogg': ['ogg'],
+                'm4a': ['m4a'],
+                'aac': ['aac'],
+                'flac': ['flac'],
+            };
+            return formatMap[extension || ''] || ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac'];
+        };
+
         const sound = new Howl({
-            src: [song.src],
+            src: [audioSrc],
             html5: true, // Force HTML5 Audio for large files/streaming
             volume: 0, // Start at 0 for fade in
+            format: getFormatFromUrl(audioSrc), // Specify format to help Howler.js
+            onload: () => {
+                // Sound loaded successfully
+                if (soundRef.current === sound) {
+                    sound.fade(0, volume, 500); // Fade in
+                }
+            },
             onplay: () => {
                 setIsPlaying(true);
                 setDuration(sound.duration());
-                sound.fade(0, volume, 500); // Fade in
 
                 // Ensure AudioContext is running and nodes are connected
                 if (Howler.ctx && Howler.ctx.state === 'suspended') {
@@ -627,12 +798,21 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 setProgress(0);
             },
             onloaderror: (_id, err) => {
-                console.error("Load Error:", err);
+                console.error("Load Error: Unable to load audio track");
                 setError("Error loading track.");
                 setIsPlaying(false);
+                // Clean up failed sound
+                if (soundRef.current === sound) {
+                    try {
+                        sound.unload();
+                        soundRef.current = null;
+                    } catch (e) {
+                        // Ignore cleanup errors
+                    }
+                }
             },
             onplayerror: (_id, err) => {
-                console.error("Play Error:", err);
+                console.error("Play Error: Unable to play audio track");
                 setError("Error playing track.");
                 setIsPlaying(false);
             }
@@ -886,6 +1066,10 @@ export const MusicProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         </MusicContext.Provider>
     );
 };
+
+MusicProviderComponent.displayName = 'MusicProvider';
+
+export const MusicProvider = MusicProviderComponent;
 
 export const useMusic = () => {
     const context = useContext(MusicContext);

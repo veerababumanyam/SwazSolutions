@@ -3,12 +3,13 @@
 // This ensures visual consistency between editor preview and public profile
 // Features: Modern icon-based links, action bar for QR/Share/vCard, mobile-first design
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Mail, Phone, Globe, Briefcase, Building2, Download, Share2, ExternalLink, MapPin } from 'lucide-react';
 import { getOptimalTextColor, getOptimalSecondaryTextColor, isLightColor } from '../../utils/wcagValidator';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
 import { ProfileQRCode } from './ProfileQRCode';
 import { LazyImage } from '../LazyImage';
+import { ThemeRenderer } from './ThemeRenderer';
 
 // Header background settings for Visual themes (hero-photo style)
 export interface HeaderBackgroundSettings {
@@ -90,6 +91,7 @@ interface ProfileData {
   showAddressState?: boolean;
   showAddressPostalCode?: boolean;
   showAddressCountry?: boolean;
+  showAddress?: boolean;
   // Company address fields
   companyAddressLine1?: string;
   companyAddressLine2?: string;
@@ -103,6 +105,7 @@ interface ProfileData {
   showCompanyAddressState?: boolean;
   showCompanyAddressPostalCode?: boolean;
   showCompanyAddressCountry?: boolean;
+  showCompanyAddress?: boolean;
   pronouns?: string;
   company?: string;
 }
@@ -147,18 +150,19 @@ const defaultBannerSettings: BannerSettings = {
   mode: 'color',
   color: '#8B5CF6',
   derivedFromWallpaper: true,
+  image: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80" // Modern fallback
 };
 
 const defaultAppearance: AppearanceSettings = {
-  buttonStyle: 'solid',
-  cornerRadius: 12,
+  buttonStyle: 'glass', // Default to Glass for modern feel
+  cornerRadius: 16,
   shadowStyle: 'subtle',
   buttonColor: '#8B5CF6',
   shadowColor: '#000000',
   textColor: '#FFFFFF',
   backgroundColor: '#F9FAFB',
   fontFamily: 'Inter',
-  headerStyle: 'simple',
+  headerStyle: 'simple', // Changed to simple to match screenshot
   headerColor: '#8B5CF6',
   headerBackground: defaultHeaderBackground,
   bannerSettings: defaultBannerSettings,
@@ -178,78 +182,98 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   onShare,
 }) => {
   const settings = appearance || defaultAppearance;
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  // Precise Theme Detection via data-theme attribute MutationObserver
+  useEffect(() => {
+    // Initial check
+    const checkTheme = () => {
+      const htmlTheme = document.documentElement.getAttribute('data-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      // Use html attribute first (controlled by Header), fallback to system
+      setIsDarkMode(htmlTheme === 'dark' || (!htmlTheme && prefersDark));
+    };
+
+    checkTheme();
+
+    // Create observer for dynamic changes (toggled from Header)
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+          checkTheme();
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
 
   /**
    * Get WCAG-compliant text colors based on background
    */
   const getWCAGTextColors = useCallback(() => {
     let bgColor = settings.backgroundColor;
-    
-    if (settings.wallpaper) {
+    let isDarkBg = false;
+
+    // Determine if we should treat the background as dark or light
+    if (isDarkMode && !settings.wallpaper) {
+      // If system is dark and no specific wallpaper, we are in dark mode default
+      isDarkBg = true;
+      bgColor = '#111827';
+    } else if (settings.wallpaper) {
       if (settings.wallpaper.startsWith('#') || /^[a-zA-Z]+$/.test(settings.wallpaper)) {
         bgColor = settings.wallpaper;
+        isDarkBg = !isLightColor(bgColor);
       } else if (settings.wallpaper.startsWith('linear-gradient') || settings.wallpaper.startsWith('radial-gradient')) {
+        // Assume all gradients are relatively dark for safety, or check dominant color if extracting
+        // For simpler logic, let's assume if it's a gradient and we are in dark mode, prefer light text
+        // Or check the hex match
         const hexMatch = settings.wallpaper.match(/#([0-9A-Fa-f]{3,8})\b/);
-        if (hexMatch) bgColor = `#${hexMatch[1]}`;
+        if (hexMatch) {
+          bgColor = `#${hexMatch[1]}`;
+          isDarkBg = !isLightColor(bgColor);
+        } else {
+          // Fallback for complex gradients - trust system preference or assume dark for modern vibrant designs
+          isDarkBg = true;
+        }
       }
+    } else {
+      // Solid background color
+      isDarkBg = !isLightColor(bgColor);
     }
-    
+
+    // Force high contrast
+    const nameColor = isDarkBg ? '#FFFFFF' : '#111827'; // White for dark, Gray-900 for light
+    const bioColor = isDarkBg ? '#E5E7EB' : '#4B5563'; // Gray-200 for dark, Gray-600 for light
+
     return {
-      nameColor: getOptimalTextColor(bgColor),
-      bioColor: getOptimalSecondaryTextColor(bgColor),
-      isLight: isLightColor(bgColor),
-      bgColor
+      nameColor,
+      bioColor,
+      isLight: !isDarkBg,
+      bgColor,
+      isDarkBg
     };
-  }, [settings.backgroundColor, settings.wallpaper]);
+  }, [settings.backgroundColor, settings.wallpaper, isDarkMode]);
 
   const wcagColors = getWCAGTextColors();
-
-  // Get button styles based on appearance
-  const getButtonStyle = (): React.CSSProperties => {
-    const base: React.CSSProperties = {
-      borderRadius: `${settings.cornerRadius}px`,
-      fontFamily: settings.fontFamily,
-    };
-
-    if (settings.buttonStyle === 'solid') {
-      return {
-        ...base,
-        backgroundColor: settings.buttonColor,
-        color: settings.textColor,
-        boxShadow: settings.shadowStyle === 'none' ? 'none' :
-                   settings.shadowStyle === 'subtle' ? `0 2px 4px ${settings.shadowColor}20` :
-                   settings.shadowStyle === 'strong' ? `0 4px 8px ${settings.shadowColor}40` :
-                   `2px 2px 0 ${settings.shadowColor}`,
-      };
-    } else if (settings.buttonStyle === 'glass') {
-      return {
-        ...base,
-        backgroundColor: `${settings.buttonColor}30`,
-        backdropFilter: 'blur(8px)',
-        color: settings.buttonColor,
-        border: `1px solid ${settings.buttonColor}40`,
-      };
-    } else {
-      return {
-        ...base,
-        backgroundColor: 'transparent',
-        border: `2px solid ${settings.buttonColor}`,
-        color: settings.buttonColor,
-      };
-    }
-  };
 
   // Get featured social icons for header row
   const getFeaturedSocialIcons = () => {
     return links
       .map(link => {
-        const platform = FEATURED_PLATFORMS.find(p => 
+        const platform = FEATURED_PLATFORMS.find(p =>
           link.url.toLowerCase().includes(p.pattern)
         );
         return platform ? { ...platform, link } : null;
       })
       .filter(Boolean)
-      .slice(0, 8);
+      .slice(0, 8); // Limit to top 8 icons
   };
 
   const featuredIcons = getFeaturedSocialIcons();
@@ -259,18 +283,13 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
    */
   const extractDominantColorFromGradient = (gradient: string, fallback: string): string => {
     if (!gradient) return fallback;
-    
+
     const hexMatch = gradient.match(/#([0-9A-Fa-f]{3,8})\b/);
     if (hexMatch) return `#${hexMatch[1]}`;
-    
+
     const rgbMatch = gradient.match(/rgba?\s*\([^)]+\)/);
     if (rgbMatch) return rgbMatch[0];
-    
-    const namedColors = ['red', 'blue', 'green', 'purple', 'pink', 'orange', 'yellow', 'cyan', 'magenta', 'teal', 'indigo', 'violet'];
-    for (const color of namedColors) {
-      if (gradient.toLowerCase().includes(color)) return color;
-    }
-    
+
     return fallback;
   };
 
@@ -279,11 +298,11 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
    */
   const getBannerColor = (): string => {
     const bannerSettings = settings.bannerSettings || defaultBannerSettings;
-    
+
     if (!bannerSettings.derivedFromWallpaper && bannerSettings.color) {
       return bannerSettings.color;
     }
-    
+
     if (settings.wallpaper) {
       if (settings.wallpaper.startsWith('linear-gradient') || settings.wallpaper.startsWith('radial-gradient')) {
         return extractDominantColorFromGradient(settings.wallpaper, settings.buttonColor);
@@ -292,7 +311,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         return settings.wallpaper;
       }
     }
-    
+
     return settings.buttonColor;
   };
 
@@ -301,7 +320,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
    */
   const getBannerStyle = (): React.CSSProperties => {
     const bannerSettings = settings.bannerSettings || defaultBannerSettings;
-    
+
     if (bannerSettings.mode === 'image' && bannerSettings.image) {
       return {
         backgroundImage: `url(${bannerSettings.image})`,
@@ -309,26 +328,45 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         backgroundPosition: 'center',
       };
     }
-    
+
     return {
       backgroundColor: getBannerColor(),
     };
   };
 
-  // Get wallpaper background style
+  // Get wallpaper background style with fallback to mesh gradient
   const getWallpaperStyle = (): React.CSSProperties => {
     if (!settings.wallpaper) {
-      return { backgroundColor: settings.backgroundColor };
+      // Automatic theme handling for default wallpaper
+      if (isDarkMode) {
+        // Premium Dark Mesh Gradient (matches screenshot vibe)
+        return {
+          background: `radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                         radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+                         radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%)`,
+          backgroundColor: '#111827'
+        };
+      } else {
+        // Premium Light Mesh Gradient
+        return {
+          background: `radial-gradient(at 0% 0%, hsla(253,100%,96%,1) 0, transparent 50%), 
+                          radial-gradient(at 50% 0%, hsla(225,100%,94%,1) 0, transparent 50%), 
+                          radial-gradient(at 100% 0%, hsla(339,100%,94%,1) 0, transparent 50%)`,
+          backgroundColor: '#F9FAFB'
+        };
+      }
     }
+
     if (settings.wallpaper.startsWith('linear-gradient') || settings.wallpaper.startsWith('radial-gradient')) {
       return { background: settings.wallpaper };
     }
     if (settings.wallpaper.startsWith('url(') || settings.wallpaper.startsWith('http')) {
       const url = settings.wallpaper.startsWith('url(') ? settings.wallpaper : `url(${settings.wallpaper})`;
-      return { 
+      return {
         backgroundImage: url,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundAttachment: 'fixed', // Parallax effect
         backgroundColor: settings.backgroundColor
       };
     }
@@ -337,127 +375,46 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
 
   // Render header based on style
   const renderHeader = () => {
+    const avatarSizeClass = "w-24 h-24 sm:w-28 sm:h-28"; // Compact avatar size
+
     switch (settings.headerStyle) {
       case 'banner':
         const bannerSettings = settings.bannerSettings || defaultBannerSettings;
         return (
           <>
-            {/* Banner Header */}
-            <div 
-              className="absolute top-0 left-0 right-0 h-32 sm:h-40 z-0"
-              style={getBannerStyle()}
+            <div
+              className="absolute top-0 left-0 right-0 h-32 z-0 overflow-hidden"
+              style={{
+                ...getBannerStyle(),
+                borderBottomLeftRadius: '1.5rem',
+                borderBottomRightRadius: '1.5rem'
+              }}
             >
               {bannerSettings.mode === 'image' && bannerSettings.image && (
-                <div 
-                  className="absolute inset-0"
+                <div
+                  className="absolute inset-0 backdrop-blur-[2px]"
                   style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.1), rgba(0,0,0,0.3))' }}
                 />
               )}
             </div>
-            {/* Avatar & Logo Section */}
-            <div className="relative z-10 pt-24 sm:pt-28">
+            <div className="relative z-10 pt-20 px-4 animate-slide-up-fade">
               <div className="flex flex-col items-center">
-                <div className="relative -mt-12 sm:-mt-16">
+                <div className="relative">
                   {profile.avatar ? (
                     <LazyImage
                       src={profile.avatar}
                       alt={profile.displayName}
-                      className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                      className={`${avatarSizeClass} rounded-full object-cover border-[4px] shadow-xl transition-transform hover:scale-105`}
+                      style={{ borderColor: settings.backgroundColor || '#fff' }}
                       priority
                     />
                   ) : (
-                    <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-4 border-white shadow-lg">
+                    <div className={`${avatarSizeClass} rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white text-3xl font-bold border-[4px] shadow-xl`}
+                      style={{ borderColor: settings.backgroundColor || '#fff' }}>
                       {profile.displayName?.charAt(0)?.toUpperCase() || '?'}
                     </div>
                   )}
-                  {profile.logo && (
-                    <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md border-2 border-white overflow-hidden">
-                      <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
-                    </div>
-                  )}
                 </div>
-              </div>
-            </div>
-          </>
-        );
-
-      case 'avatar-top':
-        return (
-          <>
-            <div className="flex flex-col items-center pt-10 sm:pt-12">
-              <div className="relative">
-                {profile.avatar ? (
-                  <LazyImage
-                    src={profile.avatar}
-                    alt={profile.displayName}
-                    className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 shadow-xl"
-                    style={{ borderColor: settings.buttonColor }}
-                    priority
-                  />
-                ) : (
-                  <div
-                    className="w-28 h-28 sm:w-36 sm:h-36 rounded-full flex items-center justify-center text-white text-4xl sm:text-5xl font-bold shadow-xl"
-                    style={{ backgroundColor: settings.buttonColor }}
-                  >
-                    {profile.displayName?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
-                {profile.logo && (
-                  <div className="absolute -bottom-2 -right-2 w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-white shadow-md border-2 border-white overflow-hidden">
-                    <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        );
-
-      case 'minimal':
-        return (
-          <>
-            <div className="flex items-center gap-4 pt-10 sm:pt-12 px-4">
-              <div className="relative flex-shrink-0">
-                {profile.avatar ? (
-                  <LazyImage
-                    src={profile.avatar}
-                    alt={profile.displayName}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-md"
-                    priority
-                  />
-                ) : (
-                  <div
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center text-white text-xl sm:text-2xl font-bold shadow-md"
-                    style={{ backgroundColor: settings.buttonColor }}
-                  >
-                    {profile.displayName?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 
-                  className="text-xl sm:text-2xl font-bold truncate"
-                  style={{ color: wcagColors.nameColor }}
-                >
-                  {profile.displayName}
-                </h1>
-                {profile.pronouns && (
-                  <p className="text-sm" style={{ color: wcagColors.bioColor }}>
-                    ({profile.pronouns})
-                  </p>
-                )}
-                {(profile.headline || (profile.showBio !== false && profile.bio)) && (
-                  <p 
-                    className="text-sm sm:text-base truncate mt-1"
-                    style={{ color: wcagColors.bioColor }}
-                  >
-                    {profile.headline || (profile.showBio !== false ? profile.bio : '')}
-                  </p>
-                )}
-                {profile.company && (
-                  <p className="text-sm" style={{ color: wcagColors.bioColor }}>
-                    {profile.company}
-                  </p>
-                )}
               </div>
             </div>
           </>
@@ -466,222 +423,210 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
       case 'hero-photo':
         const hb = settings.headerBackground || defaultHeaderBackground;
         const hasPhoto = !!profile.avatar && profile.avatar.length > 0;
-        const bgColor = settings.backgroundColor || '#F5F0EB';
-        const isLightBg = bgColor.toLowerCase() !== '#0f0f0f' && !bgColor.toLowerCase().includes('1a1a');
-        const textColor = isLightBg ? '#1a1a1a' : '#ffffff';
-        const textColorSecondary = isLightBg ? '#4a4a4a' : '#d1d1d1';
-        
+
         return (
-          <>
-            <div className="relative">
+          <div className="relative animate-slide-up-fade">
+            <div className="relative h-60 w-full overflow-hidden rounded-b-[2rem] shadow-2xl">
               {hasPhoto ? (
-                <img 
+                <img
                   src={profile.avatar}
                   alt={profile.displayName}
-                  className="w-full h-48 sm:h-64 object-cover"
+                  className="w-full h-full object-cover transition-transform duration-1000 hover:scale-105"
                   style={{
-                    objectPosition: 'center 20%',
                     filter: hb.blur > 0 ? `blur(${hb.blur}px)` : undefined,
                   }}
                 />
               ) : (
-                <div 
-                  className="w-full h-48 sm:h-64"
-                  style={{ background: hb.fallbackGradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+                <div
+                  className="w-full h-full"
+                  style={{ background: hb.fallbackGradient }}
                 />
               )}
-              
-              <div 
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: `rgba(0, 0, 0, ${(hb.overlayOpacity || 15) / 100})`,
-                }}
-              />
-              
-              <div 
-                className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
-                style={{
-                  background: `linear-gradient(to top, ${bgColor}, transparent)`,
-                }}
-              />
-              
-              {profile.logo && (
-                <div className="absolute top-8 right-4 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white shadow-lg border-2 border-white overflow-hidden">
-                  <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+              <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-center sm:text-left z-20">
+                <div className="max-w-3xl mx-auto flex flex-col sm:flex-row items-end gap-6">
+                  {/* Logo if available */}
+                  {profile.logo && (
+                    <div className="hidden sm:block w-16 h-16 rounded-xl glass-panel p-2 shadow-lg mb-2">
+                      <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-contain" priority />
+                    </div>
+                  )}
+
+                  <div className="flex-1 text-white">
+                    <h1 className="text-3xl font-black mb-1 tracking-tight drop-shadow-md">
+                      {profile.displayName}
+                    </h1>
+                    {profile.headline && (
+                      <p className="text-base font-medium opacity-90 drop-shadow-sm max-w-2xl line-clamp-2">
+                        {profile.headline}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-            
-            <div 
-              className="relative px-4 sm:px-6 text-center pt-4 pb-4 z-10"
-              style={{ backgroundColor: bgColor }}
-            >
-              <h1 
-                className="text-2xl sm:text-3xl font-bold mb-1"
-                style={{ color: textColor }}
-              >
-                {profile.displayName}
-              </h1>
-              {profile.pronouns && (
-                <p className="text-sm mb-1" style={{ color: textColorSecondary }}>
-                  ({profile.pronouns})
-                </p>
-              )}
-              {(profile.headline || (profile.showBio !== false && profile.bio)) && (
-                <p 
-                  className="text-sm sm:text-base mb-2 px-2 line-clamp-3"
-                  style={{ color: textColorSecondary }}
-                >
-                  {profile.headline || (profile.showBio !== false ? profile.bio : '')}
-                </p>
-              )}
-              {profile.company && (
-                <p className="text-sm" style={{ color: textColorSecondary }}>
-                  {profile.company}
-                </p>
-              )}
-            </div>
-          </>
+          </div>
         );
 
       case 'simple':
       default:
+        // Glowing avatar effect from screenshot - Compacted
         return (
-          <>
-            <div className="flex flex-col items-center pt-10 sm:pt-12 mb-4">
-              <div className="relative">
+          <div className="flex flex-col items-center pt-10 mb-6 animate-slide-up-fade">
+            <div className="relative group">
+              {/* Animated Glow Backlight */}
+              <div className={`absolute inset-0 bg-gradient-to-r ${wcagColors.isDarkBg ? 'from-purple-500 via-pink-500 to-orange-500' : 'from-blue-400 via-teal-400 to-emerald-400'} rounded-full blur-xl opacity-60 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse`}></div>
+
+              {/* Avatar Image */}
+              <div className="relative p-[3px] rounded-full bg-gradient-to-tr from-white/80 to-white/20">
                 {profile.avatar ? (
                   <LazyImage
                     src={profile.avatar}
                     alt={profile.displayName}
-                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                    className={`${avatarSizeClass} rounded-full object-cover border-4 shadow-2xl`}
+                    style={{
+                      borderColor: wcagColors.isDarkBg ? '#111827' : '#FFFFFF',
+                      backgroundColor: wcagColors.isDarkBg ? '#111827' : '#FFFFFF'
+                    }}
                     priority
                   />
                 ) : (
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl sm:text-4xl font-bold border-4 border-white shadow-lg">
+                  <div className={`${avatarSizeClass} rounded-full bg-gradient-to-tr from-gray-700 to-gray-900 flex items-center justify-center text-white text-4xl font-bold border-4 shadow-2xl`}
+                    style={{
+                      borderColor: wcagColors.isDarkBg ? '#111827' : '#FFFFFF',
+                    }}>
                     {profile.displayName?.charAt(0)?.toUpperCase() || '?'}
-                  </div>
-                )}
-                {profile.logo && (
-                  <div className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md border-2 border-white overflow-hidden">
-                    <LazyImage src={profile.logo} alt="Logo" className="w-full h-full object-cover" priority />
                   </div>
                 )}
               </div>
             </div>
-          </>
+          </div>
         );
     }
   };
 
-  // Render action section with inline QR code and action buttons
+  // Render buttons specifically for sharing/downloading - Condensed
   const renderActionButtons = () => {
     const hasActions = onDownloadVCard || onShare || profileUrl;
     if (!hasActions) return null;
 
     return (
-      <div className="my-6">
-        {/* Modern Action Bar */}
-        <div 
-          className="rounded-2xl p-4 sm:p-5 backdrop-blur-sm"
-          style={{ 
-            backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
-            border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.12)'}`
-          }}
-        >
-          {/* Inline QR Code - Scannable Size */}
-          {profileUrl && (
-            <div className="flex justify-center mb-4">
-              <ProfileQRCode
-                profileUrl={profileUrl}
-                size={140}
-                bgColor={wcagColors.isLight ? '#FFFFFF' : '#FFFFFF'}
-                fgColor="#000000"
-                showLabel={true}
-                labelText="Scan to connect"
-                labelColor={wcagColors.bioColor}
-              />
+      <div className="mt-8 mb-12 animate-slide-up-fade" style={{ animationDelay: '0.1s' }}>
+        <div className={`rounded-3xl p-5 backdrop-blur-xl ${wcagColors.isDarkBg ? 'bg-white/5 border border-white/10' : 'bg-white/40 border border-white/40 shadow-lg'}`}>
+          <div className="flex flex-col items-center">
+            {profileUrl && (
+              <div className="mb-4 p-3 bg-white rounded-xl shadow-lg">
+                <ProfileQRCode
+                  profileUrl={profileUrl}
+                  size={140}
+                  bgColor="#FFFFFF"
+                  fgColor="#000000"
+                  showLabel={false}
+                />
+              </div>
+            )}
+
+            <div className="flex w-full gap-3">
+              {onShare && (
+                <button
+                  onClick={onShare}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all group ${wcagColors.isDarkBg
+                    ? 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                    : 'bg-white hover:bg-gray-50 text-gray-900 shadow-md border border-gray-100'
+                    }`}
+                >
+                  <Share2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span>Share</span>
+                </button>
+              )}
+              {onDownloadVCard && (
+                <button
+                  onClick={onDownloadVCard}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-semibold text-sm transition-all group ${wcagColors.isDarkBg
+                    ? 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
+                    : 'bg-white hover:bg-gray-50 text-gray-900 shadow-md border border-gray-100'
+                    }`}
+                >
+                  <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span>Save</span>
+                </button>
+              )}
             </div>
-          )}
-
-          {/* Action Buttons Row */}
-          <div className={`grid gap-3 ${onShare && onDownloadVCard ? 'grid-cols-2' : 'grid-cols-1'}`}>
-            {/* Share */}
-            {onShare && (
-              <button
-                onClick={onShare}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105"
-                style={{ 
-                  backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'
-                }}
-              >
-                <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: `${settings.buttonColor}20` }}
-                >
-                  <Share2 className="w-6 h-6" style={{ color: settings.buttonColor }} />
-                </div>
-                <span className="text-xs font-medium" style={{ color: wcagColors.nameColor }}>
-                  Share
-                </span>
-              </button>
-            )}
-
-            {/* Save Contact (vCard) */}
-            {onDownloadVCard && (
-              <button
-                onClick={onDownloadVCard}
-                className="flex flex-col items-center gap-2 p-4 rounded-xl transition-all hover:scale-105"
-                style={{ 
-                  backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'
-                }}
-              >
-                <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: `${settings.buttonColor}20` }}
-                >
-                  <Download className="w-6 h-6" style={{ color: settings.buttonColor }} />
-                </div>
-                <span className="text-xs font-medium text-center" style={{ color: wcagColors.nameColor }}>
-                  Save to Phone
-                </span>
-              </button>
-            )}
           </div>
         </div>
       </div>
     );
   };
 
-  // Render links as elegant icon cards with labels
-  const renderLinks = () => {
-    if (links.length === 0) {
-      return (
-        <div className="text-center py-12">
-          <p className="text-lg opacity-60" style={{ color: wcagColors.bioColor }}>
-            No links available
-          </p>
-        </div>
-      );
-    }
+  // Render contact chips - Pill Shaped Outlines from screenshot
+  const renderContactChips = () => {
+    // Define button class based on theme lightness to ensure contrast
+    const chipClass = wcagColors.isDarkBg
+      ? "px-5 py-2.5 rounded-full border border-white/20 bg-white/5 text-white flex items-center gap-2 transition-all hover:bg-white/10 hover:scale-105 backdrop-blur-md text-sm"
+      : "px-5 py-2.5 rounded-full border border-gray-200 bg-white text-gray-800 flex items-center gap-2 transition-all hover:bg-gray-50 hover:shadow-md hover:scale-105 text-sm";
 
     return (
-      <div className="space-y-4 pb-8">
-        {/* Section Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
-          <span className="text-xs font-medium uppercase tracking-wider opacity-60" style={{ color: wcagColors.nameColor }}>
-            Links
-          </span>
-          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
-        </div>
+      <div className="flex flex-wrap justify-center gap-3 mb-8 animate-slide-up-fade" style={{ animationDelay: '0.15s' }}>
+        {profile.showEmail && profile.publicEmail && (
+          <a href={`mailto:${profile.publicEmail}`} className={chipClass}>
+            <Mail className="w-4 h-4" />
+            <span className="font-semibold tracking-wide">Email</span>
+          </a>
+        )}
+        {profile.showPhone && profile.publicPhone && (
+          <a href={`tel:${profile.publicPhone}`} className={chipClass}>
+            <Phone className="w-4 h-4" />
+            <span className="font-semibold tracking-wide">Call</span>
+          </a>
+        )}
+        {profile.showWebsite && profile.website && (
+          <a href={profile.website} target="_blank" rel="noopener" className={chipClass}>
+            <Globe className="w-4 h-4" />
+            <span className="font-semibold tracking-wide">Visit</span>
+          </a>
+        )}
+      </div>
+    );
+  }
 
-        {/* Links Grid - Modern Icon Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {links.map((link) => {
+  // Render links as elegant glass cards - Condensed List Style
+  const renderLinks = () => {
+    // Filter out duplicate links (those already shown in featured icons)
+    // This solves the 'repetitive elements' feedback
+    const uniqueLinks = links.filter(link => {
+      // Check if this link pattern matches any featured platform
+      const isFeatured = FEATURED_PLATFORMS.some(p =>
+        link.url.toLowerCase().includes(p.pattern)
+      );
+      // Show link if it's NOT a featured platform (custom links)
+      // OR if it IS featured but we strictly want to hide social cards to reduce visible duplicates
+      // We'll hide redundant social cards for a cleaner UI
+      return !isFeatured;
+    });
+
+    if (uniqueLinks.length === 0) return null;
+
+    // Header color based on theme
+    const headerColor = wcagColors.isDarkBg ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+
+    return (
+      <div className="space-y-3 pb-8 animate-slide-up-fade" style={{ animationDelay: '0.2s' }}>
+        <h3 className="text-center text-[10px] font-bold uppercase tracking-[0.2em] mb-4" style={{ color: headerColor }}>
+          Highlights
+        </h3>
+
+        <div className="grid gap-3">
+          {uniqueLinks.map((link, index) => {
             const platform = detectPlatformFromUrl(link.url);
             const logoSrc = link.customLogo || platform?.logo || DEFAULT_LOGO;
             const displayName = link.displayLabel || platform?.name || link.platform || 'Link';
+
+            // Glass panel classes - More Compact List Item Style
+            const cardClass = wcagColors.isDarkBg
+              ? "group relative flex items-center p-3 rounded-xl bg-white/10 border border-white/10 hover:bg-white/15 hover:border-white/20"
+              : "group relative flex items-center p-3 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5";
 
             return (
               <a
@@ -689,43 +634,36 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex flex-col items-center gap-3 p-4 rounded-2xl transition-all hover:scale-105 hover:shadow-lg"
-                style={{ 
-                  backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
-                  border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'}`
-                }}
+                className={`${cardClass} transition-all duration-300`}
+                style={{ animationDelay: `${0.1 + (index * 0.05)}s` }}
               >
-                {/* Icon Container */}
-                <div 
-                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ 
-                    backgroundColor: `${settings.buttonColor}15`,
-                    border: `1px solid ${settings.buttonColor}25`
-                  }}
-                >
-                  <img
-                    src={logoSrc}
-                    alt={displayName}
-                    className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
-                    onError={(e) => {
-                      e.currentTarget.src = DEFAULT_LOGO;
-                    }}
-                  />
+                {/* Icon Container - Smaller */}
+                <div className="relative w-10 h-10 flex-shrink-0">
+                  <div className={`absolute inset-0 rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-opacity ${wcagColors.isDarkBg ? 'bg-white/20' : 'bg-gray-200'}`} />
+                  <div className={`relative w-full h-full rounded-lg flex items-center justify-center ${wcagColors.isDarkBg ? 'bg-white/10 border border-white/10' : 'bg-gray-50 border border-gray-100'}`}>
+                    <img
+                      src={logoSrc}
+                      alt={displayName}
+                      className="w-6 h-6 object-contain transition-transform group-hover:scale-110"
+                      onError={(e) => { e.currentTarget.src = DEFAULT_LOGO; }}
+                    />
+                  </div>
                 </div>
 
-                {/* Label */}
-                <span 
-                  className="text-sm font-medium text-center line-clamp-2"
-                  style={{ color: wcagColors.nameColor }}
-                >
-                  {displayName}
-                </span>
+                {/* Text Content */}
+                <div className="flex-1 ml-4 min-w-0">
+                  <h4 className="font-bold text-sm truncate pr-2" style={{ color: wcagColors.nameColor }}>
+                    {displayName}
+                  </h4>
+                  <p className="text-xs truncate opacity-60" style={{ color: wcagColors.nameColor }}>
+                    {new URL(link.url).hostname.replace('www.', '')}
+                  </p>
+                </div>
 
-                {/* External Link Indicator */}
-                <ExternalLink 
-                  className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity absolute top-2 right-2" 
-                  style={{ color: wcagColors.nameColor }}
-                />
+                {/* Arrow Icon */}
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all ${wcagColors.isDarkBg ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-800'}`}>
+                  <ExternalLink className="w-3 h-3" />
+                </div>
               </a>
             );
           })}
@@ -734,405 +672,67 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
     );
   };
 
-  // Render address section as styled boxes
-  const renderAddress = () => {
-    // Build personal address from visible fields only
-    const personalParts = [
-      profile.showAddressLine1 && profile.addressLine1,
-      profile.showAddressLine2 && profile.addressLine2,
-      profile.showAddressCity && profile.addressCity,
-      profile.showAddressState && profile.addressState,
-      profile.showAddressPostalCode && profile.addressPostalCode,
-      profile.showAddressCountry && profile.addressCountry,
-    ].filter(Boolean);
-    
-    // Build company address from visible fields only
-    const companyParts = [
-      profile.showCompanyAddressLine1 && profile.companyAddressLine1,
-      profile.showCompanyAddressLine2 && profile.companyAddressLine2,
-      profile.showCompanyAddressCity && profile.companyAddressCity,
-      profile.showCompanyAddressState && profile.companyAddressState,
-      profile.showCompanyAddressPostalCode && profile.companyAddressPostalCode,
-      profile.showCompanyAddressCountry && profile.companyAddressCountry,
-    ].filter(Boolean);
-    
-    const hasPersonalAddress = personalParts.length > 0;
-    const hasCompanyAddress = companyParts.length > 0;
-    
-    if (!hasPersonalAddress && !hasCompanyAddress) return null;
-    
-    return (
-      <div className="space-y-4 pb-8">
-        {/* Section Header */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
-          <span className="text-xs font-medium uppercase tracking-wider opacity-60" style={{ color: wcagColors.nameColor }}>
-            Address
-          </span>
-          <div className="h-px flex-1" style={{ backgroundColor: `${wcagColors.nameColor}20` }} />
-        </div>
-        
-        <div className="space-y-3">
-          {/* Personal Address Box */}
-          {hasPersonalAddress && (
-            <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(personalParts.join(', '))}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-4 rounded-2xl transition-all hover:scale-[1.02] hover:shadow-lg"
-              style={{ 
-                backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.08)',
-                border: `1px solid ${wcagColors.isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.1)'}`
-              }}
-            >
-              <div className="flex items-start gap-4">
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ 
-                    backgroundColor: `${settings.buttonColor}15`,
-                    border: `1px solid ${settings.buttonColor}25`
-                  }}
-                >
-                  <MapPin className="w-6 h-6" style={{ color: settings.buttonColor }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: settings.buttonColor }}>
-                      Personal Address
-                    </span>
-                  </div>
-                  <p className="text-sm leading-relaxed" style={{ color: wcagColors.nameColor }}>
-                    {personalParts.join(', ')}
-                  </p>
-                </div>
-                <ExternalLink className="w-4 h-4 flex-shrink-0 opacity-40" style={{ color: wcagColors.nameColor }} />
-              </div>
-            </a>
-          )}
-          
-          {/* Company Address Box */}
-          {hasCompanyAddress && (
-            <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(companyParts.join(', '))}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block p-4 rounded-2xl transition-all hover:scale-[1.02] hover:shadow-lg"
-              style={{ 
-                backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.06)' : 'rgba(59,130,246,0.12)',
-                border: `1px solid ${wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)'}`
-              }}
-            >
-              <div className="flex items-start gap-4">
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ 
-                    backgroundColor: 'rgba(59,130,246,0.15)',
-                    border: '1px solid rgba(59,130,246,0.25)'
-                  }}
-                >
-                  <Building2 className="w-6 h-6" style={{ color: '#3B82F6' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#3B82F6' }}>
-                      Office Address
-                    </span>
-                  </div>
-                  <p className="text-sm leading-relaxed" style={{ color: wcagColors.nameColor }}>
-                    {companyParts.join(', ')}
-                  </p>
-                </div>
-                <ExternalLink className="w-4 h-4 flex-shrink-0 opacity-40" style={{ color: wcagColors.nameColor }} />
-              </div>
-            </a>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div 
-      className="min-h-screen relative overflow-hidden"
-      style={getWallpaperStyle()}
+    <div
+      className="min-h-screen relative w-full overflow-x-hidden selection:bg-purple-500/30"
+      style={{
+        ...getWallpaperStyle(),
+        color: wcagColors.nameColor
+      }}
     >
-      {/* Wallpaper Overlay for opacity control */}
+      {/* Background Overlay if opacity < 100 */}
       {settings.wallpaper && settings.wallpaperOpacity < 100 && (
-        <div 
-          className="absolute inset-0 z-0"
-          style={{ 
+        <div
+          className="absolute inset-0"
+          style={{
             backgroundColor: settings.backgroundColor,
-            opacity: (100 - settings.wallpaperOpacity) / 100 
+            opacity: (100 - settings.wallpaperOpacity) / 100
           }}
         />
       )}
 
-      {/* Content Container */}
-      <div 
-        className={`relative z-10 max-w-2xl mx-auto ${
-          settings.headerStyle === 'hero-photo' ? '' : 'px-4 sm:px-6'
-        }`}
-        style={{ fontFamily: settings.fontFamily }}
-      >
-        {/* Header Section */}
+      {/* Main Content Container - Full Width Mobile, Centered Desktop */}
+      <div className={`relative z-10 w-full max-w-[480px] mx-auto min-h-screen transition-all duration-500 flex flex-col ${settings.wallpaper ? 'border-x border-white/5' : ''}`}>
+
         {renderHeader()}
 
-        {/* Content wrapper with padding for hero-photo */}
-        <div 
-          className={settings.headerStyle === 'hero-photo' ? 'px-4 sm:px-6' : ''}
-          style={settings.headerStyle === 'hero-photo' ? { backgroundColor: settings.backgroundColor || '#F5F0EB' } : undefined}
-        >
-          {/* Name & Bio (skip for minimal and hero-photo since they're inline) */}
-          {settings.headerStyle !== 'minimal' && settings.headerStyle !== 'hero-photo' && (
-            <div className="text-center mb-4">
-              <h1 
-                className="text-2xl sm:text-3xl font-bold mb-1"
-                style={{ color: wcagColors.nameColor }}
-              >
-                {profile.displayName}
-              </h1>
-              {profile.pronouns && (
-                <p className="text-sm mb-1" style={{ color: wcagColors.bioColor }}>
-                  ({profile.pronouns})
-                </p>
-              )}
-              {(profile.headline) && (
-                <p 
-                  className="text-sm sm:text-base mb-2"
-                  style={{ color: wcagColors.bioColor }}
-                >
-                  {profile.headline}
-                </p>
-              )}
-              {profile.company && (
-                <p className="text-sm mb-2" style={{ color: wcagColors.bioColor }}>
-                  {profile.company}
-                </p>
-              )}
-              {profile.bio && profile.showBio !== false && (
-                <p 
-                  className="text-sm sm:text-base whitespace-pre-wrap"
-                  style={{ color: wcagColors.bioColor }}
-                >
-                  {profile.bio}
-                </p>
-              )}
-            </div>
-          )}
+        <main className={`flex-1 px-5 pb-8 ${settings.headerStyle === 'hero-photo' ? 'pt-6' : ''}`}>
+          {/* Info Block (Name/Bio) for non-hero layouts */}
+          {settings.headerStyle !== 'hero-photo' && (
+            <div className="text-center mb-6 animate-slide-up-fade">
+              <h1 className="text-2xl sm:text-3xl font-black mb-2 tracking-tight drop-shadow-sm">{profile.displayName}</h1>
+              {profile.headline && <p className="text-base opacity-90 mb-2 font-medium">{profile.headline}</p>}
+              {profile.bio && <p className="text-xs opacity-70 whitespace-pre-wrap max-w-sm mx-auto leading-relaxed">{profile.bio}</p>}
 
-          {/* Contact Info Section - Personal and Company contacts with labels */}
-          {((profile.showEmail && profile.publicEmail) || 
-            (profile.showPhone && profile.publicPhone) || 
-            (profile.showWebsite && profile.website) ||
-            (profile.showCompanyEmail && profile.companyEmail) ||
-            (profile.showCompanyPhone && profile.companyPhone) ||
-            (profile.showAddress && (profile.addressLine1 || profile.addressCity)) ||
-            (profile.showCompanyAddress && (profile.companyAddressLine1 || profile.companyAddressCity))) && (
-            <div className="flex flex-wrap justify-center gap-4 mb-6">
-              {profile.showEmail && profile.publicEmail && (
-                <a
-                  href={`mailto:${profile.publicEmail}`}
-                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
-                  title={`Personal: ${profile.publicEmail}`}
-                >
-                  <div 
-                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
-                    style={{ 
-                      backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                    }}
-                  >
-                    <Mail className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-                  </div>
-                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Email</span>
-                </a>
-              )}
-              {profile.showPhone && profile.publicPhone && (
-                <a
-                  href={`tel:${profile.publicPhone}`}
-                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
-                  title={`Personal: ${profile.publicPhone}`}
-                >
-                  <div 
-                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
-                    style={{ 
-                      backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                    }}
-                  >
-                    <Phone className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-                  </div>
-                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Phone</span>
-                </a>
-              )}
-              {profile.showCompanyEmail && profile.companyEmail && (
-                <a
-                  href={`mailto:${profile.companyEmail}`}
-                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
-                  title={`Work: ${profile.companyEmail}`}
-                >
-                  <div 
-                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
-                    style={{ 
-                      backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
-                    }}
-                  >
-                    <Briefcase className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-                  </div>
-                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Office</span>
-                </a>
-              )}
-              {profile.showCompanyPhone && profile.companyPhone && (
-                <a
-                  href={`tel:${profile.companyPhone}`}
-                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
-                  title={`Work: ${profile.companyPhone}`}
-                >
-                  <div 
-                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
-                    style={{ 
-                      backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
-                    }}
-                  >
-                    <Building2 className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-                  </div>
-                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Work</span>
-                </a>
-              )}
-              {profile.showWebsite && profile.website && (
-                <a
-                  href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
-                  title={profile.website}
-                >
-                  <div 
-                    className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
-                    style={{ 
-                      backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                    }}
-                  >
-                    <Globe className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-                  </div>
-                  <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Website</span>
-                </a>
-              )}
-              {/* Personal Address - show if any visible field has data */}
-              {(() => {
-                const visibleParts = [
-                  profile.showAddressLine1 !== false && profile.addressLine1,
-                  profile.showAddressLine2 !== false && profile.addressLine2,
-                  profile.showAddressCity !== false && profile.addressCity,
-                  profile.showAddressState !== false && profile.addressState,
-                  profile.showAddressPostalCode !== false && profile.addressPostalCode,
-                  profile.showAddressCountry !== false && profile.addressCountry,
-                ].filter(Boolean);
-                if (visibleParts.length === 0) return null;
-                const addressString = visibleParts.join(', ');
-                return (
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(addressString)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
-                    title={`Personal: ${addressString}`}
-                  >
-                    <div 
-                      className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
-                      style={{ 
-                        backgroundColor: wcagColors.isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.15)',
-                      }}
+              {/* Social Icons row - ALWAYS visual for common platforms */}
+              {featuredIcons.length > 0 && (
+                <div className="flex justify-center gap-3 mt-5">
+                  {featuredIcons.map((item: any, idx) => (
+                    <a
+                      key={idx}
+                      href={item.link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-all hover:-translate-y-1 hover:scale-110 ${wcagColors.isDarkBg ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} shadow-sm`}
                     >
-                      <MapPin className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-                    </div>
-                    <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Personal</span>
-                  </a>
-                );
-              })()}
-              {/* Company Address - show if any visible field has data */}
-              {(() => {
-                const visibleParts = [
-                  profile.showCompanyAddressLine1 !== false && profile.companyAddressLine1,
-                  profile.showCompanyAddressLine2 !== false && profile.companyAddressLine2,
-                  profile.showCompanyAddressCity !== false && profile.companyAddressCity,
-                  profile.showCompanyAddressState !== false && profile.companyAddressState,
-                  profile.showCompanyAddressPostalCode !== false && profile.companyAddressPostalCode,
-                  profile.showCompanyAddressCountry !== false && profile.companyAddressCountry,
-                ].filter(Boolean);
-                if (visibleParts.length === 0) return null;
-                const addressString = visibleParts.join(', ');
-                return (
-                  <a
-                    href={`https://maps.google.com/?q=${encodeURIComponent(addressString)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-1 transition-transform hover:scale-110"
-                    title={`Work: ${addressString}`}
-                  >
-                    <div 
-                      className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full"
-                      style={{ 
-                        backgroundColor: wcagColors.isLight ? 'rgba(59,130,246,0.15)' : 'rgba(59,130,246,0.25)',
-                      }}
-                    >
-                      <MapPin className="w-5 h-5" style={{ color: wcagColors.nameColor }} />
-                    </div>
-                    <span className="text-[10px] font-medium" style={{ color: wcagColors.nameColor }}>Office</span>
-                  </a>
-                );
-              })()}
+                      <img src={item.link.customLogo || `/assets/social-logos/${item.icon}.svg`} alt="" className="w-5 h-5" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Social Icons Row */}
-          {featuredIcons.length > 0 && (
-            <div className={`flex justify-center gap-3 sm:gap-4 mb-6 ${settings.headerStyle === 'hero-photo' ? 'mt-0' : 'mt-4'}`}>
-              {featuredIcons.map((item: any, index: number) => (
-                <a
-                  key={index}
-                  href={item.link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`flex items-center justify-center rounded-full transition-transform hover:scale-110 ${
-                    settings.headerStyle === 'hero-photo' 
-                      ? 'w-11 h-11 sm:w-12 sm:h-12 bg-white shadow-md' 
-                      : 'w-10 h-10 sm:w-11 sm:h-11 bg-gray-100 dark:bg-gray-700'
-                  }`}
-                  title={item.name}
-                >
-                  <img 
-                    src={item.link.customLogo || `/assets/social-logos/${item.icon}.svg`}
-                    alt={item.name}
-                    className={settings.headerStyle === 'hero-photo' ? 'w-6 h-6' : 'w-5 h-5 sm:w-6 sm:h-6'}
-                    style={{ filter: settings.headerStyle === 'hero-photo' ? 'none' : undefined }}
-                  />
-                </a>
-              ))}
-            </div>
-          )}
-
-          {/* Action Buttons */}
+          {renderContactChips()}
+          {renderLinks()}
           {renderActionButtons()}
 
-          {/* Links as Icon Cards */}
-          {renderLinks()}
-
-          {/* Address Section */}
-          {renderAddress()}
-
-          {/* Footer Section */}
-          <div className="py-8 text-center">
-            {settings.footerText && (
-              <p className="text-sm mb-2" style={{ color: wcagColors.bioColor }}>
-                {settings.footerText}
-              </p>
-            )}
-            {settings.showPoweredBy && (
-              <p className="text-xs text-gray-400">
-                Powered by SwazSolutions
-              </p>
-            )}
+          {/* Footer */}
+          <div className="mt-auto pt-6 pb-4 text-center opacity-40 text-[10px] tracking-[0.2em] uppercase font-bold">
+            {settings.footerText && <p className="mb-2">{settings.footerText}</p>}
+            {settings.showPoweredBy && <p>Powered by SwazSolutions</p>}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

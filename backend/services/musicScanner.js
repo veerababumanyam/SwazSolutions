@@ -1,38 +1,31 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { listObjectsByAlbum, getObjectStream, getObjectUrl, isConfigured } = require('./r2Service');
+const { r2Config } = require('../config/r2Config');
 
-let parseFile;
+let musicMetadata;
 
 // Supported audio file extensions
 const SUPPORTED_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.m4a', '.flac', '.aac', '.wma', '.aiff', '.alac'];
 
 // Dynamic import for music-metadata (it's an ESM module)
 async function loadMusicMetadata() {
-    if (!parseFile) {
-        const mod = await import('music-metadata');
-        parseFile = mod.parseFile;
+    if (!musicMetadata) {
+        musicMetadata = await import('music-metadata');
     }
+    return musicMetadata;
 }
 
 /**
  * Extract extended metadata from parsed music file
  * @param {Object} metadata - Parsed metadata from music-metadata
- * @param {string} filePath - Absolute path to the file
+ * @param {number} fileSize - File size in bytes (from R2 or filesystem)
  * @returns {Object} - Extended metadata object
  */
-function extractExtendedMetadata(metadata, filePath) {
+function extractExtendedMetadata(metadata, fileSize = 0) {
     const common = metadata.common || {};
     const format = metadata.format || {};
-
-    // Get file stats for size
-    let fileSize = 0;
-    try {
-        const stats = fs.statSync(filePath);
-        fileSize = stats.size;
-    } catch (err) {
-        console.warn(`⚠️ Could not get file stats for ${filePath}`);
-    }
 
     return {
         // Basic metadata
@@ -53,15 +46,23 @@ function extractExtendedMetadata(metadata, filePath) {
 
         // Extended metadata
         albumArtist: common.albumartist || null,
-        composer: common.composer ? common.composer.join(', ') : null,
-        lyrics: common.lyrics ? common.lyrics[0] : null,
-        comment: common.comment ? common.comment[0] : null,
+        composer: common.composer ? (Array.isArray(common.composer) ? common.composer.join(', ') : common.composer) : null,
+        lyrics: common.lyrics ? (Array.isArray(common.lyrics) ? common.lyrics[0] : common.lyrics) : null,
+        comment: common.comment ? (
+            Array.isArray(common.comment) 
+                ? (typeof common.comment[0] === 'object' && common.comment[0]?.text 
+                    ? common.comment[0].text 
+                    : common.comment[0])
+                : (typeof common.comment === 'object' && common.comment?.text 
+                    ? common.comment.text 
+                    : common.comment)
+        ) : null,
         bpm: common.bpm || null,
-        isrc: common.isrc ? common.isrc[0] : null,
+        isrc: common.isrc ? (Array.isArray(common.isrc) ? common.isrc[0] : common.isrc) : null,
 
         // Copyright info
         copyright: common.copyright || null,
-        label: common.label ? common.label[0] : null,
+        label: common.label ? (Array.isArray(common.label) ? common.label[0] : common.label) : null,
 
         // Audio format info
         bitRate: format.bitrate ? Math.round(format.bitrate / 1000) : null, // Convert to kbps
@@ -80,12 +81,13 @@ function extractExtendedMetadata(metadata, filePath) {
 }
 
 /**
- * Find cover image in a directory
- * Looks for common cover image filenames
- * @param {string} dir - Directory to search in
- * @returns {string|null} - Absolute path to cover image or null
+ * Find cover image in R2 bucket for an album
+ * Looks for common cover image filenames in the album folder
+ * @param {string} albumPrefix - Album prefix in R2 (e.g., "album-name/")
+ * @param {Array} r2Objects - List of R2 objects in the album
+ * @returns {string|null} - R2 key of cover image or null
  */
-function findCoverImage(dir) {
+function findCoverImageInR2(albumPrefix, r2Objects) {
     const coverNames = [
         'cover.jpg', 'cover.jpeg', 'cover.png',
         'folder.jpg', 'folder.jpeg', 'folder.png',
@@ -93,24 +95,25 @@ function findCoverImage(dir) {
         'artwork.jpg', 'artwork.jpeg', 'artwork.png'
     ];
 
-    for (const name of coverNames) {
-        const coverPath = path.join(dir, name);
-        if (fs.existsSync(coverPath)) {
-            return coverPath;
+    // Look for cover images in the album folder
+    for (const obj of r2Objects) {
+        const fileName = obj.key.split('/').pop().toLowerCase();
+        if (coverNames.some(name => fileName === name.toLowerCase())) {
+            return obj.key;
         }
     }
     return null;
 }
 
 /**
- * Process cover art from metadata or folder
+ * Process cover art from metadata or R2
  * @param {Object} extendedMeta - Extended metadata with picture info
- * @param {string} dir - Current directory
- * @param {string} musicDir - Root music directory
- * @param {string} coversDir - Directory to save covers
- * @returns {string|null} - Cover path or null
+ * @param {string} albumPrefix - Album prefix in R2
+ * @param {Array} albumObjects - R2 objects in the album folder
+ * @param {string} coversDir - Directory to save covers locally
+ * @returns {Promise<string|null>} - Cover path (R2 URL or local /covers/ path) or null
  */
-function processCoverArt(extendedMeta, dir, musicDir, coversDir) {
+async function processCoverArt(extendedMeta, albumPrefix, albumObjects, coversDir) {
     let coverPath = null;
 
     // Priority 1: Extract embedded cover art from metadata
@@ -132,44 +135,29 @@ function processCoverArt(extendedMeta, dir, musicDir, coversDir) {
         }
     }
 
-    // Priority 2: If no embedded cover, look for cover image in album folder
-    if (!coverPath) {
-        const albumCoverPath = findCoverImage(dir);
-        if (albumCoverPath) {
+    // Priority 2: If no embedded cover, look for cover image in R2 album folder
+    if (!coverPath && albumObjects) {
+        const coverKey = findCoverImageInR2(albumPrefix, albumObjects);
+        if (coverKey) {
             try {
-                const buffer = fs.readFileSync(albumCoverPath);
+                // Get cover from R2 and save locally
+                const stream = await getObjectStream(coverKey);
+                const chunks = [];
+                for await (const chunk of stream) {
+                    chunks.push(chunk);
+                }
+                const buffer = Buffer.concat(chunks);
                 const hash = crypto.createHash('md5').update(buffer).digest('hex');
-                const imageExt = path.extname(albumCoverPath).toLowerCase();
+                const imageExt = path.extname(coverKey).toLowerCase() || '.jpg';
                 const coverFilename = `${hash}${imageExt}`;
                 const coverAbsPath = path.join(coversDir, coverFilename);
 
                 if (!fs.existsSync(coverAbsPath)) {
-                    fs.copyFileSync(albumCoverPath, coverAbsPath);
+                    fs.writeFileSync(coverAbsPath, buffer);
                 }
                 coverPath = `/covers/${coverFilename}`;
             } catch (err) {
-                console.warn(`⚠️ Failed to copy album cover: ${err.message}`);
-            }
-        }
-    }
-
-    // Priority 3: If still no cover, use default cover from MusicFiles folder
-    if (!coverPath) {
-        const defaultCoverPath = findCoverImage(musicDir);
-        if (defaultCoverPath) {
-            try {
-                const buffer = fs.readFileSync(defaultCoverPath);
-                const hash = crypto.createHash('md5').update(buffer).digest('hex');
-                const imageExt = path.extname(defaultCoverPath).toLowerCase();
-                const coverFilename = `${hash}${imageExt}`;
-                const coverAbsPath = path.join(coversDir, coverFilename);
-
-                if (!fs.existsSync(coverAbsPath)) {
-                    fs.copyFileSync(defaultCoverPath, coverAbsPath);
-                }
-                coverPath = `/covers/${coverFilename}`;
-            } catch (err) {
-                console.warn(`⚠️ Failed to copy default cover: ${err.message}`);
+                console.warn(`⚠️ Failed to download album cover from R2: ${err.message}`);
             }
         }
     }
@@ -211,34 +199,71 @@ function saveExtendedMetadata(db, songId, extendedMeta) {
                 updated_at = CURRENT_TIMESTAMP
         `);
 
+        // Ensure all values are properly typed (SQL.js is strict about types)
         stmt.run(
             songId,
-            extendedMeta.trackNumber,
-            extendedMeta.discNumber,
-            extendedMeta.bpm,
-            extendedMeta.isrc,
-            extendedMeta.lyrics,
-            extendedMeta.composer,
-            extendedMeta.copyright,
-            extendedMeta.label,
-            extendedMeta.comment,
-            extendedMeta.bitRate,
-            extendedMeta.sampleRate,
-            extendedMeta.channels,
-            extendedMeta.codec,
-            extendedMeta.fileSize
+            extendedMeta.trackNumber ?? null,
+            extendedMeta.discNumber ?? null,
+            extendedMeta.bpm ?? null,
+            extendedMeta.isrc ?? null,
+            extendedMeta.lyrics ?? null,
+            extendedMeta.composer ?? null,
+            extendedMeta.copyright ?? null,
+            extendedMeta.label ?? null,
+            extendedMeta.comment ?? null,
+            extendedMeta.bitRate ?? null,
+            extendedMeta.sampleRate ?? null,
+            extendedMeta.channels ?? null,
+            extendedMeta.codec ?? null,
+            extendedMeta.fileSize ?? null
         );
     } catch (err) {
-        console.warn(`⚠️ Failed to save extended metadata for song ${songId}: ${err.message}`);
+        // Log full error details for debugging
+        // SQL.js errors might not have standard .message property
+        let errorMsg = 'Unknown error';
+        if (err) {
+            if (typeof err === 'string') {
+                errorMsg = err;
+            } else if (err.message) {
+                errorMsg = err.message;
+            } else if (err.toString) {
+                errorMsg = err.toString();
+            } else {
+                errorMsg = JSON.stringify(err);
+            }
+        }
+        
+        console.warn(`⚠️ Failed to save extended metadata for song ${songId}: ${errorMsg}`);
+        
+        // Log parameter values for debugging (but not full objects to avoid clutter)
+        if (extendedMeta) {
+            const paramSummary = {
+                trackNumber: extendedMeta.trackNumber,
+                discNumber: extendedMeta.discNumber,
+                bpm: extendedMeta.bpm,
+                isrc: extendedMeta.isrc ? 'present' : null,
+                lyrics: extendedMeta.lyrics ? 'present' : null,
+                composer: extendedMeta.composer,
+                copyright: extendedMeta.copyright,
+                label: extendedMeta.label,
+                comment: extendedMeta.comment,
+                bitRate: extendedMeta.bitRate,
+                sampleRate: extendedMeta.sampleRate,
+                channels: extendedMeta.channels,
+                codec: extendedMeta.codec,
+                fileSize: extendedMeta.fileSize
+            };
+            console.warn(`   Parameters:`, paramSummary);
+        }
     }
 }
 
 /**
- * Scans the music directory and updates the database
+ * Scans the R2 bucket and updates the database
  * @param {Object} db - The database instance
- * @param {string} musicDir - The absolute path to the music directory
+ * @param {string} musicDir - The absolute path to the music directory (deprecated, kept for compatibility)
  * @param {Object} options - Scan options
- * @param {boolean} options.recursive - Scan subdirectories (default: true)
+ * @param {boolean} options.recursive - Scan subdirectories (default: true, always true for R2)
  * @param {boolean} options.saveExtended - Save extended metadata (default: true)
  * @returns {Promise<Object>} - Statistics about the scan
  */
@@ -247,8 +272,9 @@ async function scanMusicDirectory(db, musicDir, options = {}) {
 
     await loadMusicMetadata();
 
-    if (!fs.existsSync(musicDir)) {
-        throw new Error(`Music directory not found: ${musicDir}`);
+    // Check if R2 is configured
+    if (!isConfigured()) {
+        throw new Error('R2 is not configured. Please check your R2 environment variables.');
     }
 
     const coversDir = path.join(__dirname, '../../data/covers');
@@ -262,116 +288,248 @@ async function scanMusicDirectory(db, musicDir, options = {}) {
     const errors = [];
     const startTime = Date.now();
 
-    console.log(`🎵 Starting music scan in: ${musicDir}`);
+    console.log(`🎵 Starting R2 music scan in bucket: ${r2Config.bucketName}`);
 
-    async function scanDirectory(dir, folderAlbum = '') {
-        let items;
-        try {
-            items = fs.readdirSync(dir, { withFileTypes: true });
-        } catch (err) {
-            console.error(`❌ Cannot read directory ${dir}: ${err.message}`);
-            errors.push({ file: dir, error: `Cannot read directory: ${err.message}` });
-            return;
-        }
+    try {
+        // Get all objects grouped by album
+        const albumsMap = await listObjectsByAlbum('');
 
-        for (const item of items) {
-            const fullPath = path.join(dir, item.name);
+        // Process each album
+        for (const [albumName, albumObjects] of albumsMap.entries()) {
+            // Filter to only audio files
+            const audioFiles = albumObjects.filter(obj => {
+                const ext = path.extname(obj.key).toLowerCase();
+                return SUPPORTED_EXTENSIONS.includes(ext);
+            });
 
-            if (item.isDirectory() && recursive) {
-                // Treat subdirectories as potential albums
-                await scanDirectory(fullPath, item.name);
-            } else if (item.isFile()) {
-                const ext = path.extname(item.name).toLowerCase();
-                if (SUPPORTED_EXTENSIONS.includes(ext)) {
+            // Get cover images for this album
+            const coverImages = albumObjects.filter(obj => {
+                const ext = path.extname(obj.key).toLowerCase();
+                return ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
+            });
+
+            // Process each audio file
+            for (const obj of audioFiles) {
+                try {
+                    const key = obj.key;
+                    const fileName = obj.fileName || path.basename(key);
+                    const ext = path.extname(fileName).toLowerCase();
+                    
+                    // Generate R2 URL for the file
+                    const r2Url = await getObjectUrl(key, false);
+
+                    // Check if song already exists (by R2 URL)
+                    const existingSong = db.prepare('SELECT id FROM songs WHERE file_path = ?').get(r2Url);
+
+                    // Default values from filename
+                    let title = path.basename(fileName, ext);
+                    let artist = null;
+                    let album = albumName || 'Unknown Album';
+                    let genre = null;
+                    let duration = 0;
+                    let extendedMeta = null;
+                    let fileSize = obj.size || 0;
+
+                    // Extract metadata using music-metadata from R2 stream
                     try {
-                        const relativePath = path.relative(musicDir, fullPath);
-                        const urlPath = '/music/' + relativePath.replace(/\\/g, '/');
+                        const stream = await getObjectStream(key);
+                        // Convert stream to buffer for more reliable metadata extraction
+                        // Some audio formats need random access which streams don't provide
+                        const chunks = [];
+                        for await (const chunk of stream) {
+                            chunks.push(chunk);
+                        }
+                        const buffer = Buffer.concat(chunks);
+                        
+                        // Use parseBuffer for more reliable extraction
+                        // parseFile with streams can fail for some formats that need random access
+                        const mm = await loadMusicMetadata();
+                        const metadata = await mm.parseBuffer(buffer);
+                        extendedMeta = extractExtendedMetadata(metadata, fileSize);
 
-                        // Check if song already exists
-                        const existingSong = db.prepare('SELECT id FROM songs WHERE file_path = ?').get(urlPath);
-
-                        // Default values from filename
-                        let title = path.basename(item.name, ext);
-                        let artist = null;
-                        let album = folderAlbum;
-                        let genre = null;
-                        let duration = 0;
-                        let extendedMeta = null;
-
-                        // Extract metadata using music-metadata
+                        // #region agent log
+                        const logPath = path.join(__dirname, '../../.cursor/debug.log');
+                        const logEntry = JSON.stringify({
+                            location: 'backend/services/musicScanner.js:294',
+                            message: 'Metadata extracted',
+                            data: {
+                                key: key,
+                                extractedTitle: extendedMeta.title,
+                                extractedArtist: extendedMeta.artist,
+                                extractedAlbum: extendedMeta.album,
+                                extractedGenre: extendedMeta.genre,
+                                hasPicture: extendedMeta.hasPicture,
+                                filenameTitle: title
+                            },
+                            timestamp: Date.now(),
+                            sessionId: 'debug-session',
+                            runId: 'run1',
+                            hypothesisId: 'H1'
+                        }) + '\n';
                         try {
-                            const metadata = await parseFile(fullPath);
-                            extendedMeta = extractExtendedMetadata(metadata, fullPath);
+                            fs.appendFileSync(logPath, logEntry);
+                        } catch (e) {}
+                        // #endregion
 
-                            // Use extracted values
-                            if (extendedMeta.title) title = extendedMeta.title;
-                            if (extendedMeta.artist) artist = extendedMeta.artist;
-                            if (extendedMeta.album) album = extendedMeta.album;
-                            if (extendedMeta.genre) genre = extendedMeta.genre;
-                            if (extendedMeta.duration) duration = extendedMeta.duration;
+                        // Use extracted values
+                        if (extendedMeta.title) title = extendedMeta.title;
+                        if (extendedMeta.artist) artist = extendedMeta.artist;
+                        if (extendedMeta.album) album = extendedMeta.album;
+                        if (extendedMeta.genre) genre = extendedMeta.genre;
+                        if (extendedMeta.duration) duration = extendedMeta.duration;
 
-                        } catch (err) {
-                            console.warn(`⚠️ Failed to parse metadata for ${item.name}: ${err.message}`);
-                            // Create minimal extended metadata with file info
-                            extendedMeta = { hasPicture: false, picture: null };
-                        }
+                        // #region agent log
+                        const logEntry2 = JSON.stringify({
+                            location: 'backend/services/musicScanner.js:310',
+                            message: 'Metadata applied',
+                            data: {
+                                key: key,
+                                finalTitle: title,
+                                finalArtist: artist,
+                                finalAlbum: album,
+                                finalGenre: genre
+                            },
+                            timestamp: Date.now(),
+                            sessionId: 'debug-session',
+                            runId: 'run1',
+                            hypothesisId: 'H1'
+                        }) + '\n';
+                        try {
+                            fs.appendFileSync(logPath, logEntry2);
+                        } catch (e) {}
+                        // #endregion
 
-                        // Process cover art
-                        const coverPath = processCoverArt(extendedMeta, dir, musicDir, coversDir);
-
-                        // Insert or update song with genre
-                        const stmt = db.prepare(`
-                            INSERT INTO songs (title, artist, album, file_path, duration, cover_path, genre)
-                            VALUES (?, ?, ?, ?, ?, ?, ?)
-                            ON CONFLICT(file_path) DO UPDATE SET
-                                title = excluded.title,
-                                artist = excluded.artist,
-                                album = excluded.album,
-                                duration = excluded.duration,
-                                cover_path = excluded.cover_path,
-                                genre = excluded.genre
-                        `);
-
-                        stmt.run(
-                            title,
-                            artist,
-                            album || 'Unknown Album',
-                            urlPath,
-                            duration,
-                            coverPath,
-                            genre
-                        );
-
-                        // Get the song ID for extended metadata
-                        const song = db.prepare('SELECT id FROM songs WHERE file_path = ?').get(urlPath);
-
-                        // Save extended metadata if enabled
-                        if (saveExtended && song && extendedMeta) {
-                            saveExtendedMetadata(db, song.id, extendedMeta);
-                        }
-
-                        scannedCount++;
-                        if (existingSong) {
-                            updatedCount++;
-                        } else {
-                            newCount++;
-                        }
-
-                    } catch (error) {
-                        console.error(`❌ Error processing ${item.name}: ${error.message}`);
-                        errors.push({ file: item.name, error: error.message });
+                    } catch (err) {
+                        // #region agent log
+                        const logPath = path.join(__dirname, '../../.cursor/debug.log');
+                        const logEntry = JSON.stringify({
+                            location: 'backend/services/musicScanner.js:333',
+                            message: 'Metadata extraction failed',
+                            data: {
+                                key: key,
+                                error: err.message,
+                                stack: err.stack
+                            },
+                            timestamp: Date.now(),
+                            sessionId: 'debug-session',
+                            runId: 'run1',
+                            hypothesisId: 'H1'
+                        }) + '\n';
+                        try {
+                            fs.appendFileSync(logPath, logEntry);
+                        } catch (e) {}
+                        // #endregion
+                        console.warn(`⚠️ Failed to parse metadata for ${key}: ${err.message}`);
+                        // Create minimal extended metadata with file info
+                        extendedMeta = { hasPicture: false, picture: null, fileSize };
                     }
+
+                    // Process cover art
+                    const albumPrefix = albumName !== 'Singles' ? `${albumName}/` : '';
+                    const coverPath = await processCoverArt(extendedMeta, albumPrefix, coverImages, coversDir);
+
+                    // #region agent log
+                    const logPath = path.join(__dirname, '../../.cursor/debug.log');
+                    const logEntry = JSON.stringify({
+                        location: 'backend/services/musicScanner.js:358',
+                        message: 'Saving song to database',
+                        data: {
+                            key: key,
+                            title: title,
+                            artist: artist,
+                            album: album,
+                            genre: genre,
+                            coverPath: coverPath,
+                            r2Url: r2Url
+                        },
+                        timestamp: Date.now(),
+                        sessionId: 'debug-session',
+                        runId: 'run1',
+                        hypothesisId: 'H1'
+                    }) + '\n';
+                    try {
+                        fs.appendFileSync(logPath, logEntry);
+                    } catch (e) {}
+                    // #endregion
+
+                    // Insert or update song with genre
+                    const stmt = db.prepare(`
+                        INSERT INTO songs (title, artist, album, file_path, duration, cover_path, genre)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(file_path) DO UPDATE SET
+                            title = excluded.title,
+                            artist = excluded.artist,
+                            album = excluded.album,
+                            duration = excluded.duration,
+                            cover_path = excluded.cover_path,
+                            genre = excluded.genre
+                    `);
+
+                    stmt.run(
+                        title,
+                        artist,
+                        album,
+                        r2Url,
+                        duration,
+                        coverPath,
+                        genre
+                    );
+
+                    // Get the song ID for extended metadata
+                    const song = db.prepare('SELECT id FROM songs WHERE file_path = ?').get(r2Url);
+
+                    // #region agent log
+                    const logPath2 = path.join(__dirname, '../../.cursor/debug.log');
+                    const logEntry3 = JSON.stringify({
+                        location: 'backend/services/musicScanner.js:375',
+                        message: 'Song saved, checking database',
+                        data: {
+                            key: key,
+                            songId: song?.id,
+                            savedTitle: title,
+                            savedArtist: artist,
+                            savedAlbum: album,
+                            savedCoverPath: coverPath
+                        },
+                        timestamp: Date.now(),
+                        sessionId: 'debug-session',
+                        runId: 'run1',
+                        hypothesisId: 'H1'
+                    }) + '\n';
+                    try {
+                        fs.appendFileSync(logPath2, logEntry3);
+                    } catch (e) {}
+                    // #endregion
+
+                    // Save extended metadata if enabled
+                    if (saveExtended && song && extendedMeta) {
+                        saveExtendedMetadata(db, song.id, extendedMeta);
+                    }
+
+                    scannedCount++;
+                    if (existingSong) {
+                        updatedCount++;
+                    } else {
+                        newCount++;
+                    }
+
+                } catch (error) {
+                    console.error(`❌ Error processing ${obj.key}: ${error.message}`);
+                    errors.push({ file: obj.key, error: error.message });
                 }
             }
         }
+    } catch (error) {
+        console.error('❌ Error scanning R2 bucket:', error);
+        throw error;
     }
-
-    await scanDirectory(musicDir);
 
     const totalSongs = db.prepare('SELECT COUNT(*) as count FROM songs').get().count;
     const scanDuration = ((Date.now() - startTime) / 1000).toFixed(2);
+    const finalAlbumCount = db.prepare('SELECT COUNT(DISTINCT album) as count FROM songs WHERE album IS NOT NULL AND album != \'\'').get();
 
-    console.log(`✅ Scan complete: ${scannedCount} files processed (${newCount} new, ${updatedCount} updated) in ${scanDuration}s`);
+    console.log(`✅ R2 scan complete: ${scannedCount} files processed (${newCount} new, ${updatedCount} updated) in ${scanDuration}s`);
+    console.log(`   📁 Albums found: ${finalAlbumCount?.count || 0}`);
     if (errors.length > 0) {
         console.log(`⚠️ ${errors.length} errors encountered during scan`);
     }

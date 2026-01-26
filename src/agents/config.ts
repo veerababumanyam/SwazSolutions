@@ -1,7 +1,7 @@
 // Model Configuration
 // Model Configuration
-export const MODEL_FAST = import.meta.env.VITE_GEMINI_MODEL_FAST || import.meta.env.GEMINI_MODEL_FAST || "gemini-2.5-flash";
-export const MODEL_QUALITY = import.meta.env.VITE_GEMINI_MODEL_QUALITY || import.meta.env.GEMINI_MODEL_QUALITY || "gemini-2.5-pro";
+export const MODEL_FAST = import.meta.env.VITE_GEMINI_MODEL_FAST || import.meta.env.GEMINI_MODEL_FAST || "gemini-3.0-flash";
+export const MODEL_QUALITY = import.meta.env.VITE_GEMINI_MODEL_QUALITY || import.meta.env.GEMINI_MODEL_QUALITY || "gemini-3.0-pro";
 export const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 // Legacy aliases for backward compatibility during refactor

@@ -21,28 +21,32 @@ import { ProfileAnalytics } from './pages/ProfileAnalytics';
 import { UnifiedProfileEditor } from './pages/UnifiedProfileEditor';
 import { MusicProvider } from './contexts/MusicContext';
 import { ToastProvider } from './contexts/ToastContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
+import SubscriptionManager from './components/Subscription/SubscriptionManager';
 import { preloadFonts } from './utils/fontLoader';
 
-const App: React.FC = () => {
-  // Preload locally hosted fonts on app mount
-  useEffect(() => {
-    preloadFonts();
-  }, []);
-
+// Inner component - MusicProvider always wraps AppRoutes to ensure context is available
+// MusicProvider handles unauthenticated state internally
+const AppContent: React.FC = () => {
   return (
-    <ErrorBoundary name="App Root" level="page">
-      <HashRouter>
-        <ToastProvider>
-          <AuthProvider>
-            <MusicProvider>
-              <ErrorBoundary name="Main Content" level="page">
-                <div className="flex flex-col min-h-screen bg-background text-primary font-sans antialiased selection:bg-accent selection:text-white">
-                  <Header />
-                  <Routes>
+    <MusicProvider>
+      <SubscriptionManager />
+      <ErrorBoundary name="Main Content" level="page">
+        <div className="flex flex-col min-h-screen bg-background text-primary font-sans antialiased selection:bg-accent selection:text-white">
+          <Header />
+          <AppRoutes />
+        </div>
+      </ErrorBoundary>
+    </MusicProvider>
+  );
+};
+
+// Routes component extracted for reuse
+const AppRoutes: React.FC = () => (
+  <Routes>
                     <Route path="/" element={
                       <RouteErrorBoundary routeName="Landing">
                         <LandingPage />
@@ -143,10 +147,21 @@ const App: React.FC = () => {
                         </RouteErrorBoundary>
                       </PublicRoute>
                     } />
-                  </Routes>
-                </div>
-              </ErrorBoundary>
-            </MusicProvider>
+  </Routes>
+);
+
+const App: React.FC = () => {
+  // Preload locally hosted fonts on app mount
+  useEffect(() => {
+    preloadFonts();
+  }, []);
+
+  return (
+    <ErrorBoundary name="App Root" level="page">
+      <HashRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <AppContent />
           </AuthProvider>
         </ToastProvider>
       </HashRouter>

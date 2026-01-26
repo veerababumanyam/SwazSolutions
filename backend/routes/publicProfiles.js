@@ -251,8 +251,8 @@ router.post('/profile/:username/view', async (req, res) => {
 
     // T256: Extract device type and referrer
     const userAgent = req.headers['user-agent'] || '';
-    const deviceType = /mobile/i.test(userAgent) ? 'mobile' : 
-                      /tablet/i.test(userAgent) ? 'tablet' : 'desktop';
+    const deviceType = /mobile/i.test(userAgent) ? 'mobile' :
+      /tablet/i.test(userAgent) ? 'tablet' : 'desktop';
     const referrer = req.headers.referer || req.headers.referrer || null;
 
     // T257: Insert view event
