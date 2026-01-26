@@ -253,10 +253,10 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https:"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
             scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
             imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
-            connectSrc: ["'self'", "https://accounts.google.com", "https://oauth2.googleapis.com"],
+            connectSrc: ["'self'", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://fonts.googleapis.com"],
             frameSrc: ["'self'", "https://accounts.google.com", "https://accounts.google.com/gsi/"],
             childSrc: ["'self'", "https://accounts.google.com"],
             objectSrc: ["'none'"],
@@ -423,6 +423,10 @@ app.use('/api/gemini-proxy', createGeminiProxyRoutes());
 app.use('/api/lyrics', apiLimiter, withAuth, checkSubscription, createLyricsRoutes(db)); // AI Lyrics generation
 app.use('/api/album-covers', apiLimiter, withAuth, checkSubscription, createAlbumCoverRoutes(db)); // AI Album cover generation
 app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter); // Public camera updates
+
+// AI-optimized content routes for search engines
+const aiContentRouter = require('./routes/ai-content');
+app.use('/api/ai', aiContentRouter); // Structured data for AI crawlers
 
 // Virtual Profile routes
 app.use('/api/public', publicProfilesRouter); // No auth required - public profiles

@@ -188,6 +188,14 @@ export const Header: React.FC = () => {
                                     <span>Lyric Studio</span>
                                 </button>
 
+                                <button
+                                    onClick={() => scrollToSection('invitations')}
+                                    className="px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm text-secondary hover:text-primary hover:bg-surface hover:shadow-md flex items-center gap-2 group"
+                                >
+                                    <Gift className="w-4 h-4" />
+                                    <span>Invitations</span>
+                                </button>
+
                                 <Link
                                     to="/news"
                                     className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/news')
@@ -346,6 +354,13 @@ export const Header: React.FC = () => {
                                     className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
                                 >
                                     <Music className="w-6 h-6" /> Lyric Studio
+                                </button>
+
+                                <button
+                                    onClick={() => scrollToSection('invitations')}
+                                    className="w-full flex items-center gap-4 p-4 rounded-2xl text-lg font-bold text-secondary hover:bg-surface hover:text-primary text-left transition-all border border-transparent"
+                                >
+                                    <Gift className="w-6 h-6" /> Digital Invitations
                                 </button>
 
                                 <Link
