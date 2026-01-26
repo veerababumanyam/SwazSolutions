@@ -7,7 +7,10 @@ import { MobilePreview } from './MobilePreview';
 import { AddLinkModal } from './AddLinkModal';
 import { AppearancePanel, AppearanceSettings } from './AppearancePanel';
 import { detectPlatformFromUrl, DEFAULT_LOGO } from '../../constants/platforms';
+import { useProfile } from '@/contexts/ProfileContext';
+import { LinkItem, LinkType } from '@/types/modernProfile.types';
 
+// Legacy type for backward compatibility with existing UI components
 export interface SocialLink {
   id: number;
   platform: string | null;
@@ -78,10 +81,13 @@ const DEFAULT_APPEARANCE: AppearanceSettings = {
   themeId: '',
 };
 
-export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({ 
-  profile, 
-  onProfileUpdate 
+export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
+  profile,
+  onProfileUpdate
 }) => {
+  // Use ProfileContext for modern data layer
+  const { links: modernLinks, addLink, updateLink, removeLink, reorderLinks, isLoading: contextLoading } = useProfile();
+
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -96,8 +102,25 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
   const avatarInputRef = React.useRef<HTMLInputElement>(null);
   const logoInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Sync modern links from context to legacy format for existing UI
   useEffect(() => {
-    fetchLinks();
+    const legacyLinks: SocialLink[] = modernLinks
+      .filter(link => link.type === LinkType.CLASSIC) // Only show CLASSIC links in this legacy view
+      .map((link, index) => ({
+        id: parseInt(link.id.replace(/\D/g, '')) || index, // Extract numeric ID
+        platform: link.platform || null,
+        url: link.url || '',
+        displayLabel: link.title,
+        customLogo: link.thumbnail || null,
+        isFeatured: link.isActive,
+        displayOrder: link.displayOrder || index,
+        clicks: link.clicks
+      }));
+    setLinks(legacyLinks);
+    setLoading(contextLoading);
+  }, [modernLinks, contextLoading]);
+
+  useEffect(() => {
     loadAppearanceSettings();
   }, []);
 
@@ -203,7 +226,7 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
     } catch (error) {
       console.error('Failed to load appearance from API:', error);
     }
-    
+
     // Fallback to localStorage
     const saved = localStorage.getItem(`appearance_${profile.username}`);
     if (saved) {
@@ -217,7 +240,7 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
 
   const handleAppearanceChange = async (newSettings: AppearanceSettings) => {
     setAppearance(newSettings);
-    
+
     // Save to API (persistent storage)
     try {
       const response = await fetch('/api/profiles/me/appearance', {
@@ -226,39 +249,17 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
         credentials: 'include',
         body: JSON.stringify({ settings: newSettings })
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to save appearance settings');
       }
-      
+
       // Also save to localStorage as backup
       localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
     } catch (error) {
       console.error('Failed to save appearance to API:', error);
       // Fallback to localStorage only
       localStorage.setItem(`appearance_${profile.username}`, JSON.stringify(newSettings));
-    }
-  };
-
-  const fetchLinks = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch('/api/profiles/me/social-links', {
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch social links');
-      }
-
-      const data = await response.json();
-      // Combine featured and custom links into a single array
-      const allLinks = [...(data.featured || []), ...(data.custom || [])];
-      setLinks(allLinks);
-    } catch (err) {
-      console.error('Error fetching links:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -272,27 +273,25 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
 
   const handleAddLink = async (url: string, label: string, isFeatured: boolean, customLogo?: string) => {
     const detected = detectPlatform(url);
-    
-    try {
-      const response = await fetch('/api/profiles/me/social-links', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          url,
-          displayLabel: label || null,
-          platform: detected?.name || null,
-          customLogo: customLogo || detected?.logo || DEFAULT_LOGO,
-          isFeatured
-        })
-      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add link');
+    try {
+      // Use ProfileContext addLink method
+      await addLink(LinkType.CLASSIC);
+
+      // Get the newly created link (it will be at the top of the array)
+      const newLink = modernLinks[0];
+
+      // Update it with the actual data
+      if (newLink) {
+        await updateLink(newLink.id, {
+          title: label || detected?.name || 'New Link',
+          url,
+          platform: (detected?.name as any) || 'generic',
+          thumbnail: customLogo || detected?.logo || DEFAULT_LOGO,
+          isActive: isFeatured
+        });
       }
 
-      await fetchLinks();
       onProfileUpdate?.();
       setShowAddModal(false);
     } catch (err) {
@@ -303,18 +302,22 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
 
   const handleUpdateLink = async (linkId: number, updates: Partial<SocialLink>) => {
     try {
-      const response = await fetch(`/api/profiles/me/social-links/${linkId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(updates)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update link');
+      // Find the modern link with matching ID
+      const modernLink = modernLinks.find(l => parseInt(l.id.replace(/\D/g, '')) === linkId);
+      if (!modernLink) {
+        throw new Error('Link not found');
       }
 
-      await fetchLinks();
+      // Convert legacy updates to modern format
+      const modernUpdates: Partial<LinkItem> = {};
+      if (updates.displayLabel !== undefined) modernUpdates.title = updates.displayLabel || '';
+      if (updates.url !== undefined) modernUpdates.url = updates.url;
+      if (updates.customLogo !== undefined) modernUpdates.thumbnail = updates.customLogo || undefined;
+      if (updates.isFeatured !== undefined) modernUpdates.isActive = updates.isFeatured;
+      if (updates.platform !== undefined) modernUpdates.platform = updates.platform as any;
+
+      await updateLink(modernLink.id, modernUpdates);
+
       onProfileUpdate?.();
       setEditingLink(null);
     } catch (err) {
@@ -329,16 +332,14 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
     }
 
     try {
-      const response = await fetch(`/api/profiles/me/social-links/${linkId}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to delete link');
+      // Find the modern link with matching ID
+      const modernLink = modernLinks.find(l => parseInt(l.id.replace(/\D/g, '')) === linkId);
+      if (!modernLink) {
+        throw new Error('Link not found');
       }
 
-      await fetchLinks();
+      await removeLink(modernLink.id);
+
       onProfileUpdate?.();
     } catch (err) {
       console.error('Error deleting link:', err);
@@ -354,16 +355,29 @@ export const ProfileLinksEditor: React.FC<ProfileLinksEditorProps> = ({
     const reorderedLinks = [...links];
     const [removed] = reorderedLinks.splice(dragIndex, 1);
     reorderedLinks.splice(hoverIndex, 0, removed);
-    
+
     // Update display orders
     const updatedLinks = reorderedLinks.map((link, index) => ({
       ...link,
       displayOrder: index
     }));
-    
+
     setLinks(updatedLinks);
-    
-    // TODO: Send reorder to backend
+
+    // Convert to modern format and use context method
+    try {
+      const modernReorderedLinks = modernLinks
+        .slice() // Copy array
+        .sort((a, b) => {
+          const aIndex = updatedLinks.findIndex(l => parseInt(l.id.toString().replace(/\D/g, '')) === parseInt(a.id.replace(/\D/g, '')));
+          const bIndex = updatedLinks.findIndex(l => parseInt(l.id.toString().replace(/\D/g, '')) === parseInt(b.id.replace(/\D/g, '')));
+          return aIndex - bIndex;
+        });
+
+      await reorderLinks(modernReorderedLinks);
+    } catch (err) {
+      console.error('Error reordering links:', err);
+    }
   };
 
   // Get featured social icons for header row
