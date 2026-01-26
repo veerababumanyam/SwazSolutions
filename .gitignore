@@ -58,3 +58,13 @@ nul
 .vdcode/
 .github/
 
+# SSH Keys - NEVER COMMIT THESE
+*.pem
+*.key
+id_rsa
+id_rsa.pub
+id_ed25519*
+id_ecdsa*
+*.ppk
+.ssh/
+

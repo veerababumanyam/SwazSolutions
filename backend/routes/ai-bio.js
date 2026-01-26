@@ -8,6 +8,7 @@ const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { getClientKey } = require('../middleware/rateLimit');
 
 // Rate limiter: 5 requests per user per day
 // Uses user ID as key for per-user limiting
@@ -25,8 +26,8 @@ const aiBioLimiter = rateLimit({
   skipSuccessfulRequests: false,
   validate: { xForwardedForHeader: false },
   keyGenerator: (req) => {
-    // Use user ID for per-user limiting
-    return req.user?.id?.toString() || req.ip;
+    // Use user ID for per-user limiting, fall back to normalized IP
+    return getClientKey(req, true);
   },
   handler: (req, res) => {
     console.warn(`🚫 AI bio generation limit exceeded for user: ${req.user?.id}`);

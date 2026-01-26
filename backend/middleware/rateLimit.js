@@ -232,5 +232,6 @@ module.exports = {
   uploadLimiter,
   aiGenerationLimiter,
   imageProcessingLimiter,
-  qrCodeLimiter
+  qrCodeLimiter,
+  getClientKey
 };

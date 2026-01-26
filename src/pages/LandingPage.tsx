@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Globe, Music, Heart, Wand2, CheckCircle, Activity, Lock, Phone, Server, FileWarning, FileCheck, Feather, Layers, FileCode, Play, Search, Palette, Mic2, Bot, Network, Brain, Radio, Camera, IdCard, QrCode, Users, Share2, Download, Eye, BarChart3, Smartphone, Link2, Mail, UserCheck, Settings } from 'lucide-react';
+import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Globe, Music, Heart, Wand2, CheckCircle, Activity, Lock, Phone, Server, FileWarning, FileCheck, Feather, Layers, FileCode, Play, Search, Palette, Mic2, Bot, Network, Brain, Radio, Camera, IdCard, QrCode, Users, Share2, Download, Eye, BarChart3, Smartphone, Link2, Mail, UserCheck, Settings, Calendar, PartyPopper } from 'lucide-react';
 import { Schema, localBusinessSchema, dataRecoveryFAQSchema } from '../components/Schema';
 import { UnifiedContactForm } from '../components/UnifiedContactForm';
 import { LazyImage } from '../components/LazyImage';
@@ -13,9 +13,9 @@ export const LandingPage: React.FC = () => {
     const { isAuthenticated } = useAuth();
 
     useEffect(() => {
-        const durations = [5000, 5000, 5000, 5000, 5000]; // Durations for each hero card (5 cards) - 5s each
+        const durations = [5000, 5000, 5000, 5000, 5000, 5000]; // Durations for each hero card (6 cards) - 5s each
         const timeout = setTimeout(() => {
-            setActiveHero((prev) => (prev + 1) % 5);
+            setActiveHero((prev) => (prev + 1) % 6);
         }, durations[activeHero]);
         return () => clearTimeout(timeout);
     }, [activeHero]);
@@ -150,8 +150,145 @@ export const LandingPage: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* Card 2: Digital Invitations - Smart Celebrations */}
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 1 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                    {/* Top-Right Badge - STANDARDIZED */}
+                                    <div className="absolute top-0 right-0 p-0 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                            <Calendar className="w-4 h-4" /> SMART CELEBRATIONS
+                                        </div>
+                                    </div>
+
+                                    <div className="grid lg:grid-cols-2 gap-12 items-center mt-8 md:mt-0">
+                                        <div>
+                                            {/* Badge: Digital Invitations (Above Title) */}
+                                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/5 border border-accent/30 mb-6">
+                                                <PartyPopper className="w-4 h-4 text-accent" />
+                                                <span className="text-xs font-bold text-accent uppercase tracking-wider">DIGITAL INVITATIONS</span>
+                                            </div>
+
+                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-4 leading-tight">
+                                                Your Event,<br />
+                                                Perfectly Invited
+                                                {/* Brand Gradient Subheadline */}
+                                                <span className="text-transparent bg-clip-text bg-brand-gradient text-2xl md:text-3xl block mt-2 font-bold">AI-Powered • Multi-Language • Cultural Traditions</span>
+                                            </h2>
+
+                                            {/* Event Type Icons Strip */}
+                                            <div className="flex flex-wrap items-center gap-3 mb-6">
+                                                {['💍', '💑', '🎂', '🏠', '💕', '👶', '💼', '🎉'].map((emoji) => (
+                                                    <div key={emoji} className="text-2xl p-2 hover:scale-110 transition-transform">
+                                                        {emoji}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <p className="text-lg text-secondary mb-6 leading-relaxed border-l-4 border-accent pl-4">
+                                                <strong>One platform for all your celebrations!</strong> Create stunning digital invitations with AI-powered text generation, multi-language support, and Indian cultural features. Share instantly on WhatsApp and Instagram.
+                                            </p>
+
+                                            <div className="flex flex-wrap gap-3 mb-8">
+                                                {[{ icon: Wand2, label: 'AI Text Generation' }, { icon: Globe, label: '12+ Languages' }, { icon: Calendar, label: 'Multi-Event Timeline' }].map((f, i) => (
+                                                    <div key={i} className="px-4 py-2 rounded-xl bg-surface border border-border text-sm font-semibold text-secondary flex items-center gap-2 shadow-sm hover:border-accent transition-colors cursor-default">
+                                                        <f.icon className="w-4 h-4 text-accent" /> {f.label}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                <Link to={isAuthenticated ? "/invites" : "/invites/create"} className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
+                                                    <PartyPopper className="w-5 h-5" /> {isAuthenticated ? 'Manage Invitations' : 'Create Invitation'}
+                                                    <ArrowRight className="w-5 h-5" />
+                                                </Link>
+                                            </div>
+
+                                            <p className="mt-6 text-xs text-muted font-medium flex items-center gap-2">
+                                                <CheckCircle className="w-4 h-4 text-emerald-500" /> 100% Free • Analytics Included • QR Check-in
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-6 relative">
+                                            {/* Background Glow */}
+                                            <div className="absolute -inset-4 bg-gradient-to-r from-accent/10 to-accent-orange/10 rounded-full blur-3xl animate-pulse"></div>
+
+                                            {/* Invitations Preview Card */}
+                                            <div className="bg-surface/60 backdrop-blur-sm p-8 rounded-2xl border border-accent/20 shadow-lg relative">
+                                                <div className="flex items-center gap-4 mb-6">
+                                                    <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0 shadow-inner">
+                                                        <PartyPopper className="w-7 h-7 text-accent" />
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-lg text-primary">Digital Invitation</div>
+                                                        <div className="text-sm text-secondary">Multi-Event • Multi-Language</div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Language Support Showcase */}
+                                                <div className="mb-6">
+                                                    <div className="text-xs font-bold text-secondary uppercase mb-3">12 Indian Languages</div>
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        {['English', 'हिंदी', 'ગુજરાતી', 'मराठी', 'తెలుగు', 'தமிழ்'].map((lang) => (
+                                                            <div key={lang} className="px-3 py-2 bg-white border border-border rounded-lg text-center text-xs font-semibold text-primary">
+                                                                {lang}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Cultural Features Showcase */}
+                                                <div className="mb-6">
+                                                    <div className="text-xs font-bold text-secondary uppercase mb-3">Cultural Features</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {['🕉️ Religious Symbols', '🎭 Regional Greetings', '🌅 Muhurat Time', '💛 Haldi Ceremony'].map((feature) => (
+                                                            <div key={feature} className="px-2 py-1 bg-accent/5 border border-accent/20 rounded-lg text-[10px] font-bold text-secondary">
+                                                                {feature}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Stats Grid */}
+                                                <div className="grid grid-cols-3 gap-4 text-center">
+                                                    <div className="bg-surface/80 p-3 rounded-xl">
+                                                        <div className="text-2xl font-black text-accent">AI</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Generation</div>
+                                                    </div>
+                                                    <div className="bg-surface/80 p-3 rounded-xl">
+                                                        <div className="text-2xl font-black text-accent">12+</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Languages</div>
+                                                    </div>
+                                                    <div className="bg-surface/80 p-3 rounded-xl">
+                                                        <div className="text-2xl font-black text-accent">QR</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Check-in</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Features Grid */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
+                                                    <div className="p-2 bg-accent/10 rounded-lg text-accent"><BarChart3 className="w-5 h-5" /></div>
+                                                    <div>
+                                                        <div className="font-bold text-primary">Analytics</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">Track Views</div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
+                                                    <div className="p-2 bg-accent-orange/10 rounded-lg text-accent-orange"><Users className="w-5 h-5" /></div>
+                                                    <div>
+                                                        <div className="font-bold text-primary">Guest Mgmt</div>
+                                                        <div className="text-[10px] uppercase text-secondary font-bold">RSVP Tracking</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* Card 5: Agentic AI Solutions - INTEGRATED FROM SEPARATE PAGE */}
-                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 4 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 5 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
@@ -256,7 +393,7 @@ export const LandingPage: React.FC = () => {
                             </div>
 
                             {/* Card 4: Lyric Studio - GEN-AI Innovation */}
-                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 3 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 4 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
@@ -356,7 +493,7 @@ export const LandingPage: React.FC = () => {
                             </div>
 
                             {/* Card 3: Copyright-Free Music - STANDARDIZED */}
-                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 2 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 3 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
@@ -474,7 +611,7 @@ export const LandingPage: React.FC = () => {
                             </div>
 
                             {/* Card 2: vCard - Digital Business Card */}
-                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 1 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
+                            <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 2 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
@@ -619,7 +756,7 @@ export const LandingPage: React.FC = () => {
 
                         {/* Carousel Indicators */}
                         <div className="flex justify-center gap-3 mt-8">
-                            {[0, 1, 2, 3, 4].map((idx) => (
+                            {[0, 1, 2, 3, 4, 5].map((idx) => (
                                 <button
                                     key={idx}
                                     onClick={() => setActiveHero(idx)}
@@ -1144,6 +1281,105 @@ export const LandingPage: React.FC = () => {
                                         <Link to="/studio" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex">
                                             <Play className="w-5 h-5" /> Open Lyric Studio
                                         </Link>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Feature 4: Digital Invitations - Smart Celebrations */}
+                <section id="invitations" className="py-32 bg-background relative overflow-hidden scroll-mt-24">
+                    <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-accent-orange/5"></div>
+                    <div className="container mx-auto px-4 relative z-10">
+                        <div className="max-w-7xl mx-auto mb-32">
+                            <div className="text-center mb-16 max-w-3xl mx-auto">
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6">
+                                    <PartyPopper className="w-4 h-4 text-accent" />
+                                    <span className="text-xs font-bold text-accent uppercase tracking-wider">Digital Celebrations</span>
+                                </div>
+                                <h2 className="text-5xl md:text-6xl lg:text-7xl font-black text-primary leading-tight mb-4">
+                                    Celebrate with Intelligence.
+                                    <br />
+                                    <span className="text-gradient">Powered by AI & Culture.</span>
+                                </h2>
+                                <p className="text-xl text-secondary leading-relaxed">
+                                    Create stunning digital invitations with AI-powered text generation in 12+ Indian languages. Perfect for weddings, birthdays, and cultural celebrations with built-in RSVP, analytics, and QR check-in.
+                                </p>
+                            </div>
+
+                            {/* Features Grid - 12 Items in 3 Columns */}
+                            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+                                {[
+                                    { icon: Wand2, title: 'AI Text Generation', desc: '6 tones: Formal, Casual, Poetic, Witty, Traditional & Modern. Generate perfect invitation text instantly.' },
+                                    { icon: Globe, title: '12 Indian Languages', desc: 'Hindi, Gujarati, Marathi, Telugu, Tamil, Kannada, Malayalam, Punjabi, Bengali, Urdu & more with native script.' },
+                                    { icon: Calendar, title: 'Multi-Event Itineraries', desc: 'Timeline for Sangeet, Mehendi, Haldi, Wedding & Reception. Perfect for multi-day celebrations.' },
+                                    { icon: Sparkles, title: 'Cultural Customization', desc: 'Religious symbols (Ganesh, Om, Khanda, Cross), regional greetings & muhurat time display.' },
+                                    { icon: Palette, title: 'Template Marketplace', desc: '6+ professional templates with ratings & downloads. Create custom templates to share.' },
+                                    { icon: Users, title: 'Guest Management', desc: 'CSV import/export, guest groups, bulk operations. Track RSVPs with dietary restrictions.' },
+                                    { icon: BarChart3, title: 'Real-Time Analytics', desc: 'View tracking, device breakdown, geo-location data. Know who opened your invitation.' },
+                                    { icon: QrCode, title: 'QR Check-In System', desc: 'Generate QR codes for instant guest check-in at your event. Track attendance in real-time.' },
+                                    { icon: Share2, title: 'WhatsApp & Instagram', desc: 'Share invitations via WhatsApp, Instagram Stories, or copy link. Optimized for mobile viewing.' },
+                                    { icon: Music, title: 'Background Music', desc: 'Upload audio files or add YouTube links. Auto-play with volume controls & looping.' },
+                                    { icon: Eye, title: 'Photo Gallery', desc: 'Upload multiple images. Audio messages for personal touch. Video embeds supported.' },
+                                    { icon: Clock, title: 'Countdown & Expiry', desc: 'Animated countdown timer to event date. Optional auto-expiry after celebration.' },
+                                ].map((feature, i) => (
+                                    <div key={i} className="glass-card p-6 rounded-2xl hover-lift">
+                                        <div className="flex items-start gap-4">
+                                            <div className="p-3 bg-accent/10 rounded-lg text-accent flex-shrink-0">
+                                                <feature.icon className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-primary mb-2">{feature.title}</h3>
+                                                <p className="text-sm text-secondary leading-relaxed">{feature.desc}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Bottom CTA Card */}
+                            <div className="glass-card rounded-3xl p-8 md:p-16 overflow-hidden">
+                                <div className="grid lg:grid-cols-2 gap-12 items-center">
+                                    <div>
+                                        <h3 className="text-4xl md:text-5xl font-black text-primary mb-4 leading-tight">
+                                            Ready to Celebrate?
+                                        </h3>
+                                        <p className="text-lg text-secondary mb-8 leading-relaxed">
+                                            Create your digital invitation in minutes with AI-powered text generation. Perfect for Indian weddings, birthdays, and cultural celebrations.
+                                        </p>
+                                        <Link to="/invites/create" className="btn btn-primary px-8 py-4 rounded-xl text-lg hover-lift inline-flex items-center gap-3 mb-6">
+                                            <PartyPopper className="w-5 h-5" /> Create Your Invitation
+                                            <ArrowRight className="w-5 h-5" />
+                                        </Link>
+                                        <p className="text-xs text-muted font-medium flex items-center gap-2">
+                                            <CheckCircle className="w-4 h-4 text-emerald-500" /> 100% Free • Analytics Included • Multi-Language Support
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        <div className="flex items-center gap-4 p-6 bg-surface/60 backdrop-blur-sm rounded-2xl border border-accent/20">
+                                            <div className="p-3 bg-accent/10 rounded-lg text-accent flex-shrink-0">
+                                                <Calendar className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-primary">Multi-Event Timeline</div>
+                                                <div className="text-sm text-secondary">Sangeet • Mehendi • Wedding</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {[
+                                                { value: 'AI', label: 'Powered' },
+                                                { value: '12+', label: 'Languages' },
+                                                { value: '100%', label: 'Free' }
+                                            ].map((stat, i) => (
+                                                <div key={i} className="bg-surface/60 backdrop-blur-sm p-4 rounded-xl text-center border border-accent/20">
+                                                    <div className="text-2xl font-black text-accent">{stat.value}</div>
+                                                    <div className="text-[10px] uppercase text-secondary font-bold">{stat.label}</div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

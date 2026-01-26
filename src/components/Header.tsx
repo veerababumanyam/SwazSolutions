@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot, User, LogOut, IdCard } from 'lucide-react';
+import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot, User, LogOut, IdCard, Gift } from 'lucide-react';
 import { VisitorCounter } from './VisitorCounter';
 import { useAuth } from '../contexts/AuthContext';
 import { LazyImage } from './LazyImage';
@@ -133,6 +133,17 @@ export const Header: React.FC = () => {
                                 >
                                     <Music className="w-4 h-4" />
                                     <span>Lyric Studio</span>
+                                </Link>
+
+                                <Link
+                                    to="/invites"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/invites')
+                                        ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
+                                        : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
+                                        }`}
+                                >
+                                    <Gift className="w-4 h-4" />
+                                    <span>Invitations</span>
                                 </Link>
 
                                 <button
@@ -290,6 +301,14 @@ export const Header: React.FC = () => {
                                     className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/studio') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
                                 >
                                     <Music className="w-6 h-6" /> Lyric Studio
+                                </Link>
+
+                                <Link
+                                    to="/invites"
+                                    onClick={() => handleMobileNavClick()}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/invites') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                >
+                                    <Gift className="w-6 h-6" /> Invitations
                                 </Link>
 
                                 <button

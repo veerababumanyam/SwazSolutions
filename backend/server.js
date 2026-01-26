@@ -12,6 +12,7 @@ const { apiLimiter, authLimiter } = require('./middleware/rateLimit');
 // Import authentication middleware
 const { authenticateToken, optionalAuth, ENABLE_AUTH } = require('./middleware/auth');
 const { checkSubscription } = require('./middleware/subscription');
+const { handlePortConflict } = require('./utils/portManager');
 
 // CORS Configuration - Origin Whitelisting
 const parseAllowedOrigins = () => {
@@ -543,11 +544,23 @@ const cleanupScheduledTasks = () => {
     }
 };
 
-// Start server
-server.listen(PORT, '0.0.0.0', () => {
-    const localIP = getLocalIP();
+// Start server with port conflict detection
+(async () => {
+    const AUTO_KILL = process.env.AUTO_KILL_PORT_CONFLICT === 'true';
 
-    console.log(`
+    // Pre-flight port availability check
+    const portAvailable = await handlePortConflict(PORT, AUTO_KILL);
+
+    if (!portAvailable) {
+        console.error(`❌ Cannot start server: Port ${PORT} is in use`);
+        process.exit(1);
+    }
+
+    // Start server with comprehensive error handling
+    const serverInstance = server.listen(PORT, '0.0.0.0', () => {
+        const localIP = getLocalIP();
+
+        console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║                                                        ║
 ║   🎵  Swaz Music Streaming Server                     ║
@@ -567,20 +580,20 @@ server.listen(PORT, '0.0.0.0', () => {
 ║   → http://localhost:${PORT}/api/health                    ║
 ║                                                        ║
 ╚════════════════════════════════════════════════════════╝
-  `);
+      `);
 
-    console.log('🎯 Ready to serve music!');
+        console.log('🎯 Ready to serve music!');
 
-    if (ENABLE_AUTH) {
-        console.log('🔒 Authentication: ENABLED ✅');
-        console.log('   Protected routes require valid JWT token');
-    } else {
-        console.warn('⚠️  Authentication: DISABLED - OPEN ACCESS MODE');
-        console.warn('   Set ENABLE_AUTH=true in .env to enable authentication');
-    }
+        if (ENABLE_AUTH) {
+            console.log('🔒 Authentication: ENABLED ✅');
+            console.log('   Protected routes require valid JWT token');
+        } else {
+            console.warn('⚠️  Authentication: DISABLED - OPEN ACCESS MODE');
+            console.warn('   Set ENABLE_AUTH=true in .env to enable authentication');
+        }
 
-    console.log(`🌐 CORS: Whitelisted origins: ${allowedOrigins.join(', ')}`);
-    console.log('');
+        console.log(`🌐 CORS: Whitelisted origins: ${allowedOrigins.join(', ')}`);
+        console.log('');
 
     // Schedule music scan (every 24 hours) with safety boundaries and retry logic
     const SCAN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -731,25 +744,69 @@ server.listen(PORT, '0.0.0.0', () => {
         });
     }, SUBSCRIPTION_CHECK_INTERVAL);
     console.log('⏰ Subscription expiration check scheduled (Hourly)');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM signal received: closing HTTP server');
-    cleanupScheduledTasks();
-    server.close(() => {
-        db.close();
-        process.exit(0);
     });
-});
 
-process.on('SIGINT', () => {
-    console.log('\nSIGINT signal received: closing HTTP server');
-    cleanupScheduledTasks();
-    server.close(() => {
-        db.close();
-        process.exit(0);
+    // Handle server errors
+    serverInstance.on('error', (error) => {
+        if (error['code'] === 'EADDRINUSE') {
+            console.error(`
+╔════════════════════════════════════════════════════════╗
+║                                                        ║
+║   ❌ CRITICAL ERROR: Port Already In Use               ║
+║                                                        ║
+╠════════════════════════════════════════════════════════╣
+║                                                        ║
+║   Port ${PORT} is occupied by another process          ║
+║                                                        ║
+║   This should not happen (pre-flight check passed)    ║
+║   There may be a race condition.                      ║
+║                                                        ║
+║   Try restarting the application.                     ║
+║                                                        ║
+╚════════════════════════════════════════════════════════╝
+      `);
+            process.exit(1);
+        } else if (error['code'] === 'EACCES') {
+            console.error(`
+╔════════════════════════════════════════════════════════╗
+║                                                        ║
+║   ❌ CRITICAL ERROR: Permission Denied                 ║
+║                                                        ║
+╠════════════════════════════════════════════════════════╣
+║                                                        ║
+║   Port ${PORT} requires elevated privileges            ║
+║                                                        ║
+║   Solutions:                                           ║
+║   1. Use a port >= 1024 (recommended)                 ║
+║   2. Run with administrator privileges (not recommended) ║
+║                                                        ║
+╚════════════════════════════════════════════════════════╝
+      `);
+            process.exit(1);
+        } else {
+            console.error(`❌ Server error:`, error);
+            process.exit(1);
+        }
     });
-});
+
+    // Update graceful shutdown to reference serverInstance
+    process.on('SIGTERM', () => {
+        console.log('SIGTERM signal received: closing HTTP server');
+        cleanupScheduledTasks();
+        serverInstance.close(() => {
+            db.close();
+            process.exit(0);
+        });
+    });
+
+    process.on('SIGINT', () => {
+        console.log('\nSIGINT signal received: closing HTTP server');
+        cleanupScheduledTasks();
+        serverInstance.close(() => {
+            db.close();
+            process.exit(0);
+        });
+    });
+})();
 
 module.exports = app;

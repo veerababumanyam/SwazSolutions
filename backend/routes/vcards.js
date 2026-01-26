@@ -8,6 +8,7 @@ const db = require('../config/database');
 const { generateVCard, getVCardFilename } = require('../services/vCardGenerator');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const { getClientKey } = require('../middleware/rateLimit');
 
 // Rate limiter: 100 requests per IP per hour
 const vCardDownloadLimiter = rateLimit({
@@ -23,12 +24,13 @@ const vCardDownloadLimiter = rateLimit({
   legacyHeaders: false,
   validate: { xForwardedForHeader: false },
   keyGenerator: (req) => {
-    // Hash IP for privacy
-    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-    return crypto.createHash('sha256').update(ip).digest('hex');
+    // Normalize IP first (handles IPv6 localhost), then hash for privacy
+    const normalizedIP = getClientKey(req, false);
+    return crypto.createHash('sha256').update(normalizedIP).digest('hex');
   },
   handler: (req, res) => {
-    const hashedIP = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
+    const normalizedIP = getClientKey(req, false);
+    const hashedIP = crypto.createHash('sha256').update(normalizedIP).digest('hex');
     console.log(`🚫 vCard download rate limit exceeded for IP hash: ${hashedIP.substring(0, 16)}...`);
     res.status(429).json({
       error: 'Too many vCard download requests',
@@ -78,8 +80,8 @@ router.get('/:username/vcard', vCardDownloadLimiter, (req, res) => {
     const vCardString = generateVCard(profile, socialLinks);
 
     // T077: Track download event
-    const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';
-    const hashedIP = hashIP(ipAddress);
+    const normalizedIP = getClientKey(req, false);
+    const hashedIP = hashIP(normalizedIP);
     const userAgent = req.get('user-agent') || 'unknown';
 
     // Detect device type from user agent

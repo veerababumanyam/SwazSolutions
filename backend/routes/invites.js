@@ -44,7 +44,7 @@ const createInviteRoutes = (db) => {
    * @desc    Create a new digital invitation
    * @access  Private
    */
-  router.post('/', authenticateToken, async (req, res) => {
+  router.post('/', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
       const inviteData = req.body;
@@ -59,10 +59,7 @@ const createInviteRoutes = (db) => {
       }
 
       // Check user's invitation quota
-      const userQuota = await db.get(
-        'SELECT invites_quota, invites_used FROM users WHERE id = ?',
-        [userId]
-      );
+      const userQuota = db.prepare('SELECT invites_quota, invites_used FROM users WHERE id = ?').get(userId);
 
       if (userQuota && userQuota.invites_used >= userQuota.invites_quota) {
         return res.status(403).json({
@@ -76,10 +73,7 @@ const createInviteRoutes = (db) => {
       const slug = inviteData.slug || `${inviteData.hostName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
       // Check if slug is unique
-      const existingSlug = await db.get(
-        'SELECT id FROM digital_invites WHERE slug = ?',
-        [slug]
-      );
+      const existingSlug = db.prepare('SELECT id FROM digital_invites WHERE slug = ?').get(slug);
 
       if (existingSlug) {
         return res.status(400).json({
@@ -89,7 +83,7 @@ const createInviteRoutes = (db) => {
       }
 
       // Insert invitation
-      await db.run(
+      db.prepare(
         `INSERT INTO digital_invites (
           id, user_id, event_type, host_name,
           primary_lang, secondary_lang, bilingual_enabled, bilingual_layout,
@@ -100,59 +94,54 @@ const createInviteRoutes = (db) => {
           show_qr, show_countdown, show_rsvp, auto_expiry,
           generated_text, ai_tone, gallery_images,
           status, slug
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          inviteId,
-          userId,
-          inviteData.eventType,
-          inviteData.hostName,
-          inviteData.primaryLang || 'en',
-          inviteData.secondaryLang || '',
-          inviteData.bilingualEnabled ? 1 : 0,
-          inviteData.bilingualLayout || 'tabs',
-          inviteData.date,
-          inviteData.time || '18:30',
-          inviteData.venue,
-          inviteData.mapLink || '',
-          inviteData.details || '',
-          inviteData.multiEventEnabled ? 1 : 0,
-          JSON.stringify(inviteData.events || []),
-          JSON.stringify(inviteData.sections || []),
-          JSON.stringify(inviteData.indianConfig || { enabled: false }),
-          JSON.stringify(inviteData.mediaConfig || {}),
-          inviteData.templateId || 'wc1',
-          inviteData.customBg || '',
-          inviteData.customFont || '',
-          inviteData.showQr ? 1 : 0,
-          inviteData.showCountdown !== undefined ? inviteData.showCountdown : 1,
-          inviteData.showRsvp !== undefined ? inviteData.showRsvp : 1,
-          inviteData.autoExpiry ? 1 : 0,
-          inviteData.generatedText || '',
-          inviteData.aiTone || '',
-          JSON.stringify(inviteData.galleryImages || []),
-          'draft',
-          slug
-        ]
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        inviteId,
+        userId,
+        inviteData.eventType,
+        inviteData.hostName,
+        inviteData.primaryLang || 'en',
+        inviteData.secondaryLang || '',
+        inviteData.bilingualEnabled ? 1 : 0,
+        inviteData.bilingualLayout || 'tabs',
+        inviteData.date,
+        inviteData.time || '18:30',
+        inviteData.venue,
+        inviteData.mapLink || '',
+        inviteData.details || '',
+        inviteData.multiEventEnabled ? 1 : 0,
+        JSON.stringify(inviteData.events || []),
+        JSON.stringify(inviteData.sections || []),
+        JSON.stringify(inviteData.indianConfig || { enabled: false }),
+        JSON.stringify(inviteData.mediaConfig || {}),
+        inviteData.templateId || 'wc1',
+        inviteData.customBg || '',
+        inviteData.customFont || '',
+        inviteData.showQr ? 1 : 0,
+        inviteData.showCountdown !== undefined ? inviteData.showCountdown : 1,
+        inviteData.showRsvp !== undefined ? inviteData.showRsvp : 1,
+        inviteData.autoExpiry ? 1 : 0,
+        inviteData.generatedText || '',
+        inviteData.aiTone || '',
+        JSON.stringify(inviteData.galleryImages || []),
+        'draft',
+        slug
       );
 
       // Update user's invite count
-      await db.run(
-        'UPDATE users SET invites_used = invites_used + 1 WHERE id = ?',
-        [userId]
-      );
+      db.prepare('UPDATE users SET invites_used = invites_used + 1 WHERE id = ?').run(userId);
 
       // Fetch created invite
-      const invite = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ?',
-        [inviteId]
-      );
+      const invite = db.prepare('SELECT * FROM digital_invites WHERE id = ?').get(inviteId);
 
       // Parse JSON fields
-      invite.events_json = JSON.parse(invite.events_json || '[]');
-      invite.sections_json = JSON.parse(invite.sections_json || '[]');
-      invite.indian_config_json = JSON.parse(invite.indian_config_json || '{}');
-      invite.media_config_json = JSON.parse(invite.media_config_json || '{}');
-      invite.gallery_images = JSON.parse(invite.gallery_images || '[]');
+      if (invite) {
+        invite.events_json = JSON.parse(invite.events_json || '[]');
+        invite.sections_json = JSON.parse(invite.sections_json || '[]');
+        invite.indian_config_json = JSON.parse(invite.indian_config_json || '{}');
+        invite.media_config_json = JSON.parse(invite.media_config_json || '{}');
+        invite.gallery_images = JSON.parse(invite.gallery_images || '[]');
+      }
 
       res.json({
         success: true,
@@ -173,7 +162,7 @@ const createInviteRoutes = (db) => {
    * @desc    Get user's invitations
    * @access  Private
    */
-  router.get('/', authenticateToken, async (req, res) => {
+  router.get('/', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
       const { status, page = 1, limit = 20 } = req.query;
@@ -189,7 +178,7 @@ const createInviteRoutes = (db) => {
       query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
       params.push(parseInt(limit), (parseInt(page) - 1) * parseInt(limit));
 
-      const invites = await db.all(query, params);
+      const invites = db.prepare(query).all(...params);
 
       // Parse JSON fields
       const parsedInvites = invites.map(invite => ({
@@ -202,15 +191,12 @@ const createInviteRoutes = (db) => {
       }));
 
       // Get total count
-      const countResult = await db.get(
-        'SELECT COUNT(*) as total FROM digital_invites WHERE user_id = ?',
-        [userId]
-      );
+      const countResult = db.prepare('SELECT COUNT(*) as total FROM digital_invites WHERE user_id = ?').get(userId);
 
       res.json({
         success: true,
         data: parsedInvites,
-        total: countResult.total,
+        total: countResult?.total || 0,
         page: parseInt(page),
         limit: parseInt(limit)
       });
@@ -229,15 +215,12 @@ const createInviteRoutes = (db) => {
    * @desc    Get invitation by ID
    * @access  Private
    */
-  router.get('/:id', authenticateToken, async (req, res) => {
+  router.get('/:id', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
       const { id } = req.params;
 
-      const invite = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ? AND user_id = ?',
-        [id, userId]
-      );
+      const invite = db.prepare('SELECT * FROM digital_invites WHERE id = ? AND user_id = ?').get(id, userId);
 
       if (!invite) {
         return res.status(404).json({
@@ -254,15 +237,14 @@ const createInviteRoutes = (db) => {
       invite.gallery_images = JSON.parse(invite.gallery_images || '[]');
 
       // Get guest statistics
-      const stats = await db.get(
+      const stats = db.prepare(
         `SELECT
           COUNT(*) as total_guests,
           SUM(CASE WHEN status = 'Accepted' THEN 1 ELSE 0 END) as accepted,
           SUM(CASE WHEN status = 'Declined' THEN 1 ELSE 0 END) as declined,
           SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending
-        FROM invite_guests WHERE invite_id = ?`,
-        [id]
-      );
+        FROM invite_guests WHERE invite_id = ?`
+      ).get(id);
 
       res.json({
         success: true,
@@ -286,17 +268,14 @@ const createInviteRoutes = (db) => {
    * @desc    Update invitation
    * @access  Private
    */
-  router.put('/:id', authenticateToken, async (req, res) => {
+  router.put('/:id', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
       const { id } = req.params;
       const inviteData = req.body;
 
       // Check ownership
-      const existing = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ? AND user_id = ?',
-        [id, userId]
-      );
+      const existing = db.prepare('SELECT * FROM digital_invites WHERE id = ? AND user_id = ?').get(id, userId);
 
       if (!existing) {
         return res.status(404).json({
@@ -315,7 +294,7 @@ const createInviteRoutes = (db) => {
       }
 
       // Update invitation
-      await db.run(
+      db.prepare(
         `UPDATE digital_invites SET
           event_type = ?, host_name = ?,
           primary_lang = ?, secondary_lang = ?, bilingual_enabled = ?, bilingual_layout = ?,
@@ -326,50 +305,48 @@ const createInviteRoutes = (db) => {
           show_qr = ?, show_countdown = ?, show_rsvp = ?, auto_expiry = ?,
           generated_text = ?, ai_tone = ?, gallery_images = ?,
           updated_at = datetime('now')
-        WHERE id = ?`,
-        [
-          inviteData.eventType,
-          inviteData.hostName,
-          inviteData.primaryLang || 'en',
-          inviteData.secondaryLang || '',
-          inviteData.bilingualEnabled ? 1 : 0,
-          inviteData.bilingualLayout || 'tabs',
-          inviteData.date,
-          inviteData.time || '18:30',
-          inviteData.venue,
-          inviteData.mapLink || '',
-          inviteData.details || '',
-          inviteData.multiEventEnabled ? 1 : 0,
-          JSON.stringify(inviteData.events || []),
-          JSON.stringify(inviteData.sections || []),
-          JSON.stringify(inviteData.indianConfig || { enabled: false }),
-          JSON.stringify(inviteData.mediaConfig || {}),
-          inviteData.templateId || 'wc1',
-          inviteData.customBg || '',
-          inviteData.customFont || '',
-          inviteData.showQr ? 1 : 0,
-          inviteData.showCountdown !== undefined ? inviteData.showCountdown : 1,
-          inviteData.showRsvp !== undefined ? inviteData.showRsvp : 1,
-          inviteData.autoExpiry ? 1 : 0,
-          inviteData.generatedText || '',
-          inviteData.aiTone || '',
-          JSON.stringify(inviteData.galleryImages || []),
-          id
-        ]
+        WHERE id = ?`
+      ).run(
+        inviteData.eventType,
+        inviteData.hostName,
+        inviteData.primaryLang || 'en',
+        inviteData.secondaryLang || '',
+        inviteData.bilingualEnabled ? 1 : 0,
+        inviteData.bilingualLayout || 'tabs',
+        inviteData.date,
+        inviteData.time || '18:30',
+        inviteData.venue,
+        inviteData.mapLink || '',
+        inviteData.details || '',
+        inviteData.multiEventEnabled ? 1 : 0,
+        JSON.stringify(inviteData.events || []),
+        JSON.stringify(inviteData.sections || []),
+        JSON.stringify(inviteData.indianConfig || { enabled: false }),
+        JSON.stringify(inviteData.mediaConfig || {}),
+        inviteData.templateId || 'wc1',
+        inviteData.customBg || '',
+        inviteData.customFont || '',
+        inviteData.showQr ? 1 : 0,
+        inviteData.showCountdown !== undefined ? inviteData.showCountdown : 1,
+        inviteData.showRsvp !== undefined ? inviteData.showRsvp : 1,
+        inviteData.autoExpiry ? 1 : 0,
+        inviteData.generatedText || '',
+        inviteData.aiTone || '',
+        JSON.stringify(inviteData.galleryImages || []),
+        id
       );
 
       // Fetch updated invite
-      const invite = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ?',
-        [id]
-      );
+      const invite = db.prepare('SELECT * FROM digital_invites WHERE id = ?').get(id);
 
       // Parse JSON fields
-      invite.events_json = JSON.parse(invite.events_json || '[]');
-      invite.sections_json = JSON.parse(invite.sections_json || '[]');
-      invite.indian_config_json = JSON.parse(invite.indian_config_json || '{}');
-      invite.media_config_json = JSON.parse(invite.media_config_json || '{}');
-      invite.gallery_images = JSON.parse(invite.gallery_images || '[]');
+      if (invite) {
+        invite.events_json = JSON.parse(invite.events_json || '[]');
+        invite.sections_json = JSON.parse(invite.sections_json || '[]');
+        invite.indian_config_json = JSON.parse(invite.indian_config_json || '{}');
+        invite.media_config_json = JSON.parse(invite.media_config_json || '{}');
+        invite.gallery_images = JSON.parse(invite.gallery_images || '[]');
+      }
 
       res.json({
         success: true,
@@ -390,16 +367,13 @@ const createInviteRoutes = (db) => {
    * @desc    Delete invitation
    * @access  Private
    */
-  router.delete('/:id', authenticateToken, async (req, res) => {
+  router.delete('/:id', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
       const { id } = req.params;
 
       // Check ownership
-      const existing = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ? AND user_id = ?',
-        [id, userId]
-      );
+      const existing = db.prepare('SELECT * FROM digital_invites WHERE id = ? AND user_id = ?').get(id, userId);
 
       if (!existing) {
         return res.status(404).json({
@@ -409,13 +383,10 @@ const createInviteRoutes = (db) => {
       }
 
       // Delete invitation (CASCADE will handle related records)
-      await db.run('DELETE FROM digital_invites WHERE id = ?', [id]);
+      db.prepare('DELETE FROM digital_invites WHERE id = ?').run(id);
 
       // Update user's invite count
-      await db.run(
-        'UPDATE users SET invites_used = invites_used - 1 WHERE id = ?',
-        [userId]
-      );
+      db.prepare('UPDATE users SET invites_used = invites_used - 1 WHERE id = ?').run(userId);
 
       res.json({
         success: true,
@@ -436,16 +407,13 @@ const createInviteRoutes = (db) => {
    * @desc    Publish invitation
    * @access  Private
    */
-  router.post('/:id/publish', authenticateToken, async (req, res) => {
+  router.post('/:id/publish', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
       const { id } = req.params;
 
       // Check ownership
-      const existing = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ? AND user_id = ?',
-        [id, userId]
-      );
+      const existing = db.prepare('SELECT * FROM digital_invites WHERE id = ? AND user_id = ?').get(id, userId);
 
       if (!existing) {
         return res.status(404).json({
@@ -455,13 +423,10 @@ const createInviteRoutes = (db) => {
       }
 
       // Update status to published
-      await db.run(
-        'UPDATE digital_invites SET status = ?, updated_at = datetime("now") WHERE id = ?',
-        ['published', id]
-      );
+      db.prepare('UPDATE digital_invites SET status = ?, updated_at = datetime("now") WHERE id = ?').run('published', id);
 
       // Fetch updated invite
-      const invite = await db.get('SELECT * FROM digital_invites WHERE id = ?', [id]);
+      const invite = db.prepare('SELECT * FROM digital_invites WHERE id = ?').get(id);
 
       res.json({
         success: true,
@@ -483,14 +448,11 @@ const createInviteRoutes = (db) => {
    * @desc    Get public invitation by slug
    * @access  Public
    */
-  router.get('/slug/:slug', async (req, res) => {
+  router.get('/slug/:slug', (req, res) => {
     try {
       const { slug } = req.params;
 
-      const invite = await db.get(
-        'SELECT * FROM digital_invites WHERE slug = ? AND status = ?',
-        [slug, 'published']
-      );
+      const invite = db.prepare('SELECT * FROM digital_invites WHERE slug = ? AND status = ?').get(slug, 'published');
 
       if (!invite) {
         return res.status(404).json({
@@ -508,9 +470,8 @@ const createInviteRoutes = (db) => {
 
       // Track view event (analytics)
       const eventId = uuidv4();
-      await db.run(
-        'INSERT INTO invite_analytics (id, invite_id, event_type, created_at) VALUES (?, ?, ?, datetime("now"))',
-        [eventId, invite.id, 'view']
+      db.prepare('INSERT INTO invite_analytics (id, invite_id, event_type, created_at) VALUES (?, ?, ?, datetime("now"))').run(
+        eventId, invite.id, 'view'
       );
 
       res.json({
@@ -539,10 +500,7 @@ const createInviteRoutes = (db) => {
       const { tone, venueDetails, culturalContext } = req.body;
 
       // Check ownership
-      const invite = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ? AND user_id = ?',
-        [id, userId]
-      );
+      const invite = db.prepare('SELECT * FROM digital_invites WHERE id = ? AND user_id = ?').get(id, userId);
 
       if (!invite) {
         return res.status(404).json({
@@ -554,7 +512,7 @@ const createInviteRoutes = (db) => {
       // Import Gemini service (reuse existing)
       const { generateInvitationText } = require('../../services/geminiService');
 
-      // Generate text
+      // Generate text (this is actually async)
       const generatedText = await generateInvitationText({
         tone: tone || 'Poetic',
         coupleDetails: invite.host_name,
@@ -563,9 +521,8 @@ const createInviteRoutes = (db) => {
       });
 
       // Save generated text
-      await db.run(
-        'UPDATE digital_invites SET generated_text = ?, ai_tone = ? WHERE id = ?',
-        [generatedText, tone || 'Poetic', id]
+      db.prepare('UPDATE digital_invites SET generated_text = ?, ai_tone = ? WHERE id = ?').run(
+        generatedText, tone || 'Poetic', id
       );
 
       res.json({
@@ -589,16 +546,13 @@ const createInviteRoutes = (db) => {
    * @desc    Duplicate invitation
    * @access  Private
    */
-  router.post('/:id/duplicate', authenticateToken, async (req, res) => {
+  router.post('/:id/duplicate', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
       const { id } = req.params;
 
       // Check ownership and get original
-      const original = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ? AND user_id = ?',
-        [id, userId]
-      );
+      const original = db.prepare('SELECT * FROM digital_invites WHERE id = ? AND user_id = ?').get(id, userId);
 
       if (!original) {
         return res.status(404).json({
@@ -608,10 +562,7 @@ const createInviteRoutes = (db) => {
       }
 
       // Check user's quota
-      const userQuota = await db.get(
-        'SELECT invites_quota, invites_used FROM users WHERE id = ?',
-        [userId]
-      );
+      const userQuota = db.prepare('SELECT invites_quota, invites_used FROM users WHERE id = ?').get(userId);
 
       if (userQuota && userQuota.invites_used >= userQuota.invites_quota) {
         return res.status(403).json({
@@ -624,7 +575,7 @@ const createInviteRoutes = (db) => {
       const newId = `invite_${uuidv4()}`;
       const newSlug = `${original.slug}-copy-${Date.now()}`;
 
-      await db.run(
+      db.prepare(
         `INSERT INTO digital_invites (
           id, user_id, event_type, host_name,
           primary_lang, secondary_lang, bilingual_enabled, bilingual_layout,
@@ -635,52 +586,45 @@ const createInviteRoutes = (db) => {
           show_qr, show_countdown, show_rsvp, auto_expiry,
           generated_text, ai_tone, gallery_images,
           status, slug
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          newId,
-          userId,
-          original.event_type,
-          original.host_name + ' (Copy)',
-          original.primary_lang,
-          original.secondary_lang,
-          original.bilingual_enabled,
-          original.bilingual_layout,
-          original.event_date,
-          original.event_time,
-          original.venue,
-          original.map_link,
-          original.details,
-          original.multi_event_enabled,
-          original.events_json,
-          original.sections_json,
-          original.indian_config_json,
-          original.media_config_json,
-          original.template_id,
-          original.custom_bg,
-          original.custom_font,
-          original.show_qr,
-          original.show_countdown,
-          original.show_rsvp,
-          original.auto_expiry,
-          original.generated_text,
-          original.ai_tone,
-          original.gallery_images,
-          'draft',
-          newSlug
-        ]
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        newId,
+        userId,
+        original.event_type,
+        original.host_name + ' (Copy)',
+        original.primary_lang,
+        original.secondary_lang,
+        original.bilingual_enabled,
+        original.bilingual_layout,
+        original.event_date,
+        original.event_time,
+        original.venue,
+        original.map_link,
+        original.details,
+        original.multi_event_enabled,
+        original.events_json,
+        original.sections_json,
+        original.indian_config_json,
+        original.media_config_json,
+        original.template_id,
+        original.custom_bg,
+        original.custom_font,
+        original.show_qr,
+        original.show_countdown,
+        original.show_rsvp,
+        original.auto_expiry,
+        original.generated_text,
+        original.ai_tone,
+        original.gallery_images,
+        'draft',
+        newSlug
       );
 
       // Update user's invite count
-      await db.run(
-        'UPDATE users SET invites_used = invites_used + 1 WHERE id = ?',
-        [userId]
-      );
+      db.prepare('UPDATE users SET invites_used = invites_used + 1 WHERE id = ?').run(userId);
 
       // Fetch new invite
-      const invite = await db.get(
-        'SELECT * FROM digital_invites WHERE id = ?',
-        [newId]
-      );
+      const invite = db.prepare('SELECT * FROM digital_invites WHERE id = ?').get(newId);
 
       res.json({
         success: true,
@@ -702,19 +646,18 @@ const createInviteRoutes = (db) => {
    * @desc    Get invitation statistics for dashboard
    * @access  Private
    */
-  router.get('/stats/overview', authenticateToken, async (req, res) => {
+  router.get('/stats/overview', authenticateToken, (req, res) => {
     try {
       const userId = req.user.id;
 
       // Get invitation counts by status
-      const statusCounts = await db.all(
+      const statusCounts = db.prepare(
         `SELECT status, COUNT(*) as count FROM digital_invites
-         WHERE user_id = ? GROUP BY status`,
-        [userId]
-      );
+         WHERE user_id = ? GROUP BY status`
+      ).all(userId);
 
       // Get total guests across all invites
-      const guestStats = await db.get(
+      const guestStats = db.prepare(
         `SELECT
           COUNT(DISTINCT ig.id) as total_guests,
           SUM(CASE WHEN ig.status = 'Accepted' THEN 1 ELSE 0 END) as accepted,
@@ -722,12 +665,11 @@ const createInviteRoutes = (db) => {
           SUM(CASE WHEN ig.status = 'Pending' THEN 1 ELSE 0 END) as pending
          FROM invite_guests ig
          INNER JOIN digital_invites di ON ig.invite_id = di.id
-         WHERE di.user_id = ?`,
-        [userId]
-      );
+         WHERE di.user_id = ?`
+      ).get(userId);
 
       // Get recent activity (last 7 days)
-      const recentActivity = await db.all(
+      const recentActivity = db.prepare(
         `SELECT
           DATE(ia.created_at) as date,
           ia.event_type,
@@ -736,9 +678,8 @@ const createInviteRoutes = (db) => {
          INNER JOIN digital_invites di ON ia.invite_id = di.id
          WHERE di.user_id = ? AND ia.created_at >= datetime('now', '-7 days')
          GROUP BY DATE(ia.created_at), ia.event_type
-         ORDER BY date DESC`,
-        [userId]
-      );
+         ORDER BY date DESC`
+      ).all(userId);
 
       res.json({
         success: true,
