@@ -158,6 +158,154 @@ Playwright E2E tests in `tests/e2e/` (if present). Configure in `playwright.conf
 
 Build outputs to `dist/`. Express serves static files from `dist/` and handles API routes. PM2 ecosystem config at `ecosystem.config.js` (if present).
 
+## Production Server Access
+
+**CRITICAL: Always use SSH key authentication as primary method. Only use password login if SSH fails.**
+
+### Server Details
+- **IP Address:** 185.199.52.230
+- **Domain:** https://www.swazsolutions.com
+- **Hostname:** srv1035265.hstgr.cloud
+- **OS:** Ubuntu 22.04.5 LTS
+- **Hosting:** Hostinger
+
+### SSH Access (Primary Method)
+```bash
+# Primary connection method - ALWAYS TRY THIS FIRST
+ssh -i ~/.ssh/id_ed25519_swazsolutions root@185.199.52.230
+```
+
+**SSH Key Locations:**
+- Private key: `C:\Users\admin\.ssh\id_ed25519_swazsolutions` (NEVER commit to Git)
+- Public key: `C:\Users\admin\.ssh\id_ed25519_swazsolutions.pub`
+- SSH keys are protected in `.gitignore` and will never be committed
+
+### Fallback Password Login
+**Only use if SSH key fails:**
+```bash
+ssh root@185.199.52.230
+# Password: Veeru@098765
+```
+
+### Server Configuration
+
+**Installed Software:**
+- Node.js v20.20.0 (LTS)
+- npm 10.8.2
+- PM2 6.0.14 (Process Manager)
+- nginx 1.18.0 (Reverse Proxy)
+- Certbot (SSL/TLS certificates)
+- Fail2ban (Intrusion prevention)
+
+**Application Location:** `/var/www/swazsolutions/`
+
+**Security Hardening Applied:**
+- ✅ SSH password authentication disabled (SSH key only)
+- ✅ UFW firewall active (ports 22, 80, 443)
+- ✅ Fail2ban with 4 active jails (SSH, nginx-http-auth, nginx-limit-req, nginx-botsearch)
+- ✅ Kernel security hardening (SYN flood, IP spoofing protection)
+- ✅ nginx rate limiting (10 req/s general, 100 req/min API, 5 req/min login)
+- ✅ Security headers (X-Frame-Options, X-XSS-Protection, CSP-ready)
+- ✅ Automatic security updates enabled
+
+### Deployment Procedure
+
+**1. Build locally:**
+```bash
+npm run build
+```
+
+**2. Deploy to server:**
+```bash
+# Using SSH key (primary method)
+tar czf - --exclude='node_modules' --exclude='.git' --exclude='coverage' --exclude='.cache' . | \
+  ssh -i ~/.ssh/id_ed25519_swazsolutions root@185.199.52.230 \
+  'cd /var/www/swazsolutions && tar xzf -'
+```
+
+**3. Install dependencies on server:**
+```bash
+ssh -i ~/.ssh/id_ed25519_swazsolutions root@185.199.52.230
+cd /var/www/swazsolutions
+npm install --omit=dev
+```
+
+**4. Configure environment (if not already done):**
+```bash
+nano /var/www/swazsolutions/.env
+```
+
+Required variables:
+```bash
+NODE_ENV=production
+PORT=3000
+VITE_GEMINI_API_KEY=your_key
+VITE_GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_secret
+CORS_ALLOWED_ORIGINS=https://www.swazsolutions.com,https://swazsolutions.com
+JWT_SECRET=your_random_secret_min_32_chars
+DB_PATH=/var/www/swazsolutions/backend/music.db
+```
+
+**5. Start/restart application:**
+```bash
+pm2 restart swazsolutions || pm2 start npm --name "swazsolutions" -- start
+pm2 save
+```
+
+### Useful Server Commands
+
+**Application Management:**
+```bash
+pm2 logs swazsolutions         # View application logs
+pm2 restart swazsolutions      # Restart application
+pm2 stop swazsolutions         # Stop application
+pm2 list                       # List all PM2 processes
+pm2 monit                      # Monitor CPU/memory usage
+```
+
+**nginx:**
+```bash
+systemctl status nginx         # Check nginx status
+nginx -t                       # Test configuration
+systemctl restart nginx        # Restart nginx
+tail -f /var/log/nginx/access.log    # Access logs
+tail -f /var/log/nginx/error.log     # Error logs
+```
+
+**Security Monitoring:**
+```bash
+fail2ban-client status sshd    # Check SSH bans
+fail2ban-client status         # All jails status
+ufw status numbered            # Firewall rules
+journalctl -u fail2ban -f      # Monitor fail2ban
+```
+
+**Database Backup:**
+```bash
+cp /var/www/swazsolutions/backend/music.db \
+   /var/www/swazsolutions/backend/music.db.backup.$(date +%Y%m%d)
+```
+
+**SSL Certificate Management:**
+```bash
+certbot certificates           # List certificates
+certbot renew --dry-run        # Test renewal
+certbot renew                  # Force renewal (auto-renews at expiry)
+```
+
+### Database Auto-Initialization
+
+The SQLite database auto-initializes on first run with all tables:
+- Users, Songs, Albums, Artists, Genres, Playlists
+- Profiles, Themes, Social Profiles, Custom Links
+- Analytics (views, shares, downloads, QR codes)
+- Digital Invites, Support Tickets, Contact Forms
+- Playback History, Listening Stats, User Preferences
+- Camera Updates, Refresh Tokens, Visitor Counter
+
+All migrations run automatically. No manual database setup required.
+
 ### Important Gotchas
 
 1. **API Key Security:** Never hardcode API keys. Client-side keys should be in localStorage or proxied through backend. Vite config explicitly prevents exposure in bundle.
