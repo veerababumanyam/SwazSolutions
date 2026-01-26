@@ -253,7 +253,7 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            fontSrc: ["'self'", "https:"],
             scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
             imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
             connectSrc: ["'self'", "https://accounts.google.com", "https://oauth2.googleapis.com"],
@@ -346,6 +346,9 @@ app.use((req, res, next) => {
 
 // Import security logging middleware
 const { securityLogger } = require('./middleware/securityLogger');
+
+// Import SEO middleware for crawler optimization
+const { seoMiddleware } = require('./middleware/seo-middleware');
 
 // Logging middleware - development only (replaced by securityLogger in production)
 app.use((req, res, next) => {
@@ -458,6 +461,10 @@ app.get('/api/health', apiLimiter, (req, res) => {
         database: 'connected'
     });
 });
+
+// Apply SEO middleware BEFORE static serving
+// Detects crawlers and serves pre-rendered HTML with schema
+app.use(seoMiddleware);
 
 // Serve frontend (production)
 const frontendDist = path.join(__dirname, '../dist');
