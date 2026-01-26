@@ -19,9 +19,17 @@ import { ProfileDashboard } from './pages/ProfileDashboard';
 import { PublicProfile } from './pages/PublicProfile';
 import { ProfileAnalytics } from './pages/ProfileAnalytics';
 import { UnifiedProfileEditor } from './pages/UnifiedProfileEditor';
+import { InviteDashboard } from './components/invites/InviteDashboard';
+import { InviteEditor } from './components/invites/InviteEditor';
+import { GuestManagerWrapper } from './components/invites/GuestManagerWrapper';
+import { AnalyticsDashboardWrapper } from './components/invites/AnalyticsDashboardWrapper';
+import { TemplateMarketplaceWrapper } from './components/invites/TemplateMarketplaceWrapper';
+import { CheckInScannerWrapper } from './components/invites/CheckInScannerWrapper';
+import { PublicInviteViewWrapper } from './pages/PublicInviteViewWrapper';
 import { MusicProvider } from './contexts/MusicContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ProfileProvider } from './contexts/ProfileContext';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicRoute } from './components/PublicRoute';
@@ -147,6 +155,63 @@ const AppRoutes: React.FC = () => (
                         </RouteErrorBoundary>
                       </PublicRoute>
                     } />
+
+                    {/* Digital Invites Routes */}
+                    <Route path="/invites" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Invites Dashboard">
+                          <InviteDashboard />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/invites/create" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Create Invite">
+                          <InviteEditor mode="create" />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/invites/edit/:id" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Edit Invite">
+                          <InviteEditor mode="edit" />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/invites/:id/guests" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Guest Manager">
+                          <GuestManagerWrapper />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/invites/:id/analytics" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Analytics Dashboard">
+                          <AnalyticsDashboardWrapper />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/invites/:id/checkin" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Check-In Scanner">
+                          <CheckInScannerWrapper />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/invites/templates" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Template Marketplace">
+                          <TemplateMarketplaceWrapper />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    {/* Public Invite View - No authentication required */}
+                    <Route path="/invite/:slug" element={
+                      <RouteErrorBoundary routeName="Public Invite">
+                        <PublicInviteViewWrapper />
+                      </RouteErrorBoundary>
+                    } />
   </Routes>
 );
 
@@ -161,7 +226,9 @@ const App: React.FC = () => {
       <HashRouter>
         <ToastProvider>
           <AuthProvider>
-            <AppContent />
+            <ProfileProvider>
+              <AppContent />
+            </ProfileProvider>
           </AuthProvider>
         </ToastProvider>
       </HashRouter>

@@ -1,5 +1,5 @@
 // T069: vCard Generator Service
-// Generates vCard 3.0 format for contact information
+// Generates vCard 4.0 format for contact information
 // WCAG 2.1 AA compliant with personal and company contact support
 
 /**
@@ -34,21 +34,29 @@
  * @property {string} [bio] - Biography/notes
  * @property {string} [avatar_url] - Avatar image URL
  * @property {string} username - Profile username
+ * @property {string} [profession] - Profession/job title (preferred over headline)
  * @property {string|Date} [updated_at] - Last updated timestamp
  */
 
 /**
- * Generates a vCard 3.0 string from profile data
+ * @typedef {Object} SocialLink
+ * @property {string} platform_name - Social platform name
+ * @property {string} platform_url - Social platform URL
+ */
+
+/**
+ * Generates a vCard 4.0 string from profile data
  * Respects visibility toggles for contact information
  * @param {Profile} profile - Profile data from database
+ * @param {SocialLink[]} socialLinks - Optional social profile links
  * @returns {string} vCard formatted string
  */
-function generateVCard(profile) {
+function generateVCard(profile, socialLinks = []) {
   const lines = [];
 
   // vCard header
   lines.push('BEGIN:VCARD');
-  lines.push('VERSION:3.0');
+  lines.push('VERSION:4.0');
 
   // T070: Core fields
   // FN (Formatted Name) - required
@@ -67,34 +75,35 @@ function generateVCard(profile) {
     lines.push(`ORG:${escapeVCardValue(profile.company)}`);
   }
 
-  // TITLE (Job Title/Headline)
-  if (profile.headline) {
-    lines.push(`TITLE:${escapeVCardValue(profile.headline)}`);
+  // TITLE (Job Title/Profession - prefer profession field over headline)
+  const jobTitle = profile.profession || profile.headline;
+  if (jobTitle) {
+    lines.push(`TITLE:${escapeVCardValue(jobTitle)}`);
   }
 
   // T071: Conditional fields based on privacy settings
-  // Personal EMAIL (TYPE=HOME) - only if enabled and set
+  // Personal EMAIL (TYPE=home) - vCard 4.0 uses lowercase type parameters
   const showEmail = profile.show_email === undefined ? true : profile.show_email !== 0;
   if (profile.public_email && showEmail) {
-    lines.push(`EMAIL;TYPE=HOME:${escapeVCardValue(profile.public_email)}`);
+    lines.push(`EMAIL;TYPE=home:${escapeVCardValue(profile.public_email)}`);
   }
 
-  // Company EMAIL (TYPE=WORK) - only if enabled and set
+  // Company EMAIL (TYPE=work) - vCard 4.0 uses lowercase type parameters
   const showCompanyEmail = profile.show_company_email === undefined ? true : profile.show_company_email !== 0;
   if (profile.company_email && showCompanyEmail) {
-    lines.push(`EMAIL;TYPE=WORK:${escapeVCardValue(profile.company_email)}`);
+    lines.push(`EMAIL;TYPE=work:${escapeVCardValue(profile.company_email)}`);
   }
 
-  // Personal TEL (TYPE=CELL) - only if enabled and set
+  // Personal TEL (TYPE=cell,voice) - vCard 4.0 format
   const showPhone = profile.show_phone === undefined ? true : profile.show_phone !== 0;
   if (profile.public_phone && showPhone) {
-    lines.push(`TEL;TYPE=CELL:${escapeVCardValue(profile.public_phone)}`);
+    lines.push(`TEL;TYPE="cell,voice";VALUE=uri:tel:${escapeVCardValue(profile.public_phone.replace(/[^0-9+]/g, ''))}`);
   }
 
-  // Company TEL (TYPE=WORK) - only if enabled and set
+  // Company TEL (TYPE=work,voice) - vCard 4.0 format
   const showCompanyPhone = profile.show_company_phone === undefined ? true : profile.show_company_phone !== 0;
   if (profile.company_phone && showCompanyPhone) {
-    lines.push(`TEL;TYPE=WORK:${escapeVCardValue(profile.company_phone)}`);
+    lines.push(`TEL;TYPE="work,voice";VALUE=uri:tel:${escapeVCardValue(profile.company_phone.replace(/[^0-9+]/g, ''))}`);
   }
 
   // Personal ADR (TYPE=HOME) - only if at least one visible field has data
@@ -109,8 +118,8 @@ function generateVCard(profile) {
   if (hasPersonalAddress) {
     // ADR format: PO Box;Extended Address;Street;City;State;Postal Code;Country
     const streetParts = [];
-    if (showAddressLine1 && profile.address_line1) streetParts.push(profile.address_line1);
-    if (showAddressLine2 && profile.address_line2) streetParts.push(profile.address_line2);
+    if (showAddressLine1 && profile.address_line1) {streetParts.push(profile.address_line1);}
+    if (showAddressLine2 && profile.address_line2) {streetParts.push(profile.address_line2);}
     const street = streetParts.join(', ');
     const city = showAddressCity ? (profile.address_city || '') : '';
     const state = showAddressState ? (profile.address_state || '') : '';
@@ -118,7 +127,7 @@ function generateVCard(profile) {
     const country = showAddressCountry ? (profile.address_country || '') : '';
     // Only add ADR if at least one field has data
     if (street || city || state || postalCode || country) {
-      lines.push(`ADR;TYPE=HOME:;;${escapeVCardValue(street)};${escapeVCardValue(city)};${escapeVCardValue(state)};${escapeVCardValue(postalCode)};${escapeVCardValue(country)}`);
+      lines.push(`ADR;TYPE=home:;;${escapeVCardValue(street)};${escapeVCardValue(city)};${escapeVCardValue(state)};${escapeVCardValue(postalCode)};${escapeVCardValue(country)}`);
     }
   }
 
@@ -134,8 +143,8 @@ function generateVCard(profile) {
   if (hasCompanyAddress) {
     // ADR format: PO Box;Extended Address;Street;City;State;Postal Code;Country
     const streetParts = [];
-    if (showCompanyAddressLine1 && profile.company_address_line1) streetParts.push(profile.company_address_line1);
-    if (showCompanyAddressLine2 && profile.company_address_line2) streetParts.push(profile.company_address_line2);
+    if (showCompanyAddressLine1 && profile.company_address_line1) {streetParts.push(profile.company_address_line1);}
+    if (showCompanyAddressLine2 && profile.company_address_line2) {streetParts.push(profile.company_address_line2);}
     const street = streetParts.join(', ');
     const city = showCompanyAddressCity ? (profile.company_address_city || '') : '';
     const state = showCompanyAddressState ? (profile.company_address_state || '') : '';
@@ -143,7 +152,7 @@ function generateVCard(profile) {
     const country = showCompanyAddressCountry ? (profile.company_address_country || '') : '';
     // Only add ADR if at least one field has data
     if (street || city || state || postalCode || country) {
-      lines.push(`ADR;TYPE=WORK:;;${escapeVCardValue(street)};${escapeVCardValue(city)};${escapeVCardValue(state)};${escapeVCardValue(postalCode)};${escapeVCardValue(country)}`);
+      lines.push(`ADR;TYPE=work:;;${escapeVCardValue(street)};${escapeVCardValue(city)};${escapeVCardValue(state)};${escapeVCardValue(postalCode)};${escapeVCardValue(country)}`);
     }
   }
 
@@ -163,13 +172,23 @@ function generateVCard(profile) {
     lines.push(`PHOTO;VALUE=URL:${escapeVCardValue(profile.avatar_url)}`);
   }
 
-  // Profile URL (using ADR extended format)
+  // Profile URL (vCard 4.0 format)
   const profileUrl = `${process.env.BASE_URL || 'http://localhost:5173'}/u/${profile.username}`;
-  lines.push(`URL;TYPE=PROFILE:${escapeVCardValue(profileUrl)}`);
+  lines.push(`URL:${escapeVCardValue(profileUrl)}`);
 
-  // REV (Last modified)
+  // X-SOCIALPROFILE fields for social media links (vCard 4.0 extension)
+  if (socialLinks && socialLinks.length > 0) {
+    for (const social of socialLinks) {
+      if (social.platform_url) {
+        const platformName = social.platform_name || 'Social';
+        lines.push(`X-SOCIALPROFILE;TYPE=${escapeVCardValue(platformName)}:${escapeVCardValue(social.platform_url)}`);
+      }
+    }
+  }
+
+  // REV (Last modified) - vCard 4.0 uses ISO 8601 timestamp format
   if (profile.updated_at) {
-    const revDate = new Date(profile.updated_at).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const revDate = new Date(profile.updated_at).toISOString();
     lines.push(`REV:${revDate}`);
   }
 
@@ -185,7 +204,7 @@ function generateVCard(profile) {
  * @returns {string} Escaped value
  */
 function escapeVCardValue(value) {
-  if (!value) return '';
+  if (!value) {return '';}
 
   return String(value)
     .replace(/\\/g, '\\\\')  // Backslash
@@ -206,7 +225,7 @@ function getVCardFilename(username) {
 }
 
 /**
- * Generates a minimal vCard 3.0 string optimized for QR codes
+ * Generates a minimal vCard 4.0 string optimized for QR codes
  * Only includes essential fields to keep QR code density low
  * @param {Profile} profile - Profile data
  * @returns {string} Minimal vCard string
@@ -215,7 +234,7 @@ function generateQRVCard(profile) {
   const lines = [];
 
   lines.push('BEGIN:VCARD');
-  lines.push('VERSION:3.0');
+  lines.push('VERSION:4.0');
 
   // FN (Formatted Name) - required
   const displayName = profile.display_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim();
@@ -235,24 +254,24 @@ function generateQRVCard(profile) {
 
   // T071: Conditional fields - Limit to one of each for QR
 
-  // TEL (Prioritize Cell, then Work)
+  // TEL (Prioritize Cell, then Work) - vCard 4.0 format
   const showPhone = profile.show_phone === undefined ? true : profile.show_phone !== 0;
   const showCompanyPhone = profile.show_company_phone === undefined ? true : profile.show_company_phone !== 0;
 
   if (profile.public_phone && showPhone) {
-    lines.push(`TEL;TYPE=CELL:${escapeVCardValue(profile.public_phone)}`);
+    lines.push(`TEL;TYPE="cell,voice";VALUE=uri:tel:${escapeVCardValue(profile.public_phone.replace(/[^0-9+]/g, ''))}`);
   } else if (profile.company_phone && showCompanyPhone) {
-    lines.push(`TEL;TYPE=WORK:${escapeVCardValue(profile.company_phone)}`);
+    lines.push(`TEL;TYPE="work,voice";VALUE=uri:tel:${escapeVCardValue(profile.company_phone.replace(/[^0-9+]/g, ''))}`);
   }
 
-  // EMAIL (Prioritize Personal, then Work)
+  // EMAIL (Prioritize Personal, then Work) - vCard 4.0 format
   const showEmail = profile.show_email === undefined ? true : profile.show_email !== 0;
   const showCompanyEmail = profile.show_company_email === undefined ? true : profile.show_company_email !== 0;
 
   if (profile.public_email && showEmail) {
-    lines.push(`EMAIL;TYPE=HOME:${escapeVCardValue(profile.public_email)}`);
+    lines.push(`EMAIL;TYPE=home:${escapeVCardValue(profile.public_email)}`);
   } else if (profile.company_email && showCompanyEmail) {
-    lines.push(`EMAIL;TYPE=WORK:${escapeVCardValue(profile.company_email)}`);
+    lines.push(`EMAIL;TYPE=work:${escapeVCardValue(profile.company_email)}`);
   }
 
   // URL (Profile URL is most important)

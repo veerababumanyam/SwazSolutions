@@ -1,5 +1,5 @@
 // vCard Generation Routes (T018)
-// Handles vCard generation and download tracking
+// Handles vCard 4.0 generation and download tracking
 // Uses custom vCardGenerator for WCAG 2.1 AA compliant contact cards
 
 const express = require('express');
@@ -7,6 +7,38 @@ const router = express.Router();
 const db = require('../config/database');
 const { generateVCard, getVCardFilename } = require('../services/vCardGenerator');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter: 100 requests per IP per hour
+const vCardDownloadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 100, // 100 downloads per hour per IP
+  message: {
+    error: 'Too many vCard download requests',
+    message: 'You have exceeded the vCard download limit. Please try again later.',
+    limit: 100,
+    windowHours: 1
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+  keyGenerator: (req) => {
+    // Hash IP for privacy
+    const ip = req.ip || req.connection?.remoteAddress || 'unknown';
+    return crypto.createHash('sha256').update(ip).digest('hex');
+  },
+  handler: (req, res) => {
+    const hashedIP = crypto.createHash('sha256').update(req.ip || 'unknown').digest('hex');
+    console.log(`🚫 vCard download rate limit exceeded for IP hash: ${hashedIP.substring(0, 16)}...`);
+    res.status(429).json({
+      error: 'Too many vCard download requests',
+      message: 'You have exceeded the vCard download limit. Please try again in an hour.',
+      limit: 100,
+      windowHours: 1,
+      retryAfter: res.getHeader('Retry-After')
+    });
+  }
+});
 
 // Helper to hash IP for privacy
 const hashIP = (ip) => {
@@ -14,9 +46,9 @@ const hashIP = (ip) => {
 };
 
 // ============================================================================
-// T072: Get vCard (GET /api/public/profile/:username/vcard)
+// T072: Get vCard 4.0 (GET /api/public/profile/:username/vcard)
 // ============================================================================
-router.get('/:username/vcard', (req, res) => {
+router.get('/:username/vcard', vCardDownloadLimiter, (req, res) => {
   const { username } = req.params;
 
   try {
@@ -30,11 +62,20 @@ router.get('/:username/vcard', (req, res) => {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    // T070: Generate vCard 3.0 using custom generator
+    // Fetch social links for X-SOCIALPROFILE fields
+    const socialLinks = db.prepare(`
+      SELECT platform_name, platform_url
+      FROM social_profiles
+      WHERE profile_id = ? AND is_public = 1
+      ORDER BY display_order ASC
+    `).all(profile.id);
+
+    // T070: Generate vCard 4.0 using custom generator
     // The generator respects visibility toggles for:
     // - Personal: show_email, show_phone, show_website
     // - Company: show_company_email, show_company_phone
-    const vCardString = generateVCard(profile);
+    // vCard 4.0 includes X-SOCIALPROFILE fields for social media links
+    const vCardString = generateVCard(profile, socialLinks);
 
     // T077: Track download event
     const ipAddress = req.ip || req.connection.remoteAddress || 'unknown';

@@ -1,6 +1,17 @@
 /**
- * Shared Profile Type Definitions
- * Single source of truth for all profile-related interfaces
+ * @deprecated This file is deprecated. Use modernProfile.types.ts instead.
+ *
+ * Legacy Profile Type Definitions
+ *
+ * These types are maintained for backward compatibility only.
+ * All new code should use types from modernProfile.types.ts which provides
+ * the updated Modern vCard Suite type system.
+ *
+ * Migration guide:
+ * - ProfileData -> Use ProfileData from modernProfile.types.ts
+ * - SocialLink -> Use SocialLink from modernProfile.types.ts
+ * - Theme -> Use Theme from modernProfile.types.ts
+ * - AppearanceSettings -> Use Theme config from modernProfile.types.ts
  */
 
 // ============================================================================

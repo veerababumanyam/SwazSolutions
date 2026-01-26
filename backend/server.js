@@ -65,6 +65,9 @@ const { router: cameraUpdatesRouter, init: initCameraRoutes, saveUpdatesToDb } =
 const publicProfilesRouter = require('./routes/publicProfiles');
 const profilesRouter = require('./routes/profiles');
 const socialLinksRouter = require('./routes/social-links');
+const linkItemsRouter = require('./routes/link-items'); // Modern vCard link items
+const galleryUploadsRouter = require('./routes/gallery-uploads'); // Gallery image uploads
+const avatarCropRouter = require('./routes/avatar-crop'); // Avatar crop settings
 const themesRouter = require('./routes/themes');
 const fontsRouter = require('./routes/fonts');
 const qrCodesRouter = require('./routes/qr-codes');
@@ -72,6 +75,17 @@ const vcardsRouter = require('./routes/vcards');
 const analyticsRouter = require('./routes/analytics');
 const uploadsRouter = require('./routes/uploads');
 const appearanceRouter = require('./routes/appearance');
+const aiBioRouter = require('./routes/ai-bio'); // AI bio generation
+
+// Digital Invites routes
+const createInviteRoutes = require('./routes/invites');
+const createInviteGuestsRoutes = require('./routes/invite-guests');
+const createInviteGuestGroupsRoutes = require('./routes/invite-guest-groups');
+const createInviteTemplatesRoutes = require('./routes/invite-templates');
+const createInviteAnalyticsRoutes = require('./routes/invite-analytics');
+const createInviteCheckInRoutes = require('./routes/invite-checkin');
+const createInviteSharingRoutes = require('./routes/invite-sharing');
+const createInviteGalleryRoutes = require('./routes/invite-gallery');
 
 const http = require('http');
 const { Server } = require('socket.io');
@@ -315,12 +329,26 @@ app.use('/api/appearance', appearanceRouter); // Public appearance route (no aut
 // Profiles editing requires subscription
 app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, profilesRouter); // Auth required - profile CRUD
 app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, socialLinksRouter); // Auth required - social links
+app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, linkItemsRouter); // Auth required - link items CRUD
+app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, galleryUploadsRouter); // Auth required - gallery uploads
+app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, avatarCropRouter); // Auth required - avatar crop
 app.use('/api/profiles', apiLimiter, withAuth, checkSubscription, appearanceRouter); // Auth required - appearance settings
+app.use('/api/profiles', withAuth, checkSubscription, aiBioRouter); // Auth required - AI bio generation (has own rate limiter)
 app.use('/api/themes', withAuth, checkSubscription, themesRouter); // Auth required for custom themes
 app.use('/api/fonts', fontsRouter); // Font options public
 app.use('/api/qr-codes', apiLimiter, withAuth, qrCodesRouter); // Auth required - QR generation
 app.use('/api/analytics', apiLimiter, withAuth, analyticsRouter); // Auth required - analytics
 app.use('/api/uploads', apiLimiter, withAuth, uploadsRouter); // Auth required - file uploads
+
+// Digital Invites API routes
+app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteRoutes(db)); // Auth required - invitations CRUD
+app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteGuestsRoutes(db)); // Auth required - guest management
+app.use('/api/invites/guest-groups', apiLimiter, withAuth, checkSubscription, createInviteGuestGroupsRoutes(db)); // Auth required - guest groups
+app.use('/api/invites/templates', createInviteTemplatesRoutes(db)); // Mixed auth - public marketplace, private my templates
+app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteAnalyticsRoutes(db)); // Auth required - analytics
+app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteCheckInRoutes(db)); // Auth required - check-in system
+app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteSharingRoutes(db)); // Auth required - sharing
+app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteGalleryRoutes(db)); // Auth required - gallery
 
 // Health check (always public, with rate limiting)
 app.get('/api/health', apiLimiter, (req, res) => {

@@ -72,10 +72,26 @@ router.get('/profile/:username', async (req, res) => {
 
     // Get custom links
     const customLinks = db.prepare(
-      `SELECT * FROM custom_links 
-       WHERE profile_id = ? AND is_public = 1 
+      `SELECT * FROM custom_links
+       WHERE profile_id = ? AND is_public = 1
        ORDER BY display_order ASC`
     ).all(profile.id);
+
+    // Get link items (modern vCard links)
+    const linkItems = db.prepare(
+      `SELECT * FROM link_items
+       WHERE profile_id = ? AND is_active = 1
+       ORDER BY display_order ASC`
+    ).all(profile.id);
+
+    // For GALLERY type link items, fetch gallery images
+    for (const linkItem of linkItems) {
+      if (linkItem.type === 'GALLERY') {
+        linkItem.galleryImages = db.prepare(
+          `SELECT * FROM gallery_images WHERE link_item_id = ? ORDER BY display_order ASC`
+        ).all(linkItem.id);
+      }
+    }
 
     // Get active theme
     let theme = null;
@@ -216,7 +232,8 @@ router.get('/profile/:username', async (req, res) => {
       id: profile.id, // T140: Added for share tracking
       profile: profileResponse,
       socialProfiles: transformedSocialProfiles,
-      customLinks,
+      customLinks, // Keep for backward compatibility
+      linkItems, // Modern vCard link items with galleryImages
       appearance, // Include appearance settings for public profile rendering
       theme: theme ? {
         ...theme,

@@ -147,6 +147,20 @@ router.get('/me', async (req, res) => {
       `SELECT * FROM custom_links WHERE profile_id = ? ORDER BY display_order ASC`
     ).all(profile.id);
 
+    // Get link items (modern vCard links)
+    const linkItems = db.prepare(
+      `SELECT * FROM link_items WHERE profile_id = ? ORDER BY display_order ASC`
+    ).all(profile.id);
+
+    // For GALLERY type link items, fetch gallery images
+    for (const linkItem of linkItems) {
+      if (linkItem.type === 'GALLERY') {
+        linkItem.galleryImages = db.prepare(
+          `SELECT * FROM gallery_images WHERE link_item_id = ? ORDER BY display_order ASC`
+        ).all(linkItem.id);
+      }
+    }
+
     res.json({
       profile: {
         id: profile.id,
@@ -212,11 +226,19 @@ router.get('/me', async (req, res) => {
         activeThemeId: profile.active_theme_id,
         backgroundImageUrl: profile.background_image_url,
         logoUrl: profile.logo_url,
+        // Modern vCard fields
+        profession: profile.profession,
+        seo: {
+          title: profile.seo_title,
+          description: profile.seo_description,
+          keywords: profile.seo_keywords
+        },
         createdAt: profile.created_at,
         updatedAt: profile.updated_at
       },
       socialProfiles: transformedSocialProfiles,
-      customLinks
+      customLinks,
+      linkItems
     });
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -409,7 +431,10 @@ router.put('/me', async (req, res) => {
       showCompany,
       showFirstName,
       showLastName,
-      showPronouns
+      showPronouns,
+      // Modern vCard fields
+      profession,
+      seo
     } = req.body;
 
     // Helper function to encrypt value if provided, otherwise use existing (which may already be encrypted)
@@ -435,6 +460,7 @@ router.put('/me', async (req, res) => {
         languages = ?, pronouns = ?, timezone = ?, contact_preferences = ?,
         published = ?, indexing_opt_in = ?,
         show_headline = ?, show_company = ?, show_first_name = ?, show_last_name = ?, show_pronouns = ?,
+        profession = ?, seo_title = ?, seo_description = ?, seo_keywords = ?,
         updated_at = datetime('now')
       WHERE id = ?`
     ).run(
@@ -496,6 +522,11 @@ router.put('/me', async (req, res) => {
       showFirstName !== undefined ? (showFirstName ? 1 : 0) : (profile.show_first_name ?? 1),
       showLastName !== undefined ? (showLastName ? 1 : 0) : (profile.show_last_name ?? 1),
       showPronouns !== undefined ? (showPronouns ? 1 : 0) : (profile.show_pronouns ?? 1),
+      // Modern vCard fields
+      profession !== undefined ? profession : profile.profession,
+      seo?.title !== undefined ? seo.title : profile.seo_title,
+      seo?.description !== undefined ? seo.description : profile.seo_description,
+      seo?.keywords !== undefined ? seo.keywords : profile.seo_keywords,
       profile.id
     );
 
@@ -568,6 +599,13 @@ router.put('/me', async (req, res) => {
         activeThemeId: updated.active_theme_id,
         backgroundImageUrl: updated.background_image_url,
         logoUrl: updated.logo_url,
+        // Modern vCard fields
+        profession: updated.profession,
+        seo: {
+          title: updated.seo_title,
+          description: updated.seo_description,
+          keywords: updated.seo_keywords
+        },
         createdAt: updated.created_at,
         updatedAt: updated.updated_at
       }
