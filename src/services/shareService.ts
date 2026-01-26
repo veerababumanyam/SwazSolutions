@@ -145,9 +145,9 @@ export const trackShare = async (
   try {
     await fetch('/api/profiles/share-event', {
       method: 'POST',
+      credentials: 'include', // Send httpOnly cookies automatically
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
       },
       body: JSON.stringify({
         profileId,

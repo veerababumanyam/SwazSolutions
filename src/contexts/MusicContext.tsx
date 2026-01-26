@@ -84,7 +84,10 @@ const DEFAULT_EQ: EqualizerSettings = { bass: 0, mid: 0, treble: 0, preamp: 0 };
 
 const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children }) => {
     // Get authentication state
-    const { isAuthenticated, loading: authLoading } = useAuth();
+    const { user, isAuthenticated, loading: authLoading } = useAuth();
+
+    // User-specific Socket.io room for music player control
+    const userRoom = user ? `user:${user.id}` : null;
     
     // Refs
     const soundRef = useRef<Howl | null>(null);
@@ -498,12 +501,31 @@ const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children })
 
     // --- Socket.io Connection ---
     useEffect(() => {
+        // Only connect if user is authenticated
+        if (!userRoom) {
+            setSocket(null);
+            return;
+        }
+
         const newSocket = io(); // Connects to origin by default
         setSocket(newSocket);
 
         newSocket.on('connect', () => {
-            console.log('Socket connected');
-            newSocket.emit('join_room', 'global');
+            console.log(`✅ Socket connected for user: ${user?.username}`);
+            newSocket.emit('join_room', userRoom);
+        });
+
+        // Handle authentication errors
+        newSocket.on('connect_error', (error) => {
+            console.error('❌ Socket connection failed:', error.message);
+            if (error.message.includes('Authentication') || error.message.includes('Token')) {
+                console.error('Socket authentication failed - user may need to re-login');
+                // Socket will automatically retry connection
+            }
+        });
+
+        newSocket.on('error', (data: { message: string }) => {
+            console.error('❌ Socket error:', data.message);
         });
 
         newSocket.on('play', () => {
@@ -542,7 +564,7 @@ const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children })
         return () => {
             newSocket.disconnect();
         };
-    }, []);
+    }, [userRoom]); // Reconnect if user changes
 
     useEffect(() => {
         localStorage.setItem('swaz_playlists', JSON.stringify(playlists));
@@ -713,8 +735,8 @@ const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children })
         setCurrentIndex(index);
         setCurrentSong(song);
 
-        if (!isRemoteUpdate.current && socket) {
-            socket.emit('change_song', { room: 'global', song });
+        if (!isRemoteUpdate.current && socket && userRoom) {
+            socket.emit('change_song', { room: userRoom, song });
         }
 
         setError(null);
@@ -894,7 +916,9 @@ const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children })
     // --- Public Actions ---
     const play = () => {
         if (soundRef.current) {
-            if (!isRemoteUpdate.current && socket) socket.emit('play', { room: 'global' });
+            if (!isRemoteUpdate.current && socket && userRoom) {
+                socket.emit('play', { room: userRoom });
+            }
             if (Howler.ctx && Howler.ctx.state === 'suspended') {
                 Howler.ctx.resume();
             }
@@ -905,7 +929,9 @@ const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children })
     };
 
     const pause = () => {
-        if (!isRemoteUpdate.current && socket) socket.emit('pause', { room: 'global' });
+        if (!isRemoteUpdate.current && socket && userRoom) {
+            socket.emit('pause', { room: userRoom });
+        }
         soundRef.current?.pause();
     };
 
@@ -965,7 +991,9 @@ const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children })
 
     const seek = (time: number) => {
         if (soundRef.current) {
-            if (!isRemoteUpdate.current && socket) socket.emit('seek', { room: 'global', time });
+            if (!isRemoteUpdate.current && socket && userRoom) {
+                socket.emit('seek', { room: userRoom, time });
+            }
             soundRef.current.seek(time);
             setProgress(time);
         }

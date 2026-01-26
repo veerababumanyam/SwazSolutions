@@ -31,6 +31,20 @@ Create professional digital profiles with QR codes, vCard export, and seamless s
 - **Privacy Controls** — Granular visibility settings
 - **Analytics** — Track profile views and engagement
 
+### 📧 Digital Invitations
+Professional event invitations with multi-language, AI text generation, and guest management.
+
+- **Multi-Language Support** — 12 Indian languages with native script support
+- **Multi-Event Itineraries** — Create wedding journeys (Sangeet, Mehendi, Haldi, Wedding, Reception, Baraat)
+- **AI Text Generation** — Gemini-powered invitation text in multiple tones (Formal, Casual, Poetic, Witty, etc.)
+- **Template System** — 8 marketplace templates + custom designer tools
+- **Guest Management** — CRUD, categorization, status tracking, CSV import/export, bulk operations
+- **Social Sharing** — WhatsApp, Email, Instagram Story generators
+- **RSVP System** — Public RSVP forms with validation and tracking
+- **QR Check-In** — Scanner-based and manual guest check-in at events
+- **Analytics Dashboard** — Views, engagement, acceptance rates, geographic distribution
+- **Bilingual Support** — Side-by-side, stacked, or tabbed language layouts
+
 ### 🎵 Music Player
 Professional-grade streaming with advanced audio controls.
 
@@ -102,9 +116,11 @@ npm run dev
 | Service | URL |
 |---------|-----|
 | Home | http://localhost:3000 |
+| Digital Invitations | http://localhost:3000/#/invites |
 | Lyric Studio | http://localhost:3000/#/studio |
 | Music Player | http://localhost:3000/#/music |
 | News Hub | http://localhost:3000/#/news |
+| Public Invite | http://localhost:3000/#/invite/:slug |
 
 ### Production Build
 
@@ -143,14 +159,18 @@ swaz-solutions/
 ├── src/
 │   ├── agents/          # 13 AI agents for Lyric Studio
 │   ├── components/      # React components
+│   │   ├── invites/     # Digital invitation components
+│   │   └── ...
 │   ├── pages/           # Application pages
 │   ├── contexts/        # React contexts
 │   ├── hooks/           # Custom hooks
+│   ├── services/        # API services (inviteApi, etc.)
 │   └── utils/           # Utilities
 ├── backend/
-│   ├── routes/          # API endpoints
+│   ├── routes/          # API endpoints (invites, invite-guests, etc.)
 │   ├── middleware/      # Auth & validation
 │   ├── services/        # Business logic
+│   ├── migrations/      # Database schemas
 │   └── config/          # Database config
 ├── public/              # Static assets
 └── docs/                # Documentation
@@ -180,6 +200,7 @@ swaz-solutions/
 
 | Document | Description |
 |----------|-------------|
+| [Digital Invitations](./docs/DIGITAL-INVITE-FINAL-SUMMARY.md) | Complete digital invitation system guide |
 | [Agentic AI Guide](./docs/AGENTIC_AI_QUICK_START.md) | AI solutions overview |
 | [Google OAuth Setup](./docs/GOOGLE_OAUTH_SETUP.md) | OAuth configuration |
 | [vCard PRD](./docs/vCardPRD.md) | Digital identity specs |

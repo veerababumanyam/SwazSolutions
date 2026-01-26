@@ -14,7 +14,7 @@ interface AuthContextType {
     user: User | null;
     loading: boolean;
     isAuthenticated: boolean;
-    login: (user: User, token?: string, refreshToken?: string) => void;
+    login: (user: User) => void;
     logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
     refreshAccessToken: () => Promise<boolean>;
@@ -22,26 +22,12 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Token refresh threshold - refresh when less than 2 minutes remaining
-const TOKEN_REFRESH_THRESHOLD_MS = 2 * 60 * 1000;
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
-    const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
     const isRefreshingRef = useRef(false);
 
-    // Parse JWT to get expiration time
-    const getTokenExpiry = (token: string): number | null => {
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
-        } catch {
-            return null;
-        }
-    };
-
-    // Refresh access token using refresh token
+    // Refresh access token using httpOnly cookie
     const refreshAccessToken = useCallback(async (): Promise<boolean> => {
         // Prevent concurrent refresh attempts
         if (isRefreshingRef.current) {
@@ -51,33 +37,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isRefreshingRef.current = true;
 
         try {
-            const refreshToken = localStorage.getItem('refresh_token');
-
             const response = await fetch('/api/auth/refresh', {
                 method: 'POST',
-                credentials: 'include',
+                credentials: 'include', // Send httpOnly cookies
                 headers: {
                     'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ refreshToken })
+                }
             });
 
             if (response.ok) {
                 const data = await response.json();
-                // Store new tokens
-                localStorage.setItem('auth_token', data.token);
-                if (data.refreshToken) {
-                    localStorage.setItem('refresh_token', data.refreshToken);
-                }
                 setUser(data.user);
-
-                // Schedule next refresh
-                scheduleTokenRefresh(data.token);
                 return true;
             } else {
-                // Refresh failed - clear tokens and user
-                localStorage.removeItem('auth_token');
-                localStorage.removeItem('refresh_token');
+                // Refresh failed - clear user state
                 setUser(null);
                 return false;
             }
@@ -89,66 +62,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     }, []);
 
-    // Schedule automatic token refresh before expiry
-    const scheduleTokenRefresh = useCallback((token: string) => {
-        // Clear existing timer
-        if (refreshTimerRef.current) {
-            clearTimeout(refreshTimerRef.current);
-            refreshTimerRef.current = null;
-        }
-
-        const expiry = getTokenExpiry(token);
-        if (!expiry) return;
-
-        const timeUntilExpiry = expiry - Date.now();
-        const refreshTime = timeUntilExpiry - TOKEN_REFRESH_THRESHOLD_MS;
-
-        if (refreshTime > 0) {
-            refreshTimerRef.current = setTimeout(() => {
-                refreshAccessToken();
-            }, refreshTime);
-        } else if (timeUntilExpiry > 0) {
-            // Token is about to expire, refresh immediately
-            refreshAccessToken();
-        }
-    }, [refreshAccessToken]);
-
     const checkAuth = useCallback(async () => {
         try {
-            // Get token from localStorage
-            const token = localStorage.getItem('auth_token');
-
-            // Skip auth check if no token exists - avoids unnecessary 401 errors
-            if (!token) {
-                setUser(null);
-                setLoading(false);
-                return;
-            }
-
-            // Check if token is expired
-            const expiry = getTokenExpiry(token);
-            if (expiry && expiry < Date.now()) {
-                // Token expired, try to refresh
-                const refreshed = await refreshAccessToken();
-                if (!refreshed) {
-                    setUser(null);
-                }
-                setLoading(false);
-                return;
-            }
-
             const response = await fetch('/api/auth/me', {
-                credentials: 'include', // Include cookies
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                credentials: 'include' // Send httpOnly cookies automatically
             });
 
             if (response.ok) {
                 const data = await response.json();
                 setUser(data.user);
-                // Schedule token refresh
-                scheduleTokenRefresh(token);
             } else {
                 const errorData = await response.json().catch(() => ({}));
 
@@ -156,83 +78,40 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 if (errorData.code === 'TOKEN_EXPIRED') {
                     const refreshed = await refreshAccessToken();
                     if (!refreshed) {
-                        localStorage.removeItem('auth_token');
-                        localStorage.removeItem('refresh_token');
                         setUser(null);
                     }
                 } else {
-                    // Token invalid - clear it
-                    localStorage.removeItem('auth_token');
-                    localStorage.removeItem('refresh_token');
+                    // Token invalid or missing
                     setUser(null);
                 }
             }
         } catch (error) {
-            // #region agent log
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:170',message:'checkAuth error',data:{error:errorMsg},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-            // #endregion
             console.error('Auth check failed:', error);
             setUser(null);
         } finally {
-            // #region agent log
-            fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:174',message:'checkAuth completed',data:{user:user?.username||null,loading:false},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-            // #endregion
             setLoading(false);
         }
-    }, [refreshAccessToken, scheduleTokenRefresh]);
+    }, [refreshAccessToken]);
 
     useEffect(() => {
-        // #region agent log
-        const token = localStorage.getItem('auth_token');
-        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AuthContext.tsx:178',message:'AuthContext useEffect - checkAuth starting',data:{hasToken:!!token},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-        // #endregion
         checkAuth();
-
-        // Cleanup timer on unmount
-        return () => {
-            if (refreshTimerRef.current) {
-                clearTimeout(refreshTimerRef.current);
-                refreshTimerRef.current = null;
-            }
-        };
     }, [checkAuth]);
 
-    const login = useCallback((userData: User, token?: string, refreshToken?: string) => {
+    const login = useCallback((userData: User) => {
         setUser(userData);
-        if (token) {
-            localStorage.setItem('auth_token', token);
-            scheduleTokenRefresh(token);
-        }
-        if (refreshToken) {
-            localStorage.setItem('refresh_token', refreshToken);
-        }
-    }, [scheduleTokenRefresh]);
+        // No token storage needed - backend sets httpOnly cookies
+    }, []);
 
     const logout = useCallback(async () => {
         try {
-            // Clear refresh timer
-            if (refreshTimerRef.current) {
-                clearTimeout(refreshTimerRef.current);
-                refreshTimerRef.current = null;
-            }
-
-            const refreshToken = localStorage.getItem('refresh_token');
-
             await fetch('/api/auth/logout', {
                 method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ refreshToken })
+                credentials: 'include' // Send httpOnly cookies
             });
         } catch (error) {
             console.error('Logout request failed:', error);
         } finally {
-            // Always clear local storage and state
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('refresh_token');
+            // Clear user state
             setUser(null);
             // Redirect to home page
             window.location.href = '/';

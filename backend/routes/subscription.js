@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { createSubscriptionOrder, verifyOrder } = require('../services/cashfreeService');
-const { createPhonePeOrder } = require('../services/phonePeService');
-const { createRupeePaymentsOrder } = require('../services/rupeePaymentsService');
+const { createPhonePeOrder, verifyPhonePePayment } = require('../services/phonePeService');
+const { createRupeePaymentsOrder, verifyRupeePaymentsPayment } = require('../services/rupeePaymentsService');
 const { authenticateToken } = require('../middleware/auth');
+const { SUBSCRIPTION, PAYMENT } = require('../constants');
+const logger = require('../utils/logger');
 
 function createSubscriptionRoutes(db) {
 
@@ -81,22 +83,38 @@ function createSubscriptionRoutes(db) {
             return res.status(400).json({ error: 'Order ID is required' });
         }
 
+        if (!provider) {
+            return res.status(400).json({ error: 'Provider is required' });
+        }
+
         try {
             let isSuccessful = false;
+            let isPending = false;
 
             // Verification Logic per provider
-            if (provider === 'cashfree' || !provider) {
+            if (provider === PAYMENT.PROVIDER.CASHFREE) {
                 const payment = await verifyOrder(orderId);
-                if (payment && payment.payment_status === 'SUCCESS') isSuccessful = true;
+                if (payment && payment.payment_status === PAYMENT.STATUS.SUCCESS) {
+                    isSuccessful = true;
+                }
             }
-            else if (provider === 'phonepe') {
-                // TODO: Implement actual PhonePe server-to-server status check
-                console.log('PhonePe verification requested for', orderId);
-                // For demonstration/sandbox simplicity we might need to rely on webhook
+            else if (provider === PAYMENT.PROVIDER.PHONEPE) {
+                logger.payment(PAYMENT.PROVIDER.PHONEPE, orderId, 'verification_requested');
+                isSuccessful = await verifyPhonePePayment(orderId);
             }
-            else if (provider === 'rupeepayments') {
-                // TODO: Implement RupeePayments validaton
-                console.log('RupeePayments verification requested for', orderId);
+            else if (provider === PAYMENT.PROVIDER.RUPEEPAYMENTS) {
+                logger.payment(PAYMENT.PROVIDER.RUPEEPAYMENTS, orderId, 'verification_requested');
+                isSuccessful = await verifyRupeePaymentsPayment(orderId);
+
+                // RupeePayments requires manual verification
+                if (!isSuccessful) {
+                    return res.status(202).json({
+                        success: false,
+                        message: 'Payment verification pending. Manual verification required.',
+                        orderId,
+                        provider
+                    });
+                }
             }
 
             // Note: If providers send webhooks, handled in handleWebhook.
@@ -104,16 +122,17 @@ function createSubscriptionRoutes(db) {
 
             if (isSuccessful) {
                 const userId = req.user.id;
-                const newEndDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+                const newEndDate = new Date(Date.now() + SUBSCRIPTION.DURATION_MS.YEAR).toISOString();
 
                 db.prepare(`
-                    UPDATE users 
-                    SET subscription_status = 'active', 
+                    UPDATE users
+                    SET subscription_status = ?,
                         subscription_end_date = ?
                     WHERE id = ?
-                `).run(newEndDate, userId);
+                `).run(SUBSCRIPTION.STATUS.ACTIVE, newEndDate, userId);
 
-                console.log(`✅ Payment verified for user ${userId}. Order: ${orderId}`);
+                logger.payment(provider, orderId, 'verified', { userId, newEndDate });
+                logger.info(`Payment verified for user ${userId}. Order: ${orderId}`);
 
                 res.json({
                     success: true,
@@ -122,10 +141,16 @@ function createSubscriptionRoutes(db) {
                 });
             } else {
                 // If not strictly failed (maybe pending or just waiting for webhook), message accordingly
-                res.status(400).json({ error: 'Payment verification failed or pending. check status later.' });
+                res.status(400).json({
+                    error: 'Payment verification failed or pending. Please check status later.'
+                });
             }
         } catch (error) {
-            console.error('Error verifying payment:', error);
+            logger.error('Payment verification error', {
+                orderId,
+                provider,
+                error: error.message
+            });
             res.status(500).json({ error: 'Verification failed' });
         }
     });
@@ -211,12 +236,145 @@ function createSubscriptionRoutes(db) {
     return router;
 }
 
-// Webhook handler
+// Webhook handler with signature verification
 async function handleWebhook(req, res, db) {
-    console.log('Webhook received:', req.body);
-    // Parse webhook and update DB
-    // We would need to identify provider from headers or payload structure
-    res.json({ received: true });
+    const crypto = require('crypto');
+
+    try {
+        // Determine provider from headers or body
+        const xVerifyHeader = req.headers['x-verify'];
+        const cashfreeSignature = req.headers['x-cashfree-signature'];
+
+        let provider, orderId, paymentStatus, verified = false;
+
+        // PhonePe Webhook Verification
+        if (xVerifyHeader && req.body.response) {
+            const SALT_KEY = process.env.PHONEPE_SALT_KEY;
+            const SALT_INDEX = process.env.PHONEPE_SALT_INDEX || '1';
+
+            if (!SALT_KEY) {
+                logger.error('PhonePe SALT_KEY not configured');
+                return res.status(500).json({ error: 'Configuration error' });
+            }
+
+            // Verify checksum
+            const response = req.body.response;
+            const expectedChecksum = crypto.createHash('sha256')
+                .update(response + SALT_KEY)
+                .digest('hex') + '###' + SALT_INDEX;
+
+            if (expectedChecksum !== xVerifyHeader) {
+                logger.security('PhonePe webhook signature verification failed', {
+                    expected: expectedChecksum,
+                    received: xVerifyHeader
+                });
+                return res.status(401).json({ error: 'Invalid signature' });
+            }
+
+            // Parse response payload
+            const payload = JSON.parse(Buffer.from(response, 'base64').toString());
+            provider = PAYMENT.PROVIDER.PHONEPE;
+            orderId = payload.data.merchantTransactionId;
+            paymentStatus = payload.code === 'PAYMENT_SUCCESS' ? 'SUCCESS' : 'FAILED';
+            verified = true;
+
+            logger.payment(provider, orderId, 'webhook_received', {
+                code: payload.code,
+                paymentState: payload.data.paymentState
+            });
+        }
+        // Cashfree Webhook Verification
+        else if (cashfreeSignature) {
+            const CASHFREE_SECRET = process.env.CASHFREE_SECRET_KEY;
+
+            if (!CASHFREE_SECRET) {
+                logger.error('Cashfree SECRET_KEY not configured');
+                return res.status(500).json({ error: 'Configuration error' });
+            }
+
+            // Verify signature
+            const timestamp = req.headers['x-cashfree-timestamp'];
+            const rawBody = JSON.stringify(req.body);
+            const expectedSignature = crypto.createHmac('sha256', CASHFREE_SECRET)
+                .update(timestamp + rawBody)
+                .digest('base64');
+
+            if (expectedSignature !== cashfreeSignature) {
+                logger.security('Cashfree webhook signature verification failed');
+                return res.status(401).json({ error: 'Invalid signature' });
+            }
+
+            provider = PAYMENT.PROVIDER.CASHFREE;
+            orderId = req.body.data.order.order_id;
+            paymentStatus = req.body.data.payment.payment_status;
+            verified = true;
+
+            logger.payment(provider, orderId, 'webhook_received', {
+                status: paymentStatus
+            });
+        }
+        else {
+            logger.warn('Webhook received without recognizable provider headers');
+            return res.status(400).json({ error: 'Unknown webhook provider' });
+        }
+
+        // Process payment if verification succeeded
+        if (verified && paymentStatus === 'SUCCESS') {
+            // Extract user ID from order ID (format: ORDER_<userId>_<timestamp>)
+            const userId = parseInt(orderId.split('_')[1]);
+
+            if (!userId || isNaN(userId)) {
+                logger.error('Invalid order ID format', { orderId });
+                return res.status(400).json({ error: 'Invalid order ID' });
+            }
+
+            // Check for duplicate webhook processing (idempotency)
+            const existingProcessed = db.prepare(`
+                SELECT id FROM users
+                WHERE id = ?
+                AND subscription_status = ?
+                AND subscription_end_date > datetime('now')
+            `).get(userId, SUBSCRIPTION.STATUS.ACTIVE);
+
+            if (existingProcessed) {
+                logger.info('Webhook already processed (idempotent)', { orderId, userId });
+                return res.json({ received: true, status: 'already_processed' });
+            }
+
+            // Activate subscription
+            const newEndDate = new Date(Date.now() + SUBSCRIPTION.DURATION_MS.YEAR).toISOString();
+
+            db.prepare(`
+                UPDATE users
+                SET subscription_status = ?,
+                    subscription_end_date = ?
+                WHERE id = ?
+            `).run(SUBSCRIPTION.STATUS.ACTIVE, newEndDate, userId);
+
+            logger.payment(provider, orderId, 'subscription_activated', {
+                userId,
+                newEndDate
+            });
+            logger.info(`Subscription activated via webhook for user ${userId}`);
+
+            res.json({ received: true, status: 'processed' });
+        }
+        else if (verified && paymentStatus === 'FAILED') {
+            logger.payment(provider, orderId, 'payment_failed');
+            res.json({ received: true, status: 'failed' });
+        }
+        else {
+            logger.warn('Webhook received with unrecognized status', { paymentStatus });
+            res.json({ received: true, status: 'ignored' });
+        }
+
+    } catch (error) {
+        logger.error('Webhook processing error', {
+            error: error.message,
+            stack: error.stack
+        });
+        res.status(500).json({ error: 'Webhook processing failed' });
+    }
 }
 
 module.exports = { createSubscriptionRoutes, handleWebhook };

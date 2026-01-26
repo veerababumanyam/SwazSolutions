@@ -59,4 +59,80 @@ async function createPhonePeOrder(user) {
     }
 }
 
-module.exports = { createPhonePeOrder };
+/**
+ * Verify PhonePe Payment
+ * Check payment status using PhonePe's server-to-server API
+ * @param {string} orderId - Merchant transaction ID
+ * @returns {Promise<boolean>} True if payment is successful
+ */
+async function verifyPhonePePayment(orderId) {
+    if (!MERCHANT_ID || !SALT_KEY || !SALT_INDEX) {
+        throw new Error('PhonePe credentials not configured');
+    }
+
+    const endpoint = `/pg/v1/status/${MERCHANT_ID}/${orderId}`;
+    const checksum = crypto.createHash('sha256')
+        .update(endpoint + SALT_KEY)
+        .digest('hex') + "###" + SALT_INDEX;
+
+    try {
+        const response = await axios.get(
+            `${BASE_URL}${endpoint}`,
+            {
+                headers: {
+                    'X-VERIFY': checksum,
+                    'Content-Type': 'application/json',
+                    'X-MERCHANT-ID': MERCHANT_ID
+                },
+                timeout: 10000 // 10 second timeout
+            }
+        );
+
+        const data = response.data;
+
+        // Check if payment is successful
+        // Response structure: { success: true, code: 'PAYMENT_SUCCESS', data: { ... } }
+        if (data.success && data.code === 'PAYMENT_SUCCESS') {
+            const paymentData = data.data;
+
+            // Verify transaction ID matches
+            if (paymentData.merchantTransactionId !== orderId) {
+                throw new Error('Transaction ID mismatch');
+            }
+
+            // Check payment amount and status
+            if (paymentData.paymentState !== 'COMPLETED') {
+                return false;
+            }
+
+            return true;
+        }
+
+        // Handle specific error codes
+        if (data.code === 'PAYMENT_PENDING') {
+            return false; // Payment pending
+        } else if (data.code === 'PAYMENT_FAILED') {
+            return false; // Payment failed
+        } else if (data.code === 'TRANSACTION_NOT_FOUND') {
+            throw new Error('Transaction not found');
+        }
+
+        return false;
+    } catch (error) {
+        if (error.response) {
+            // API returned an error response
+            console.error('PhonePe verification error:', error.response.data);
+            throw new Error(error.response.data.message || 'Payment verification failed');
+        } else if (error.request) {
+            // Request was made but no response received
+            console.error('PhonePe verification - no response:', error.message);
+            throw new Error('Unable to verify payment status. Please try again later.');
+        } else {
+            // Something else happened
+            console.error('PhonePe verification error:', error.message);
+            throw error;
+        }
+    }
+}
+
+module.exports = { createPhonePeOrder, verifyPhonePePayment };

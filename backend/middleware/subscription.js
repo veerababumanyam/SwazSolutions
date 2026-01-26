@@ -5,51 +5,12 @@ const { ENABLE_AUTH } = require('./auth');
  * Middleware to check if user has active subscription or valid free trial
  */
 function checkSubscription(req, res, next) {
-    // #region agent log
-    const fs = require('fs');
-    const logPath = 'c:\\Users\\admin\\Desktop\\SwazSolutions\\.cursor\\debug.log';
-    const logEntry = JSON.stringify({
-        location: 'subscription.js:6',
-        message: 'checkSubscription called',
-        data: { hasUser: !!req.user, enableAuth: ENABLE_AUTH, path: req.path },
-        timestamp: Date.now(),
-        sessionId: 'debug-session',
-        runId: 'run1',
-        hypothesisId: 'H1'
-    }) + '\n';
-    fs.appendFileSync(logPath, logEntry);
-    // #endregion
-
     // Skip subscription check if authentication is disabled
     if (!ENABLE_AUTH) {
-        // #region agent log
-        const logEntry2 = JSON.stringify({
-            location: 'subscription.js:12',
-            message: 'Skipping subscription check - ENABLE_AUTH=false',
-            data: { path: req.path },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'H1'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry2);
-        // #endregion
         return next();
     }
 
     if (!req.user) {
-        // #region agent log
-        const logEntry3 = JSON.stringify({
-            location: 'subscription.js:18',
-            message: 'No req.user - returning 401',
-            data: { path: req.path, enableAuth: ENABLE_AUTH },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'H1'
-        }) + '\n';
-        fs.appendFileSync(logPath, logEntry3);
-        // #endregion
         return res.status(401).json({ error: 'Authentication required' });
     }
 

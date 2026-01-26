@@ -12,6 +12,7 @@ const {
     hashRefreshToken
 } = require('../middleware/auth');
 const { strictAuthLimiter, authLimiter } = require('../middleware/rateLimit');
+const logger = require('../utils/logger');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -252,16 +253,29 @@ function createAuthRoutes(db) {
             const payload = ticket.getPayload();
             const { sub: googleId, email, name, picture } = payload;
 
-            // Check if user exists
-            let user = db.prepare('SELECT * FROM users WHERE google_id = ? OR email = ?').get(googleId, email);
+            // Check if user exists with this Google ID
+            let user = db.prepare('SELECT * FROM users WHERE google_id = ?').get(googleId);
 
             if (user) {
-                // Update existing user if needed (e.g. link google_id if matched by email)
-                if (!user.google_id) {
-                    db.prepare('UPDATE users SET google_id = ?, role = ? WHERE id = ?').run(googleId, 'pro', user.id);
-                    user.role = 'pro'; // Upgrade to pro
-                }
+                // User found by Google ID - proceed with login
             } else {
+                // Check if email is already registered (without Google)
+                const existingUser = db.prepare('SELECT id, username, email FROM users WHERE email = ?').get(email);
+
+                if (existingUser) {
+                    // Security: Do NOT auto-link Google account to existing email
+                    // This prevents account takeover attacks
+                    logger.security('Google OAuth attempted on existing email', {
+                        email,
+                        existingUserId: existingUser.id
+                    });
+
+                    return res.status(409).json({
+                        error: 'An account with this email already exists. Please log in with your password or reset it.',
+                        code: 'EMAIL_ALREADY_EXISTS',
+                        message: 'An account with this email already exists. Please log in with your password, or use the password reset option if you\'ve forgotten it. To link your Google account, log in first and then connect Google from your settings.'
+                    });
+                }
                 // Create new user
                 // Generate a unique username from email or name
                 let baseUsername = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9]/g, '');
@@ -275,7 +289,7 @@ function createAuthRoutes(db) {
 
                 const result = db.prepare(
                     'INSERT INTO users (username, email, google_id, role, password_hash) VALUES (?, ?, ?, ?, ?)'
-                ).run(username, email, googleId, 'pro', 'GOOGLE_AUTH_USER_NO_PASSWORD'); // Placeholder for NOT NULL constraint
+                ).run(username, email, googleId, 'pro', null); // NULL for OAuth users (no password)
 
                 user = {
                     id: result.lastInsertRowid,

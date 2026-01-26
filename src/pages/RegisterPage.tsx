@@ -48,9 +48,7 @@ export const RegisterPage: React.FC = () => {
             const data = await res.json();
 
             if (res.ok) {
-                if (data.token) {
-                    localStorage.setItem('auth_token', data.token);
-                }
+                // Backend sets httpOnly cookies - no token storage needed
                 login(data.user);
                 showToast('Successfully signed up with Google!', 'success');
                 navigate(from, { replace: true });
@@ -74,12 +72,6 @@ export const RegisterPage: React.FC = () => {
     }, [handleGoogleCallback]);
 
     useEffect(() => {
-        // #region agent log
-        const origin = window.location.origin;
-        const fullUrl = window.location.href;
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RegisterPage.tsx:75',message:'RegisterPage mounted - capturing origin',data:{origin,fullUrl,clientId,protocol:window.location.protocol,host:window.location.host,port:window.location.port},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         // Suppress Google OAuth console errors
         const originalError = console.error;
         const errorFilter = (message: any, ...args: any[]) => {
@@ -88,13 +80,9 @@ export const RegisterPage: React.FC = () => {
                 message.includes('The given origin is not allowed') ||
                 message.includes('credential_button_library')
             )) {
-                // #region agent log
-                const origin = window.location.origin;
-                const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-                fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RegisterPage.tsx:80',message:'Google OAuth origin error detected',data:{origin,clientId,errorMessage:message,errorArgs:args.map(a=>String(a))},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                // #endregion
                 // Set user-facing error message
                 if (message.includes('The given origin is not allowed')) {
+                    const origin = window.location.origin;
                     setGoogleError(`Google Sign-In is not configured for ${origin}. Please add this origin to your Google Cloud Console OAuth client settings.`);
                 }
                 return; // Suppress Google OAuth configuration errors
@@ -105,15 +93,11 @@ export const RegisterPage: React.FC = () => {
 
         // Check if script already exists
         const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-        
+
         const initializeGoogleSignIn = () => {
             if (window.google && googleButtonRef.current && !initializedRef.current) {
                 try {
-                    // #region agent log
-                    const origin = window.location.origin;
                     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RegisterPage.tsx:96',message:'Google OAuth initialization start',data:{origin,clientId,fullUrl:window.location.href},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
                     window.google.accounts.id.initialize({
                         client_id: clientId,
                         callback: (response: any) => {
@@ -124,31 +108,20 @@ export const RegisterPage: React.FC = () => {
                         auto_select: false,
                         cancel_on_tap_outside: true,
                     });
-                    // #region agent log
-                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RegisterPage.tsx:108',message:'Google OAuth initialize() called successfully',data:{origin,clientId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
-                    
+
                     window.google.accounts.id.renderButton(
                         googleButtonRef.current,
-                        { 
-                            theme: "outline", 
-                            size: "large", 
+                        {
+                            theme: "outline",
+                            size: "large",
                             text: "signup_with",
                             shape: "pill",
                             logo_alignment: "center"
                         }
                     );
-                    // #region agent log
-                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RegisterPage.tsx:119',message:'Google OAuth renderButton() called successfully',data:{origin,clientId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-                    // #endregion
                     initializedRef.current = true;
                     setGoogleLoaded(true);
                 } catch (error) {
-                    // #region agent log
-                    const origin = window.location.origin;
-                    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-                    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'RegisterPage.tsx:121',message:'Google OAuth initialization error',data:{origin,clientId,error:error instanceof Error?error.message:String(error),errorStack:error instanceof Error?error.stack:undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-                    // #endregion
                     // Silently handle initialization errors
                     setGoogleLoaded(false);
                 }

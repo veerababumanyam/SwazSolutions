@@ -23,11 +23,9 @@ const API_BASE_URL = '/api';
 const CATEGORY_ORDER: ThemeCategory[] = ['aurora', 'gradient', 'glass', 'minimal', 'dark', 'visual', 'custom', 'ai-generated'];
 
 class ThemeService {
-    private getAuthHeaders(): HeadersInit {
-        const token = localStorage.getItem('auth_token');
+    private getHeaders(): HeadersInit {
         return {
             'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
         };
     }
 
@@ -106,7 +104,7 @@ class ThemeService {
         try {
             const response = await fetch(`${API_BASE_URL}/themes/system`, {
                 method: 'GET',
-                headers: this.getAuthHeaders(),
+                headers: this.getHeaders(),
                 credentials: 'include'
             });
 
@@ -126,17 +124,10 @@ class ThemeService {
      * Returns empty array if user is not authenticated
      */
     async getUserThemes(): Promise<ThemeUserResponse> {
-        // Check if user has a token before making the request
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-            // User not authenticated, return empty response silently
-            return { themes: [], total: 0 };
-        }
-
         try {
             const response = await fetch(`${API_BASE_URL}/themes/me`, {
                 method: 'GET',
-                headers: this.getAuthHeaders(),
+                headers: this.getHeaders(),
                 credentials: 'include'
             });
 
@@ -163,7 +154,7 @@ class ThemeService {
         try {
             const response = await fetch(`${API_BASE_URL}/themes`, {
                 method: 'POST',
-                headers: this.getAuthHeaders(),
+                headers: this.getHeaders(),
                 credentials: 'include',
                 body: JSON.stringify(themeData)
             });
@@ -187,7 +178,7 @@ class ThemeService {
         try {
             const response = await fetch(`${API_BASE_URL}/themes/${id}`, {
                 method: 'PUT',
-                headers: this.getAuthHeaders(),
+                headers: this.getHeaders(),
                 credentials: 'include',
                 body: JSON.stringify(updates)
             });
@@ -211,7 +202,7 @@ class ThemeService {
         try {
             const response = await fetch(`${API_BASE_URL}/themes/${id}`, {
                 method: 'DELETE',
-                headers: this.getAuthHeaders(),
+                headers: this.getHeaders(),
                 credentials: 'include'
             });
 
@@ -232,16 +223,10 @@ class ThemeService {
      * Requires authentication and an existing profile
      */
     async applyTheme(id: number): Promise<ThemeApplyResponse> {
-        // Check if user has a token before making the request
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
-            throw new Error('Please log in to apply a theme to your profile');
-        }
-
         try {
             const response = await fetch(`${API_BASE_URL}/themes/${id}/apply`, {
                 method: 'POST',
-                headers: this.getAuthHeaders(),
+                headers: this.getHeaders(),
                 credentials: 'include'
             });
 

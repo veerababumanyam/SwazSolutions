@@ -182,6 +182,7 @@ function renderVideoEmbed(url: string, title?: string): React.ReactNode {
           src={`https://www.youtube.com/embed/${videoId}`}
           title={title || 'YouTube video'}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
           allowFullScreen
           className="w-full h-full"
         />
@@ -198,6 +199,7 @@ function renderVideoEmbed(url: string, title?: string): React.ReactNode {
           src={`https://player.vimeo.com/video/${videoId}`}
           title={title || 'Vimeo video'}
           allow="autoplay; fullscreen; picture-in-picture"
+          sandbox="allow-scripts allow-same-origin allow-presentation"
           allowFullScreen
           className="w-full h-full"
         />

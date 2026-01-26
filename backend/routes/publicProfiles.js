@@ -84,12 +84,30 @@ router.get('/profile/:username', async (req, res) => {
        ORDER BY display_order ASC`
     ).all(profile.id);
 
-    // For GALLERY type link items, fetch gallery images
-    for (const linkItem of linkItems) {
-      if (linkItem.type === 'GALLERY') {
-        linkItem.galleryImages = db.prepare(
-          `SELECT * FROM gallery_images WHERE link_item_id = ? ORDER BY display_order ASC`
-        ).all(linkItem.id);
+    // Fix N+1: Fetch ALL gallery images for ALL link items in ONE query
+    if (linkItems.length > 0) {
+      const linkItemIds = linkItems.map(li => li.id);
+      const placeholders = linkItemIds.map(() => '?').join(',');
+      const allGalleryImages = db.prepare(
+        `SELECT * FROM gallery_images
+         WHERE link_item_id IN (${placeholders})
+         ORDER BY link_item_id, display_order ASC`
+      ).all(...linkItemIds);
+
+      // Group gallery images by link_item_id
+      const galleryImagesByLinkItem = {};
+      for (const img of allGalleryImages) {
+        if (!galleryImagesByLinkItem[img.link_item_id]) {
+          galleryImagesByLinkItem[img.link_item_id] = [];
+        }
+        galleryImagesByLinkItem[img.link_item_id].push(img);
+      }
+
+      // Attach gallery images to their link items
+      for (const linkItem of linkItems) {
+        if (linkItem.type === 'GALLERY') {
+          linkItem.galleryImages = galleryImagesByLinkItem[linkItem.id] || [];
+        }
       }
     }
 

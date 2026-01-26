@@ -52,15 +52,10 @@ class SocialLinksService {
     this.baseUrl = '';
   }
 
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token');
-    const headers: HeadersInit = {
+  private getHeaders(): HeadersInit {
+    return {
       'Content-Type': 'application/json',
     };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
   }
 
   /**
@@ -70,7 +65,7 @@ class SocialLinksService {
     const response = await fetch(`${this.baseUrl}/api/profiles/me/social-links`, {
       method: 'GET',
       credentials: 'include',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -99,7 +94,7 @@ class SocialLinksService {
     const response = await fetch(`${this.baseUrl}/api/profiles/me/social-links`, {
       method: 'POST',
       credentials: 'include',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
       body: JSON.stringify(linkData),
     });
 
@@ -131,7 +126,7 @@ class SocialLinksService {
     const response = await fetch(`${this.baseUrl}/api/profiles/me/social-links/${id}`, {
       method: 'PUT',
       credentials: 'include',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
       body: JSON.stringify(updateData),
     });
 
@@ -151,7 +146,7 @@ class SocialLinksService {
     const response = await fetch(`${this.baseUrl}/api/profiles/me/social-links/${id}`, {
       method: 'DELETE',
       credentials: 'include',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
     });
 
     if (!response.ok) {
@@ -167,7 +162,7 @@ class SocialLinksService {
     const response = await fetch(`${this.baseUrl}/api/profiles/me/social-links/reorder`, {
       method: 'POST',
       credentials: 'include',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
       body: JSON.stringify({ linkIds }),
     });
 
@@ -184,7 +179,7 @@ class SocialLinksService {
     const response = await fetch(`${this.baseUrl}/api/profiles/me/social-links/detect-logo`, {
       method: 'POST',
       credentials: 'include',
-      headers: this.getAuthHeaders(),
+      headers: this.getHeaders(),
       body: JSON.stringify({ url }),
     });
 

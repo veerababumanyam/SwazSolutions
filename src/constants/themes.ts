@@ -5,6 +5,24 @@
 
 import { Theme, ThemeCategory } from '@/types/modernProfile.types';
 
+// Analytics Data Interface
+export interface AnalyticsData {
+  date: string;
+  views: number;
+  clicks: number;
+}
+
+// Mock Analytics Data (7-day rolling window)
+export const MOCK_ANALYTICS: AnalyticsData[] = [
+  { date: 'Mon', views: 120, clicks: 45 },
+  { date: 'Tue', views: 150, clicks: 55 },
+  { date: 'Wed', views: 180, clicks: 70 },
+  { date: 'Thu', views: 140, clicks: 40 },
+  { date: 'Fri', views: 220, clicks: 95 },
+  { date: 'Sat', views: 300, clicks: 120 },
+  { date: 'Sun', views: 280, clicks: 110 },
+];
+
 export const THEMES: Theme[] = [
   // ==========================================
   // BUSINESS / PROFESSIONAL

@@ -46,21 +46,16 @@ interface SocialLink {
 
 // Helper for authenticated fetch requests
 const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
-  const token = localStorage.getItem('auth_token');
   const headers = new Headers(options.headers || {});
 
   if (!headers.has('Content-Type') && options.body) {
     headers.set('Content-Type', 'application/json');
   }
 
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-
   return fetch(url, {
     ...options,
     headers,
-    credentials: 'include',
+    credentials: 'include', // Send httpOnly cookies automatically
   });
 };
 

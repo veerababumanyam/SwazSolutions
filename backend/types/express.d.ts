@@ -1,11 +1,8 @@
-// Type declarations for Express with authentication extensions
-// This file augments the Express Request interface to include the user property
+// Type declarations for Express and Socket.io with authentication extensions
+// This file augments Express and Socket.io interfaces
 
 import 'express';
-import { Router } from 'express';
-
-// Re-export express types to avoid resolution issues
-export { Router };
+import 'socket.io';
 
 declare global {
     namespace Express {
@@ -17,5 +14,14 @@ declare global {
                 name?: string;
             };
         }
+    }
+}
+
+// Extend Socket.io Socket interface with custom properties
+declare module 'socket.io' {
+    interface Socket {
+        userId?: string | number;
+        username?: string;
+        userRole?: string;
     }
 }

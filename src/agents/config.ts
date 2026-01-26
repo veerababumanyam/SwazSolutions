@@ -1,8 +1,18 @@
 // Model Configuration
-// Model Configuration
 export const MODEL_FAST = import.meta.env.VITE_GEMINI_MODEL_FAST || import.meta.env.GEMINI_MODEL_FAST || "gemini-3.0-flash";
 export const MODEL_QUALITY = import.meta.env.VITE_GEMINI_MODEL_QUALITY || import.meta.env.GEMINI_MODEL_QUALITY || "gemini-3.0-pro";
+
+/**
+ * DEPRECATED: Direct API_KEY export for security reasons
+ * Use createGeminiProxyClient() from utils/geminiProxy instead
+ *
+ * Migration status: In progress - update all agent files to use proxy
+ * TODO: Remove this export once all agents are migrated
+ */
 export const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+
+// Re-export proxy utilities for easy agent migration
+export { createGeminiProxyClient, GeminiProxyClient } from '../utils/geminiProxy';
 
 // Legacy aliases for backward compatibility during refactor
 export const MODEL_COMPLEX = MODEL_QUALITY;

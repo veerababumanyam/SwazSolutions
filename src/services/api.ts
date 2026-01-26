@@ -1,11 +1,6 @@
 // API Base URL - use relative paths for Vite proxy in development
 const API_BASE_URL = '/api';
 
-// Helper function to get auth token
-const getAuthToken = (): string | null => {
-    return localStorage.getItem('auth_token');
-};
-
 // Custom error class for aborted requests
 export class AbortError extends Error {
     constructor(message = 'Request was aborted') {
@@ -16,39 +11,20 @@ export class AbortError extends Error {
 
 // Helper function to make authenticated requests with AbortController support
 async function apiRequest(endpoint: string, options: RequestInit = {}, signal?: AbortSignal) {
-    // #region agent log
-    const token = getAuthToken();
-    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:19',message:'apiRequest called',data:{endpoint,hasToken:!!token,tokenLength:token?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H1'})}).catch(()=>{});
-    // #endregion
-
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
         ...options.headers,
     };
 
-    if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-    }
-
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:30',message:'Making fetch request',data:{endpoint,hasAuthHeader:!!headers['Authorization']},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
-
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         ...options,
         headers,
+        credentials: 'include', // Send httpOnly cookies automatically
         signal, // Pass the abort signal to fetch
     });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:36',message:'Response received',data:{endpoint,status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H2'})}).catch(()=>{});
-    // #endregion
-
     if (!response.ok) {
         const error = await response.json().catch(() => ({ error: 'Request failed' }));
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api.ts:38',message:'Response not ok, throwing error',data:{endpoint,status:response.status,error:error.error||'Request failed'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H4'})}).catch(()=>{});
-        // #endregion
         throw new Error(error.error || `HTTP error ${response.status}`);
     }
 
@@ -96,49 +72,28 @@ export function createAbortableRequest() {
 // Authentication API
 export const authAPI = {
     async register(username: string, password: string, email?: string) {
-        const data = await apiRequest('/auth/register', {
+        // Backend sets httpOnly cookies - no token storage needed
+        return apiRequest('/auth/register', {
             method: 'POST',
             body: JSON.stringify({ username, password, email }),
         });
-
-        if (data.token) {
-            localStorage.setItem('auth_token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-        }
-
-        return data;
     },
 
     async login(username: string, password: string) {
-        const data = await apiRequest('/auth/login', {
+        // Backend sets httpOnly cookies - no token storage needed
+        return apiRequest('/auth/login', {
             method: 'POST',
             body: JSON.stringify({ username, password }),
         });
-
-        if (data.token) {
-            localStorage.setItem('auth_token', data.token);
-            localStorage.setItem('user', JSON.stringify(data.user));
-        }
-
-        return data;
     },
 
     async getMe() {
         return apiRequest('/auth/me');
     },
 
-    logout() {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('user');
-    },
-
-    getCurrentUser() {
-        const userStr = localStorage.getItem('user');
-        return userStr ? JSON.parse(userStr) : null;
-    },
-
-    isAuthenticated(): boolean {
-        return !!getAuthToken();
+    async logout() {
+        // Call backend logout to clear httpOnly cookies
+        return apiRequest('/auth/logout', { method: 'POST' });
     },
 };
 

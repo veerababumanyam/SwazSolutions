@@ -7,27 +7,39 @@ const CLIENT_URL = process.env.CLIENT_URL || process.env.CORS_ORIGIN || 'http://
 
 /**
  * Create RupeePayments Order
- * Note: Since I don't have official docs, this is a mock implementation 
- * that simulates a payment link generation or redirection.
+ * DISABLED: This payment provider is not fully implemented
  */
 async function createRupeePaymentsOrder(user) {
-    const orderId = `RP_${user.id}_${Date.now()}`;
+    throw new Error('RupeePayments integration is not available. Please use Cashfree or PhonePe.');
+}
 
-    // In a real scenario, we would make an API call to RupeePayments here.
-    // For now, we'll return a mock URL or a logic to handle manual verification.
+/**
+ * Verify RupeePayments Payment
+ * DISABLED: This payment provider is not fully implemented
+ */
+async function verifyRupeePaymentsPayment(orderId) {
+    throw new Error('RupeePayments integration is not available. Please use Cashfree or PhonePe.');
+}
 
-    // User requested "https://rupeepayments.com/cash-on-delivery/"
-    // If they strictly want that URL, we can redirect there, but how do we track it?
-    // Assuming we want a checkout flow.
-
-    console.log(`Creating RupeePayments order for ${user.username}, Amount: 200 INR`);
-
-    // Mock response
+/**
+ * Get verification status for RupeePayments
+ * Returns detailed status information
+ * @param {string} orderId - Order ID to check
+ * @returns {Promise<object>} Status object
+ */
+async function getRupeePaymentsStatus(orderId) {
     return {
-        order_id: orderId,
-        // redirected to a mock "success" page for demo or the generic homepage if API not real
-        payment_link: `${CLIENT_URL}/?payment_status=SUCCESS&provider=rupeepayments&mock=true`
+        orderId,
+        provider: 'rupeepayments',
+        status: 'pending_manual_verification',
+        message: 'Payment requires manual verification by administrator',
+        verified: false,
+        autoVerificationAvailable: false
     };
 }
 
-module.exports = { createRupeePaymentsOrder };
+module.exports = {
+    createRupeePaymentsOrder,
+    verifyRupeePaymentsPayment,
+    getRupeePaymentsStatus
+};

@@ -188,17 +188,12 @@ class ProfileService {
   }
 
   /**
-   * Get auth headers with token from localStorage
+   * Get standard headers for API requests
    */
-  private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('auth_token');
-    const headers: HeadersInit = {
+  private getHeaders(): HeadersInit {
+    return {
       'Content-Type': 'application/json',
     };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    return headers;
   }
 
   /**
@@ -209,7 +204,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles/me`, {
         method: 'GET',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (response.status === 404) {
@@ -240,7 +235,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles`, {
         method: 'POST',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
         body: JSON.stringify(this.transformForApi(profileData)),
       });
 
@@ -265,7 +260,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles/me`, {
         method: 'PUT',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
         body: JSON.stringify(this.transformForApi(profileData)),
       });
 
@@ -290,7 +285,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles/me`, {
         method: 'DELETE',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -311,7 +306,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles/me/publish`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
         body: JSON.stringify({ published }),
       });
 
@@ -336,7 +331,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles/me/username-check`, {
         method: 'POST',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
         body: JSON.stringify({ username }),
       });
 
@@ -500,7 +495,7 @@ class ProfileService {
       const response = await fetch(url, {
         method: 'GET',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -522,7 +517,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles/me/analytics/realtime`, {
         method: 'GET',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -551,7 +546,7 @@ class ProfileService {
       const response = await fetch(url, {
         method: 'GET',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -580,7 +575,7 @@ class ProfileService {
       const response = await fetch(url, {
         method: 'GET',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -609,7 +604,7 @@ class ProfileService {
       const response = await fetch(url, {
         method: 'GET',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {
@@ -631,7 +626,7 @@ class ProfileService {
       const response = await fetch(`${this.baseUrl}/api/profiles/me/analytics/trends`, {
         method: 'GET',
         credentials: 'include',
-        headers: this.getAuthHeaders(),
+        headers: this.getHeaders(),
       });
 
       if (!response.ok) {

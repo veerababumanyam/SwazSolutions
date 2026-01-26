@@ -19,6 +19,11 @@ import { ProfileDashboard } from './pages/ProfileDashboard';
 import { PublicProfile } from './pages/PublicProfile';
 import { ProfileAnalytics } from './pages/ProfileAnalytics';
 import { UnifiedProfileEditor } from './pages/UnifiedProfileEditor';
+// Modern vCard Suite - Phase 4 Components
+import { Layout } from './components/admin/Layout';
+import LinksEditor from './pages/LinksEditor';
+import AppearanceEditor from './pages/AppearanceEditor';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import { InviteDashboard } from './components/invites/InviteDashboard';
 import { InviteEditor } from './components/invites/InviteEditor';
 import { GuestManagerWrapper } from './components/invites/GuestManagerWrapper';
@@ -126,14 +131,35 @@ const AppRoutes: React.FC = () => (
                       </RouteErrorBoundary>
                     } />
 
-                    {/* Virtual Profile Routes - Unified Edit Profile */}
+                    {/* Virtual Profile Routes - Modern vCard Suite (Phase 4) */}
                     <Route path="/profile/edit" element={
                       <ProtectedRoute>
-                        <RouteErrorBoundary routeName="Profile Editor">
-                          <UnifiedProfileEditor />
+                        <RouteErrorBoundary routeName="Portfolio Editor">
+                          <Layout>
+                            <LinksEditor />
+                          </Layout>
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
+                    <Route path="/profile/appearance" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Appearance Editor">
+                          <Layout>
+                            <AppearanceEditor />
+                          </Layout>
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/profile/analytics" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Analytics Dashboard">
+                          <Layout>
+                            <AnalyticsDashboard />
+                          </Layout>
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    {/* Legacy Routes - Keep for backward compatibility */}
                     <Route path="/profile/dashboard" element={
                       <ProtectedRoute>
                         <RouteErrorBoundary routeName="Profile Dashboard">
@@ -141,10 +167,10 @@ const AppRoutes: React.FC = () => (
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
-                    <Route path="/profile/analytics" element={
+                    <Route path="/profile/edit-legacy" element={
                       <ProtectedRoute>
-                        <RouteErrorBoundary routeName="Profile Analytics">
-                          <ProfileAnalytics />
+                        <RouteErrorBoundary routeName="Legacy Profile Editor">
+                          <UnifiedProfileEditor />
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />

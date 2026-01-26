@@ -12,11 +12,10 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
     const handleSubscribe = async (provider: 'cashfree' | 'phonepe' | 'rupeepayments') => {
         try {
-            const token = localStorage.getItem('auth_token');
             const response = await fetch('/api/subscription/create-order', {
                 method: 'POST',
+                credentials: 'include', // Send httpOnly cookies automatically
                 headers: {
-                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ provider })

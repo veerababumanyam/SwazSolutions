@@ -1350,6 +1350,43 @@ async function initializeDatabase() {
     console.error('❌ Failed to initialize visitor counter:', e);
   }
 
+  // ========================================
+  // DIGITAL INVITES TABLES
+  // ========================================
+  // Run migration to create tables if they don't exist
+  try {
+    const migrationPath = path.join(__dirname, '../migrations/create-invites-tables.sql');
+    if (fs.existsSync(migrationPath)) {
+      const migrationSql = fs.readFileSync(migrationPath, 'utf8');
+      console.log('Running digital invites migration...');
+      db.run(migrationSql);
+      console.log('✅ Digital invites migration executed');
+    } else {
+      console.error('❌ Migration file not found:', migrationPath);
+    }
+  } catch (err) {
+    console.error('❌ Failed to run digital invites migration:', err);
+  }
+
+  // ========================================
+  // DIGITAL INVITES INDEXES
+  // ========================================
+  // Note: Tables are created by migrations/create-invites-tables.sql
+  // These are additional performance indexes
+
+  // Composite indexes for common queries
+  db.run('CREATE INDEX IF NOT EXISTS idx_digital_invites_user_status ON digital_invites(user_id, status);');
+  db.run('CREATE INDEX IF NOT EXISTS idx_digital_invites_user_created ON digital_invites(user_id, created_at DESC);');
+  db.run('CREATE INDEX IF NOT EXISTS idx_invite_guests_invite_status ON invite_guests(invite_id, status);');
+  db.run('CREATE INDEX IF NOT EXISTS idx_invite_analytics_invite_event ON invite_analytics(invite_id, event_type);');
+
+  // User subscription indexes for performance
+  db.run('CREATE INDEX IF NOT EXISTS idx_users_subscription_status ON users(subscription_status);');
+  db.run('CREATE INDEX IF NOT EXISTS idx_users_subscription_end_date ON users(subscription_end_date);');
+  db.run('CREATE INDEX IF NOT EXISTS idx_users_subscription_status_end ON users(subscription_status, subscription_end_date);');
+
+  console.log('✅ Digital invites and subscription indexes created/verified');
+
   // Save database to file
   saveDatabase();
   console.log('✅ Database initialized successfully');

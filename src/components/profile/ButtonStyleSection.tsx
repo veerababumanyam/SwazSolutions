@@ -19,7 +19,7 @@ import {
   ChevronUp,
   Palette,
   Sparkles,
-  Border,
+  Box,
   MousePointer,
   Eye,
   Settings,
@@ -357,7 +357,7 @@ export const ButtonStyleSection: React.FC<ButtonStyleSectionProps> = ({ settings
       {/* Border Section */}
       <CollapsibleSection
         title="Border"
-        icon={<Border className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
+        icon={<Box className="w-5 h-5 text-gray-600 dark:text-gray-400" />}
       >
         <div className="space-y-4">
           <SliderControl

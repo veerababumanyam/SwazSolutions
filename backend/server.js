@@ -89,6 +89,7 @@ const createInviteGalleryRoutes = require('./routes/invite-gallery');
 
 const http = require('http');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const server = http.createServer(app);
@@ -97,6 +98,58 @@ const io = new Server(server, {
         origin: corsOriginValidator,
         credentials: true,
         methods: ["GET", "POST"]
+    }
+});
+
+// Socket.io Authentication Middleware
+io.use((socket, next) => {
+    try {
+        // Parse cookies from handshake
+        const cookies = socket.handshake.headers.cookie;
+        if (!cookies) {
+            return next(new Error('Authentication required'));
+        }
+
+        // Simple cookie parser for Socket.io
+        const parsedCookies = {};
+        cookies.split(';').forEach(cookie => {
+            const [key, value] = cookie.trim().split('=');
+            if (key && value) {
+                parsedCookies[key] = decodeURIComponent(value);
+            }
+        });
+
+        const token = parsedCookies.token;
+        if (!token) {
+            return next(new Error('Authentication token missing'));
+        }
+
+        // Verify JWT token
+        const JWT_SECRET = process.env.JWT_SECRET;
+        if (!JWT_SECRET) {
+            console.error('JWT_SECRET not configured for Socket.io authentication');
+            return next(new Error('Server configuration error'));
+        }
+
+        jwt.verify(token, JWT_SECRET, (err, decoded) => {
+            if (err) {
+                if (err.name === 'TokenExpiredError') {
+                    return next(new Error('Token expired'));
+                }
+                return next(new Error('Invalid token'));
+            }
+
+            // Attach user info to socket
+            socket.userId = decoded.userId;
+            socket.username = decoded.username;
+            socket.userRole = decoded.role;
+
+            console.log(`✅ Socket.io: User authenticated - ${socket.username} (${socket.userId})`);
+            next();
+        });
+    } catch (error) {
+        console.error('Socket.io authentication error:', error);
+        next(new Error('Authentication failed'));
     }
 });
 
@@ -117,37 +170,77 @@ db.ready.then(() => {
     process.exit(1);
 });
 
-// Socket.io Logic
+// Socket.io Logic with Authentication and Room Authorization
 io.on('connection', (socket) => {
-    console.log('User connected:', socket.id);
+    console.log(`✅ User connected: ${socket.username} (${socket.id})`);
 
+    // User's personal room (for music player control)
+    const userRoom = `user:${socket.userId}`;
+
+    // Automatically join user's own room
+    socket.join(userRoom);
+    console.log(`📡 User ${socket.username} auto-joined room: ${userRoom}`);
+
+    // Join room event - only allow users to join their own room
     socket.on('join_room', (room) => {
+        // Verify user owns this room
+        if (room !== userRoom && room !== `user:${socket.userId}`) {
+            console.warn(`⚠️  Unauthorized: ${socket.username} tried to join room: ${room}`);
+            socket.emit('error', { message: 'Cannot join other users\' rooms' });
+            return;
+        }
+
         socket.join(room);
-        console.log(`User ${socket.id} joined room: ${room}`);
+        console.log(`✅ User ${socket.username} joined room: ${room}`);
     });
 
+    // Music control events - verify room ownership
+    const verifyRoomOwnership = (room) => {
+        return room === userRoom || room === `user:${socket.userId}`;
+    };
+
     socket.on('play', (data) => {
+        if (!verifyRoomOwnership(data.room)) {
+            console.warn(`⚠️  Unauthorized play: ${socket.username} tried to control room: ${data.room}`);
+            return;
+        }
         socket.to(data.room).emit('play', data);
     });
 
     socket.on('pause', (data) => {
+        if (!verifyRoomOwnership(data.room)) {
+            console.warn(`⚠️  Unauthorized pause: ${socket.username} tried to control room: ${data.room}`);
+            return;
+        }
         socket.to(data.room).emit('pause', data);
     });
 
     socket.on('seek', (data) => {
+        if (!verifyRoomOwnership(data.room)) {
+            console.warn(`⚠️  Unauthorized seek: ${socket.username} tried to control room: ${data.room}`);
+            return;
+        }
         socket.to(data.room).emit('seek', data);
     });
 
     socket.on('change_song', (data) => {
+        if (!verifyRoomOwnership(data.room)) {
+            console.warn(`⚠️  Unauthorized change_song: ${socket.username} tried to control room: ${data.room}`);
+            return;
+        }
         socket.to(data.room).emit('change_song', data);
     });
 
     socket.on('sync_state', (data) => {
+        if (!verifyRoomOwnership(data.room)) {
+            console.warn(`⚠️  Unauthorized sync_state: ${socket.username} tried to control room: ${data.room}`);
+            return;
+        }
         socket.to(data.room).emit('sync_state', data);
     });
 
     socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
+        console.log(`❌ User disconnected: ${socket.username} (${socket.id})`);
     });
 });
 
@@ -318,6 +411,11 @@ app.use('/api/songs', apiLimiter, withAuth, checkSubscription, createSongRoutes(
 app.use('/api/playlists', apiLimiter, withAuth, checkSubscription, createPlaylistRoutes(db));
 app.use('/api/visitors', apiLimiter, withOptionalAuth, createVisitorRoutes(db)); // Optional auth for tracking
 app.use('/api/contact', createContactRoutes(db)); // Contact has its own rate limiter, public access
+
+// Gemini API proxy - protects API key server-side
+const { createGeminiProxyRoutes } = require('./routes/gemini-proxy');
+app.use('/api/gemini-proxy', createGeminiProxyRoutes());
+
 app.use('/api/lyrics', apiLimiter, withAuth, checkSubscription, createLyricsRoutes(db)); // AI Lyrics generation
 app.use('/api/album-covers', apiLimiter, withAuth, checkSubscription, createAlbumCoverRoutes(db)); // AI Album cover generation
 app.use('/api/camera-updates', apiLimiter, cameraUpdatesRouter); // Public camera updates
