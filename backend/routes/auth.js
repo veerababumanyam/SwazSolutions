@@ -5,6 +5,7 @@ const validator = require('validator');
 const { OAuth2Client } = require('google-auth-library');
 const {
     authenticateToken,
+    optionalAuth,
     JWT_SECRET,
     ACCESS_TOKEN_EXPIRY,
     REFRESH_TOKEN_EXPIRY_DAYS,
@@ -473,8 +474,13 @@ function createAuthRoutes(db) {
     });
 
     // Get current user (with rate limiting)
-    router.get('/me', authLimiter, authenticateToken, (req, res) => {
+    router.get('/me', authLimiter, optionalAuth, (req, res) => {
         try {
+            // Return not authenticated if no user in request
+            if (!req.user) {
+                return res.json({ authenticated: false });
+            }
+
             const user = db.prepare(
                 'SELECT id, username, email, role, created_at, subscription_status, subscription_end_date FROM users WHERE id = ?'
             ).get(req.user.id);
@@ -487,6 +493,7 @@ function createAuthRoutes(db) {
             const profile = db.prepare('SELECT id FROM profiles WHERE user_id = ?').get(req.user.id);
 
             res.json({
+                authenticated: true,
                 user,
                 hasProfile: !!profile
             });

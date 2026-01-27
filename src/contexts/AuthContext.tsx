@@ -70,7 +70,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (response.ok) {
                 const data = await response.json();
-                setUser(data.user);
+
+                // Handle new response format with authenticated flag
+                if (data.authenticated === false) {
+                    setUser(null);
+                } else if (data.user) {
+                    setUser(data.user);
+                } else {
+                    setUser(null);
+                }
             } else {
                 const errorData = await response.json().catch(() => ({}));
 
