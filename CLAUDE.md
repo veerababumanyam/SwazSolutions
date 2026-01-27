@@ -164,7 +164,7 @@ Build outputs to `dist/`. Express serves static files from `dist/` and handles A
 
 ### Server Details
 - **IP Address:** 185.199.52.230
-- **Domain:** https://www.swazsolutions.com
+- **Domain:** https://swazdatarecovery.com
 - **Hostname:** srv1035265.hstgr.cloud
 - **OS:** Ubuntu 22.04.5 LTS
 - **Hosting:** Hostinger
@@ -242,7 +242,7 @@ PORT=3000
 VITE_GEMINI_API_KEY=your_key
 VITE_GOOGLE_CLIENT_ID=your_client_id
 GOOGLE_CLIENT_SECRET=your_secret
-CORS_ALLOWED_ORIGINS=https://www.swazsolutions.com,https://swazsolutions.com
+CORS_ALLOWED_ORIGINS=https://swazdatarecovery.com,https://swazsolutions.com
 JWT_SECRET=your_random_secret_min_32_chars
 DB_PATH=/var/www/swazsolutions/backend/music.db
 ```

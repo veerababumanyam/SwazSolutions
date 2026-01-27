@@ -44,7 +44,7 @@ export const AgenticAIResourcesPage: React.FC = () => {
         provider: {
             '@type': 'Organization',
             name: 'Swaz Solutions',
-            url: 'https://www.swazsolutions.com'
+            url: 'https://swazdatarecovery.com'
         },
         about: {
             '@type': 'Thing',

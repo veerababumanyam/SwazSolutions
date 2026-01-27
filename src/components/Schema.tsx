@@ -30,14 +30,14 @@ export const Schema: React.FC<SchemaProps> = ({ type, data }) => {
 export const organizationSchema = {
     name: 'Swaz Solutions',
     description: 'Professional data recovery services and AI-powered lyric generation platform',
-    url: 'https://www.swazsolutions.com',
-    logo: 'https://www.swazsolutions.com/assets/SwazLogo.webp',
+    url: 'https://swazdatarecovery.com',
+    logo: 'https://swazdatarecovery.com/assets/SwazLogo.webp',
     contactPoint: {
         '@type': 'ContactPoint',
-        telephone: '+1-555-DATA-911',
+        telephone: '+91-9701087446',
         contactType: 'Customer Service',
         availableLanguage: ['English', 'Telugu', 'Tamil', 'Hindi'],
-        areaServed: 'US'
+        areaServed: 'IN'
     },
     sameAs: [
         'https://twitter.com/swazsolutions',
@@ -47,24 +47,24 @@ export const organizationSchema = {
 };
 
 export const localBusinessSchema = {
-    '@id': 'https://www.swazsolutions.com/#organization',
+    '@id': 'https://swazdatarecovery.com/#organization',
     name: 'Swaz Solutions Data Recovery',
     description: 'Professional data recovery services with 98% success rate. RAID, SSD, HDD, and flash media recovery specialists.',
-    url: 'https://www.swazsolutions.com',
-    telephone: '+1-555-DATA-911',
+    url: 'https://swazdatarecovery.com',
+    telephone: '+91-9701087446',
     email: 'support@swazsolutions.com',
     address: {
         '@type': 'PostalAddress',
-        streetAddress: '123 Tech Boulevard',
-        addressLocality: 'San Francisco',
-        addressRegion: 'CA',
-        postalCode: '94102',
-        addressCountry: 'US'
+        streetAddress: 'TODO: Exact street address needed from user',  // USER ACTION REQUIRED
+        addressLocality: 'Hyderabad',
+        addressRegion: 'Telangana',
+        postalCode: 'TODO: Postal code needed from user',  // USER ACTION REQUIRED
+        addressCountry: 'IN'
     },
     geo: {
         '@type': 'GeoCoordinates',
-        latitude: '37.7749',
-        longitude: '-122.4194'
+        latitude: '17.3850',  // Hyderabad approximate coordinates
+        longitude: '78.4867'
     },
     openingHoursSpecification: {
         '@type': 'OpeningHoursSpecification',
@@ -72,7 +72,13 @@ export const localBusinessSchema = {
         opens: '00:00',
         closes: '23:59'
     },
-    priceRange: '$$-$$$',
+    priceRange: '₹₹-₹₹₹',
+    currenciesAccepted: 'INR',
+    paymentAccepted: 'Cash, Credit Card, UPI, Bank Transfer',
+    areaServed: {
+        '@type': 'Country',
+        name: 'India'
+    },
     aggregateRating: {
         '@type': 'AggregateRating',
         ratingValue: '4.9',
@@ -110,7 +116,7 @@ export const dataRecoveryFAQSchema = {
             name: 'How much does data recovery cost?',
             acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'We provide a free diagnostic evaluation within 4-6 hours. Standard recovery fees range from $300-$1,500 depending on failure type and complexity.'
+                text: 'We provide a free diagnostic evaluation within 4-6 hours. Standard recovery fees range from ₹5,000-₹75,000 depending on failure type and complexity. Simple logical recovery starts at ₹8,000, mechanical hard drive recovery ₹15,000-₹35,000, and complex RAID recovery ₹40,000-₹75,000.'
             }
         },
         {
@@ -134,7 +140,7 @@ export const dataRecoveryFAQSchema = {
             name: 'Is my data safe and confidential?',
             acceptedAnswer: {
                 '@type': 'Answer',
-                text: 'Yes. Swaz Solutions operates a certified facility with biometric access controls. We are HIPAA and GDPR compliant. All data is encrypted during transfer and stored in secure, isolated environments. We maintain strict chain-of-custody protocols and can execute NDAs for sensitive cases.'
+                text: 'Yes. Swaz Solutions operates a secure facility with strict confidentiality protocols. All data is encrypted during transfer and stored in secure, isolated environments. We maintain strict chain-of-custody protocols and can execute NDAs for sensitive cases. Your data privacy and security are our top priorities.'
             }
         },
         {
@@ -153,13 +159,13 @@ export const lyricStudioSoftwareSchema = {
     applicationCategory: 'MultimediaApplication',
     description: 'AI-powered lyric generation with cultural intelligence. Generate production-ready songs in 23 languages including Tamil, Telugu, Hindi with Suno.com integration.',
     operatingSystem: 'Web Browser',
-    url: 'https://www.swazsolutions.com/#/studio',
+    url: 'https://swazdatarecovery.com/#/studio',
     softwareVersion: '2.0',
     releaseDate: '2025-11-01',
     offers: {
         '@type': 'Offer',
         price: '0',
-        priceCurrency: 'USD',
+        priceCurrency: 'INR',
         availability: 'https://schema.org/InStock'
     },
     aggregateRating: {
@@ -222,11 +228,11 @@ export const musicPlayerSchema = {
     applicationCategory: 'MultimediaApplication',
     description: 'Copyright-free music streaming player with high-quality tracks for content creators. No licensing fees, no attribution required.',
     operatingSystem: 'Web Browser',
-    url: 'https://www.swazsolutions.com/#/music',
+    url: 'https://swazdatarecovery.com/#/music',
     offers: {
         '@type': 'Offer',
         price: '0',
-        priceCurrency: 'USD',
+        priceCurrency: 'INR',
         availability: 'https://schema.org/InStock'
     },
     author: {
@@ -247,14 +253,14 @@ export const musicPlayerSchema = {
 export const agenticAIServiceSchema = {
     name: 'Agentic AI Development Services',
     description: 'Enterprise-grade autonomous AI agents for complex task automation, decision-making, and workflow orchestration using OpenAI, Anthropic Claude, Google Gemini, and Meta Llama.',
-    url: 'https://www.swazsolutions.com/#/agentic-ai',
+    url: 'https://swazdatarecovery.com/#/agentic-ai',
     provider: {
         '@type': 'Organization',
         name: 'Swaz Solutions',
-        url: 'https://www.swazsolutions.com'
+        url: 'https://swazdatarecovery.com'
     },
     serviceType: 'Software Development',
-    areaServed: 'US',
+    areaServed: 'IN',
     hasOfferCatalog: {
         '@type': 'OfferCatalog',
         name: 'Agentic AI Solutions',

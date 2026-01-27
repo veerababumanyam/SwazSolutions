@@ -49,7 +49,7 @@ export const AgenticAIPage: React.FC = () => {
         provider: {
             '@type': 'Organization',
             name: 'Swaz Solutions',
-            url: 'https://www.swazsolutions.com'
+            url: 'https://swazdatarecovery.com'
         },
         areaServed: 'Worldwide',
         hasOfferCatalog: {
@@ -126,13 +126,13 @@ export const AgenticAIPage: React.FC = () => {
                 <meta property="og:description" content={metaDescription} />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta property="og:type" content="website" />
-                <meta property="og:image" content="https://www.swazsolutions.com/assets/agentic-ai-og.jpg" />
+                <meta property="og:image" content="https://swazdatarecovery.com/assets/agentic-ai-og.jpg" />
                 
                 {/* Twitter Card */}
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content={pageTitle} />
                 <meta name="twitter:description" content={metaDescription} />
-                <meta name="twitter:image" content="https://www.swazsolutions.com/assets/agentic-ai-twitter.jpg" />
+                <meta name="twitter:image" content="https://swazdatarecovery.com/assets/agentic-ai-twitter.jpg" />
                 
                 {/* Keywords */}
                 <meta name="keywords" content="agentic AI, autonomous agents, AI automation, multi-agent systems, enterprise AI, AI orchestration, LLM agents, intelligent automation, AI workflow, OpenAI agents, Claude agents" />

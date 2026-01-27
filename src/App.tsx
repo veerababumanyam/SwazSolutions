@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { LandingPage } from './pages/LandingPage';
@@ -19,6 +19,12 @@ import { ProfileDashboard } from './pages/ProfileDashboard';
 import { PublicProfile } from './pages/PublicProfile';
 import { ProfileAnalytics } from './pages/ProfileAnalytics';
 import { UnifiedProfileEditor } from './pages/UnifiedProfileEditor';
+// Data Recovery Service Pages
+import { DataRecoveryHub } from './pages/services/DataRecoveryHub';
+import { HardDriveRecovery } from './pages/services/HardDriveRecovery';
+import { SSDRecovery } from './pages/services/SSDRecovery';
+import { RAIDRecovery } from './pages/services/RAIDRecovery';
+import { RansomwareRecovery } from './pages/services/RansomwareRecovery';
 // Modern vCard Suite - Phase 4 Components
 import { Layout } from './components/admin/Layout';
 import LinksEditor from './pages/LinksEditor';
@@ -127,6 +133,38 @@ const AppRoutes: React.FC = () => (
                     <Route path="/contact" element={
                       <RouteErrorBoundary routeName="Contact">
                         <ContactPage />
+                        <Footer />
+                      </RouteErrorBoundary>
+                    } />
+
+                    {/* Data Recovery Service Routes */}
+                    <Route path="/services/data-recovery" element={
+                      <RouteErrorBoundary routeName="Data Recovery">
+                        <DataRecoveryHub />
+                        <Footer />
+                      </RouteErrorBoundary>
+                    } />
+                    <Route path="/services/hard-drive-recovery" element={
+                      <RouteErrorBoundary routeName="Hard Drive Recovery">
+                        <HardDriveRecovery />
+                        <Footer />
+                      </RouteErrorBoundary>
+                    } />
+                    <Route path="/services/ssd-recovery" element={
+                      <RouteErrorBoundary routeName="SSD Recovery">
+                        <SSDRecovery />
+                        <Footer />
+                      </RouteErrorBoundary>
+                    } />
+                    <Route path="/services/raid-recovery" element={
+                      <RouteErrorBoundary routeName="RAID Recovery">
+                        <RAIDRecovery />
+                        <Footer />
+                      </RouteErrorBoundary>
+                    } />
+                    <Route path="/services/ransomware-recovery" element={
+                      <RouteErrorBoundary routeName="Ransomware Recovery">
+                        <RansomwareRecovery />
                         <Footer />
                       </RouteErrorBoundary>
                     } />
@@ -249,7 +287,7 @@ const App: React.FC = () => {
 
   return (
     <ErrorBoundary name="App Root" level="page">
-      <HashRouter>
+      <BrowserRouter>
         <ToastProvider>
           <AuthProvider>
             <ProfileProvider>
@@ -257,7 +295,7 @@ const App: React.FC = () => {
             </ProfileProvider>
           </AuthProvider>
         </ToastProvider>
-      </HashRouter>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 };

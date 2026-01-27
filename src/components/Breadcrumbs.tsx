@@ -56,10 +56,10 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ items }) => {
 export const generateBreadcrumbs = (path: string): BreadcrumbItem[] => {
     const segments = path.split('/').filter(Boolean);
     const breadcrumbs: BreadcrumbItem[] = [
-        { name: 'Home', url: 'https://www.swazsolutions.com/', position: 1 }
+        { name: 'Home', url: 'https://swazdatarecovery.com/', position: 1 }
     ];
 
-    let currentPath = 'https://www.swazsolutions.com';
+    let currentPath = 'https://swazdatarecovery.com';
     segments.forEach((segment, index) => {
         currentPath += `/${segment}`;
         breadcrumbs.push({

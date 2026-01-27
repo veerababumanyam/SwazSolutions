@@ -2,30 +2,24 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
-    <loc>https://www.swazsolutions.com/</loc>
-    <lastmod>2025-11-22</lastmod>
+    <loc>https://swazdatarecovery.com/</loc>
+    <lastmod>2026-01-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://www.swazsolutions.com/assets/SwazLogo.webp</image:loc>
+      <image:loc>https://swazdatarecovery.com/assets/SwazLogo.webp</image:loc>
       <image:title>Swaz Solutions Logo</image:title>
     </image:image>
   </url>
   <url>
-    <loc>https://www.swazsolutions.com/#/</loc>
-    <lastmod>2025-11-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://www.swazsolutions.com/#/about</loc>
-    <lastmod>2025-11-22</lastmod>
+    <loc>https://swazdatarecovery.com/about</loc>
+    <lastmod>2026-01-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.swazsolutions.com/#/contact</loc>
-    <lastmod>2025-11-22</lastmod>
+    <loc>https://swazdatarecovery.com/contact</loc>
+    <lastmod>2026-01-27</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

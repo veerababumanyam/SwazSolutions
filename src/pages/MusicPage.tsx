@@ -294,13 +294,13 @@ export const MusicPage: React.FC = () => {
                 <meta property="og:description" content={metaDescription} />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta property="og:type" content="website" />
-                <meta property="og:image" content="https://www.swazsolutions.com/assets/music-og.jpg" />
+                <meta property="og:image" content="https://swazdatarecovery.com/assets/music-og.jpg" />
 
                 {/* Twitter Card */}
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content={pageTitle} />
                 <meta name="twitter:description" content={metaDescription} />
-                <meta name="twitter:image" content="https://www.swazsolutions.com/assets/music-twitter.jpg" />
+                <meta name="twitter:image" content="https://swazdatarecovery.com/assets/music-twitter.jpg" />
 
                 {/* Keywords */}
                 <meta name="keywords" content="copyright-free music, royalty-free music, free music for content creators, no attribution music, music player, streaming music, Swaz music, background music for videos, podcast music, YouTube music" />

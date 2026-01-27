@@ -257,13 +257,13 @@ export const CameraUpdatesPage: React.FC = () => {
         <meta property="og:description" content={metaDescription} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://www.swazsolutions.com/assets/camera-updates-og.jpg" />
+        <meta property="og:image" content="https://swazdatarecovery.com/assets/camera-updates-og.jpg" />
 
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={metaDescription} />
-        <meta name="twitter:image" content="https://www.swazsolutions.com/assets/camera-updates-twitter.jpg" />
+        <meta name="twitter:image" content="https://swazdatarecovery.com/assets/camera-updates-twitter.jpg" />
 
         {/* Keywords */}
         <meta name="keywords" content="camera firmware updates, Canon firmware, Nikon firmware, Sony firmware, mirrorless camera news, DSLR updates, lens announcements, photography equipment, camera tech news, firmware download, EOS R5, Sony A7, Nikon Z series" />

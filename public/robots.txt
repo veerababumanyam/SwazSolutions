@@ -58,9 +58,9 @@ Allow: /
 Crawl-delay: 0
 
 # Sitemap Locations
-Sitemap: https://www.swazsolutions.com/sitemap.xml
-Sitemap: https://www.swazsolutions.com/sitemap-data-recovery.xml
-Sitemap: https://www.swazsolutions.com/sitemap-lyric-studio.xml
-Sitemap: https://www.swazsolutions.com/sitemap-camera-updates.xml
-Sitemap: https://www.swazsolutions.com/sitemap-music-player.xml
-Sitemap: https://www.swazsolutions.com/sitemap-agentic-ai.xml
+Sitemap: https://swazdatarecovery.com/sitemap.xml
+Sitemap: https://swazdatarecovery.com/sitemap-data-recovery.xml
+Sitemap: https://swazdatarecovery.com/sitemap-lyric-studio.xml
+Sitemap: https://swazdatarecovery.com/sitemap-camera-updates.xml
+Sitemap: https://swazdatarecovery.com/sitemap-music-player.xml
+Sitemap: https://swazdatarecovery.com/sitemap-agentic-ai.xml

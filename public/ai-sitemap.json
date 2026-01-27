@@ -1,0 +1,190 @@
+{
+  "version": "1.0",
+  "updated": "2026-01-27",
+  "organization": {
+    "name": "Swaz Solutions",
+    "url": "https://swazdatarecovery.com",
+    "description": "Professional data recovery services in India with 98% success rate. AI-powered lyric generation and digital identity management solutions.",
+    "location": "Hyderabad, Telangana, India",
+    "phone": "+91-9701087446",
+    "email": "support@swazsolutions.com",
+    "services": [
+      "Data Recovery",
+      "Hard Drive Recovery",
+      "SSD Recovery",
+      "RAID Array Recovery",
+      "Ransomware Recovery",
+      "AI Lyric Studio",
+      "Digital Identity Management"
+    ]
+  },
+  "pages": [
+    {
+      "url": "https://swazdatarecovery.com/",
+      "title": "Swaz Solutions - Data Recovery, AI Music & Digital Identity Services India",
+      "summary": "Professional data recovery services with 98% success rate across India. AI-powered Lyric Studio with 14-agent system for 23 languages. Modern digital identity management with vCard generation.",
+      "primaryTopic": "Data Recovery Services",
+      "keywords": [
+        "data recovery India",
+        "hard drive recovery Hyderabad",
+        "RAID recovery",
+        "SSD recovery",
+        "ransomware recovery",
+        "AI lyric generator",
+        "digital identity management"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "critical",
+      "contentType": "homepage"
+    },
+    {
+      "url": "https://swazdatarecovery.com/services/data-recovery",
+      "title": "Data Recovery Services India - 98% Success Rate",
+      "summary": "Professional data recovery for hard drives, SSDs, RAID arrays, and flash media. Free diagnostics within 4-6 hours. Fixed pricing. No data, no fee guarantee. 24/7 emergency service available.",
+      "primaryTopic": "Data Recovery",
+      "keywords": [
+        "data recovery services India",
+        "professional data recovery",
+        "hard drive recovery",
+        "SSD recovery",
+        "RAID recovery",
+        "free diagnostics",
+        "data recovery cost India"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "critical",
+      "contentType": "service",
+      "priceRange": "₹5,000-₹75,000"
+    },
+    {
+      "url": "https://swazdatarecovery.com/services/hard-drive-recovery",
+      "title": "Hard Drive Data Recovery Services India",
+      "summary": "Mechanical and logical hard drive recovery with Class 100 cleanroom facility. Recovers from clicking drives, head crashes, motor failures, and firmware corruption. 98% success rate.",
+      "primaryTopic": "Hard Drive Recovery",
+      "keywords": [
+        "hard drive recovery India",
+        "HDD recovery",
+        "clicking hard drive",
+        "head crash recovery",
+        "mechanical drive repair",
+        "cleanroom recovery"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "high",
+      "contentType": "service",
+      "priceRange": "₹15,000-₹35,000"
+    },
+    {
+      "url": "https://swazdatarecovery.com/services/ssd-recovery",
+      "title": "SSD Data Recovery Services India",
+      "summary": "Professional SSD and flash memory recovery. Handles NAND flash failures, controller malfunctions, firmware corruption, and wear leveling issues. Specialized SSD recovery tools.",
+      "primaryTopic": "SSD Recovery",
+      "keywords": [
+        "SSD recovery India",
+        "solid state drive recovery",
+        "NAND flash recovery",
+        "SSD controller failure",
+        "NVMe recovery"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "high",
+      "contentType": "service",
+      "priceRange": "₹18,000-₹45,000"
+    },
+    {
+      "url": "https://swazdatarecovery.com/services/raid-recovery",
+      "title": "RAID Array Recovery Services India",
+      "summary": "Enterprise RAID data recovery for RAID 0, 1, 5, 6, 10 arrays. Virtual destriping, multiple drive failure recovery, NAS/SAN recovery. Business-critical data restoration.",
+      "primaryTopic": "RAID Recovery",
+      "keywords": [
+        "RAID recovery India",
+        "RAID 5 recovery",
+        "NAS recovery",
+        "SAN recovery",
+        "server recovery",
+        "enterprise data recovery"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "high",
+      "contentType": "service",
+      "priceRange": "₹40,000-₹75,000"
+    },
+    {
+      "url": "https://swazdatarecovery.com/services/ransomware-recovery",
+      "title": "Ransomware Recovery and Decryption Services India",
+      "summary": "Professional ransomware data recovery and encrypted file restoration. Backup recovery, decryption tools, shadow copy restoration. Emergency 24/7 service for business-critical situations.",
+      "primaryTopic": "Ransomware Recovery",
+      "keywords": [
+        "ransomware recovery India",
+        "ransomware decryption",
+        "encrypted file recovery",
+        "ransomware removal",
+        "emergency ransomware recovery"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "high",
+      "contentType": "service",
+      "priceRange": "₹10,000-₹50,000"
+    },
+    {
+      "url": "https://swazdatarecovery.com/lyric-studio",
+      "title": "AI Lyric Studio - 14-Agent Multilingual Song Writing",
+      "summary": "Revolutionary AI lyric generation with 14 specialized agents. Supports 23 Indian languages with native script enforcement, cultural metaphor engines, and emotion analysis (Navarasa). Powered by Google Gemini 3.0.",
+      "primaryTopic": "AI Lyric Generation",
+      "keywords": [
+        "AI lyric generator",
+        "Telugu song lyrics",
+        "Tamil song writing",
+        "Hindi lyric generator",
+        "multilingual AI music",
+        "Suno AI lyrics",
+        "cultural AI music"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "medium",
+      "contentType": "application"
+    },
+    {
+      "url": "https://swazdatarecovery.com/about",
+      "title": "About Swaz Solutions - Digital Innovation Experts",
+      "summary": "Leading digital innovation platform providing data recovery services, AI-powered lyric generation, and digital identity management solutions across India. Based in Hyderabad with nationwide service.",
+      "primaryTopic": "Company Information",
+      "keywords": [
+        "Swaz Solutions",
+        "about data recovery company",
+        "Hyderabad data recovery",
+        "professional recovery services India"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "medium",
+      "contentType": "about"
+    },
+    {
+      "url": "https://swazdatarecovery.com/contact",
+      "title": "Contact Swaz Solutions - Data Recovery Services India",
+      "summary": "Contact Swaz Solutions for data recovery, AI lyric generation, or digital identity services. Phone: +91-9701087446. Email: support@swazsolutions.com. Serving all of India with 24/7 emergency support.",
+      "primaryTopic": "Contact Information",
+      "keywords": [
+        "contact data recovery",
+        "data recovery phone number",
+        "emergency data recovery contact",
+        "Hyderabad data recovery contact"
+      ],
+      "lastModified": "2026-01-27",
+      "importance": "medium",
+      "contentType": "contact"
+    }
+  ],
+  "structuredData": {
+    "organization": "https://swazdatarecovery.com/api/ai/company-info",
+    "services": "https://swazdatarecovery.com/api/ai/services-catalog",
+    "howTo": "https://swazdatarecovery.com/api/ai/data-recovery-guide",
+    "faq": "https://swazdatarecovery.com/api/ai/faq"
+  },
+  "contact": {
+    "primary": "+91-9701087446",
+    "email": "support@swazsolutions.com",
+    "emergencyAvailable": true,
+    "responseTime": "4-6 hours for diagnostic"
+  }
+}

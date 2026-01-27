@@ -273,13 +273,13 @@ export const LyricStudio: React.FC = () => {
                 <meta property="og:description" content={metaDescription} />
                 <meta property="og:url" content={canonicalUrl} />
                 <meta property="og:type" content="website" />
-                <meta property="og:image" content="https://www.swazsolutions.com/assets/lyric-studio-og.jpg" />
+                <meta property="og:image" content="https://swazdatarecovery.com/assets/lyric-studio-og.jpg" />
 
                 {/* Twitter Card */}
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content={pageTitle} />
                 <meta name="twitter:description" content={metaDescription} />
-                <meta name="twitter:image" content="https://www.swazsolutions.com/assets/lyric-studio-twitter.jpg" />
+                <meta name="twitter:image" content="https://swazdatarecovery.com/assets/lyric-studio-twitter.jpg" />
 
                 {/* Keywords */}
                 <meta name="keywords" content="AI lyric generator, Telugu songs, Tamil lyrics, Hindi songwriting, Suno AI, Udio AI, cultural songwriting, Samskara Engine, multilingual lyrics, Indian music AI, wedding songs generator, devotional lyrics AI, Carnatic lyrics, Bollywood songwriting, folk song generator" />

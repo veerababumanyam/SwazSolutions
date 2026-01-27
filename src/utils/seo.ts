@@ -26,7 +26,7 @@ export const generateMetaDescription = (description: string, maxLength: number =
  * Generate canonical URL for the current page
  * Prevents duplicate content issues
  */
-export const generateCanonicalUrl = (path: string, baseUrl: string = 'https://www.swazsolutions.com'): string => {
+export const generateCanonicalUrl = (path: string, baseUrl: string = 'https://swazdatarecovery.com'): string => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return `${baseUrl}${cleanPath}`;
 };
@@ -103,7 +103,7 @@ export const sanitizeAltText = (altText: string): string => {
  */
 export const generateOGImageUrl = (
     imagePath: string,
-    baseUrl: string = 'https://www.swazsolutions.com'
+    baseUrl: string = 'https://swazdatarecovery.com'
 ): string => {
     const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
     return `${baseUrl}${cleanPath}`;
