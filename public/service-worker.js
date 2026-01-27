@@ -56,6 +56,11 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    // Skip external resources (Google Fonts, CDNs, etc.) - let browser handle these directly
+    if (url.hostname !== self.location.hostname) {
+        return;
+    }
+
     // Handle Music Files - Cache First, Fallback to Network, Cache on Response
     if (url.pathname.startsWith('/music/') || url.pathname.endsWith('.mp3') || url.pathname.endsWith('.wav')) {
         event.respondWith(
