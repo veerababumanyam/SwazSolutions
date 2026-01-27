@@ -46,6 +46,12 @@ ecosystem.config.js.bak
 *.temp
 .cache
 
+# Test coverage
+coverage/
+
+# Deployment archives
+*.tar.gz
+
 test-results/
 nul
 
