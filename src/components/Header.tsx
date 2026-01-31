@@ -1,12 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot, User, LogOut, IdCard, Gift } from 'lucide-react';
+import { Sparkles, Music, HelpCircle, Database, Sun, Moon, Headphones, Menu, X, Info, Camera, Bot, User, LogOut, IdCard, Gift, Settings, AlignLeft } from 'lucide-react';
 import { VisitorCounter } from './VisitorCounter';
 import { useAuth } from '../contexts/AuthContext';
 import { LazyImage } from './LazyImage';
+import { UserMenu } from './UserMenu';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  isSidebarOpen?: boolean;
+  setIsSidebarOpen?: (val: boolean) => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ isSidebarOpen = false, setIsSidebarOpen }) => {
     const [isScrolled, setIsScrolled] = useState(false);
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -230,27 +236,19 @@ export const Header: React.FC = () => {
                                 {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                             </button>
 
+                            {/* Sidebar Toggle - visible on desktop */}
+                            {user && (
+                                <button
+                                    onClick={() => setIsSidebarOpen?.(!isSidebarOpen)}
+                                    className="hidden lg:flex p-2.5 rounded-xl text-secondary hover:text-primary hover:bg-surface border border-transparent hover:border-border transition-all"
+                                    aria-label="Toggle Sidebar"
+                                >
+                                    <AlignLeft className="w-5 h-5" />
+                                </button>
+                            )}
+
                             {user ? (
-                                <div className="flex items-center gap-3 pl-3 border-l border-border">
-                                    <div className="hidden md:flex flex-col items-end">
-                                        <span className="text-sm font-bold text-foreground">{user.username}</span>
-                                        <span className="text-xs text-muted-foreground capitalize">{user.role}</span>
-                                    </div>
-                                    {user.picture ? (
-                                        <LazyImage src={user.picture} alt={user.username} className="w-9 h-9 rounded-full border border-border" priority />
-                                    ) : (
-                                        <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                                            <User className="w-5 h-5" />
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={() => logout()}
-                                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
-                                        title="Logout"
-                                    >
-                                        <LogOut className="w-5 h-5" />
-                                    </button>
-                                </div>
+                                <UserMenu />
                             ) : (
                                 <Link
                                     to="/login"
@@ -383,7 +381,7 @@ export const Header: React.FC = () => {
                         <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-2"></div>
 
                         {user ? (
-                            <div className="p-4 bg-surface/50 rounded-2xl border border-border">
+                            <div className="p-4 bg-surface/50 rounded-2xl border border-border space-y-2">
                                 <div className="flex items-center gap-3 mb-4">
                                     {user.picture ? (
                                         <LazyImage src={user.picture} alt={user.username} className="w-10 h-10 rounded-full" priority />
@@ -397,6 +395,22 @@ export const Header: React.FC = () => {
                                         <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
                                     </div>
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        setIsSidebarOpen?.(!isSidebarOpen);
+                                        setIsMobileMenuOpen(false);
+                                    }}
+                                    className="w-full flex items-center justify-center gap-2 p-3 mb-2 bg-surface text-primary rounded-xl hover:bg-surface/80 transition-colors font-medium border border-border"
+                                >
+                                    <AlignLeft className="w-5 h-5" /> Navigation
+                                </button>
+                                <Link
+                                    to="/settings/account"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className="w-full flex items-center justify-center gap-2 p-3 bg-surface text-primary rounded-xl hover:bg-surface/80 transition-colors font-medium border border-border"
+                                >
+                                    <Settings className="w-5 h-5" /> Settings
+                                </Link>
                                 <button
                                     onClick={() => {
                                         logout();

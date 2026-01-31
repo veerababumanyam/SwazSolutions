@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken } = require('../middleware/auth');
+const { resolveGeminiApiKey } = require('../middleware/geminiKeyResolver');
 const rateLimit = require('express-rate-limit');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { getClientKey } = require('../middleware/rateLimit');
@@ -65,6 +66,35 @@ const PERSONALITY_VIBES = {
   }
 };
 
+// Middleware chain to initialize Gemini service
+const initializeGeminiService = [
+  authenticateToken,
+  (req, res, next) => {
+    const db = require('../config/database');
+    resolveGeminiApiKey(db)(req, res, next);
+  },
+  (req, res, next) => {
+    try {
+      const { GoogleGenerativeAI: GAI } = require('@google/generative-ai');
+      const genAI = new GAI(req.geminiApiKey);
+      req.geminiService = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash-exp',
+        generationConfig: {
+          temperature: 0.9,
+          topP: 0.95,
+          maxOutputTokens: 300,
+        }
+      });
+      next();
+    } catch (error) {
+      return res.status(500).json({
+        error: 'Failed to initialize AI service',
+        message: error.message
+      });
+    }
+  }
+];
+
 /**
  * POST /api/profiles/me/bio/generate
  * Generate 3 distinct bios based on personality vibe
@@ -79,7 +109,7 @@ const PERSONALITY_VIBES = {
  * - bios: string[] (3 bios, 120-150 characters each)
  * - vibe: string (selected vibe)
  */
-router.post('/me/bio/generate', authenticateToken, aiBioLimiter, async (req, res) => {
+router.post('/me/bio/generate', ...initializeGeminiService, aiBioLimiter, async (req, res) => {
   try {
     const db = require('../config/database');
     const { vibe, name, profession, interests } = req.body;
@@ -119,27 +149,6 @@ router.post('/me/bio/generate', authenticateToken, aiBioLimiter, async (req, res
       });
     }
 
-    // Get API key from environment or request header
-    const apiKey = process.env.GEMINI_API_KEY || req.headers['x-gemini-api-key'];
-
-    if (!apiKey) {
-      return res.status(500).json({
-        error: 'API key not configured',
-        message: 'Gemini API key is not configured. Please contact support.'
-      });
-    }
-
-    // Initialize Gemini AI
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash-exp',
-      generationConfig: {
-        temperature: 0.9, // High creativity for variety
-        topP: 0.95,
-        maxOutputTokens: 300,
-      }
-    });
-
     // Build prompt
     const vibeConfig = PERSONALITY_VIBES[vibe];
     const userPrompt = `${contextString}
@@ -161,7 +170,7 @@ Turning coffee into code since 2015. Full-stack wizard who loves clean architect
     // Generate bios
     console.warn(`🤖 Generating ${vibe} bios for user ${req.user.id}`);
 
-    const result = await model.generateContent([
+    const result = await req.geminiService.generateContent([
       { role: 'user', parts: [{ text: vibeConfig.prompt }] },
       { role: 'model', parts: [{ text: 'Understood. I will generate concise, character-limited bios in the specified style.' }] },
       { role: 'user', parts: [{ text: userPrompt }] }

@@ -28,10 +28,11 @@ import {
     StructureRecommendation,
     QualityReport
 } from "./types";
-import { MODEL_COMPLEX, MODEL_FAST, API_KEY, delay, RATE_LIMIT_DELAY, DEFAULT_RHYME_SCHEME } from "./config";
+import { MODEL_COMPLEX, MODEL_FAST, API_KEY, delay, RATE_LIMIT_DELAY, DEFAULT_RHYME_SCHEME, AGENT_TEMPERATURES } from "./config";
 import { AUTO_OPTION } from "./constants";
 import { validateApiKey, validateUserInput, validateLanguage } from "../utils/validation";
 import { loadUserPreferences } from "../utils/storage";
+import { getPreferences } from "../services/preferencesApi";
 
 // Agent types for the 14-agent system
 type AgentType = 'LYRICIST' | 'REVIEW' | 'IDLE' | 'CHAT' | 'MELODY' | 'RHYME_MASTER' |
@@ -66,6 +67,54 @@ export interface WorkflowResult {
     structureRecommendation?: StructureRecommendation;
     qualityReport?: QualityReport;
 }
+
+// Helper to adjust agent temperatures based on user preference
+// precision: -0.2 (lower creativity), balanced: 0 (no change), creative: +0.2 (higher creativity)
+const adjustTemperatureForPreference = (
+    baseTemperature: number,
+    preference: 'precise' | 'balanced' | 'creative'
+): number => {
+    const MIN_TEMP = 0.1;
+    const MAX_TEMP = 0.95;
+
+    switch (preference) {
+        case 'precise':
+            // Lower temperature for more deterministic, precise output
+            return Math.max(MIN_TEMP, baseTemperature - 0.2);
+        case 'creative':
+            // Higher temperature for more creative, diverse output
+            return Math.min(MAX_TEMP, baseTemperature + 0.2);
+        case 'balanced':
+        default:
+            // Keep original temperature
+            return baseTemperature;
+    }
+};
+
+// Helper to get adjusted agent temperatures based on user preference
+const getAdjustedAgentTemperatures = (
+    preference: 'precise' | 'balanced' | 'creative'
+): typeof AGENT_TEMPERATURES => {
+    const adjusted = { ...AGENT_TEMPERATURES };
+
+    Object.keys(adjusted).forEach((key) => {
+        const agentKey = key as keyof typeof AGENT_TEMPERATURES;
+        adjusted[agentKey] = adjustTemperatureForPreference(
+            AGENT_TEMPERATURES[agentKey],
+            preference
+        );
+    });
+
+    console.log(`🎵 Temperature Preference Applied: ${preference}`, {
+        originalLyricist: AGENT_TEMPERATURES.LYRICIST,
+        adjustedLyricist: adjusted.LYRICIST,
+        originalHookGenerator: AGENT_TEMPERATURES.HOOK_GENERATOR,
+        adjustedHookGenerator: adjusted.HOOK_GENERATOR,
+        allAdjusted: adjusted
+    });
+
+    return adjusted;
+};
 
 // Helper to merge User settings with AI suggestions
 // Priority: 1. User Explicit Choice, 2. Prompt Engineer Inference, 3. Ceremony Settings, 4. Defaults
@@ -173,6 +222,17 @@ export const runLyricGenerationWorkflow = async (
 
     // Load user preferences for HQ tags
     const userPrefs = loadUserPreferences();
+
+    // Load and apply temperature preference from user preferences
+    let adjustedAgentTemperatures = { ...AGENT_TEMPERATURES };
+    try {
+        const userPreferences = await getPreferences();
+        const temperaturePreference = userPreferences.ai.temperaturePreference || 'balanced';
+        adjustedAgentTemperatures = getAdjustedAgentTemperatures(temperaturePreference);
+    } catch (error) {
+        console.warn('⚠️  Could not load user temperature preferences, using defaults:', error);
+        // Fall back to original temperatures if preference loading fails
+    }
 
     try {
         console.log('🚀 Starting 13-Agent Lyric Generation Workflow');

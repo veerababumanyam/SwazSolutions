@@ -10,6 +10,8 @@ const path = require('path');
 const fs = require('fs');
 const { getImagenService, STYLE_PRESETS, MOOD_VISUALS } = require('../services/imagenService');
 const { aiGenerationLimiter } = require('../middleware/rateLimit');
+const { optionalAuth } = require('../middleware/auth');
+const { resolveGeminiApiKey } = require('../middleware/geminiKeyResolver');
 
 // Covers directory
 const COVERS_DIR = path.join(__dirname, '../../data/covers');
@@ -23,29 +25,24 @@ function createAlbumCoverRoutes(db) {
   const router = express.Router();
 
   /**
-   * Middleware to check if Imagen API is configured
+   * Middleware to resolve Gemini API key and initialize Imagen service
    */
-  const requireImagenConfig = (req, res, next) => {
-    const apiKey = req.headers['x-gemini-api-key'] || process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(400).json({
-        error: 'Gemini API key is required',
-        message: 'Please provide a Gemini API key via X-Gemini-API-Key header or configure GEMINI_API_KEY environment variable.'
-      });
+  const initializeImagenService = [
+    optionalAuth,  // Make user optional for backwards compatibility
+    resolveGeminiApiKey(db),
+    (req, res, next) => {
+      // Initialize service from resolved API key
+      try {
+        req.imagenService = getImagenService(req.geminiApiKey);
+        next();
+      } catch (error) {
+        return res.status(500).json({
+          error: 'Failed to initialize Imagen service',
+          message: error.message
+        });
+      }
     }
-
-    // Attach the service to the request
-    try {
-      req.imagenService = getImagenService(apiKey);
-      next();
-    } catch (error) {
-      return res.status(500).json({
-        error: 'Failed to initialize Imagen service',
-        message: error.message
-      });
-    }
-  };
+  ];
 
   /**
    * GET /api/album-covers/styles
@@ -83,7 +80,7 @@ function createAlbumCoverRoutes(db) {
    * - aspectRatio: string (optional) - Default "1:1"
    * - numberOfImages: number (optional) - Default 1 (max 4)
    */
-  router.post('/generate', requireImagenConfig, aiGenerationLimiter, async (req, res) => {
+  router.post('/generate', initializeImagenService, aiGenerationLimiter, async (req, res) => {
     try {
       const {
         prompt,
@@ -172,7 +169,7 @@ function createAlbumCoverRoutes(db) {
    * - style: string (optional) - Style preset
    * - aspectRatio: string (optional) - Default "1:1"
    */
-  router.post('/regenerate', requireImagenConfig, aiGenerationLimiter, async (req, res) => {
+  router.post('/regenerate', initializeImagenService, aiGenerationLimiter, async (req, res) => {
     try {
       const { prompt, style, aspectRatio } = req.body;
 
@@ -240,7 +237,7 @@ function createAlbumCoverRoutes(db) {
    * GET /api/album-covers/test
    * Test Imagen API connection
    */
-  router.get('/test', requireImagenConfig, async (req, res) => {
+  router.get('/test', initializeImagenService, async (req, res) => {
     try {
       console.log('[Album Covers API] Testing Imagen API connection...');
 

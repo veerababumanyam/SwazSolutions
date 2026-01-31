@@ -7,6 +7,8 @@
 
 const express = require('express');
 const { getGeminiService } = require('../services/geminiService');
+const { authenticateToken, optionalAuth } = require('../middleware/auth');
+const { resolveGeminiApiKey } = require('../middleware/geminiKeyResolver');
 
 /**
  * Create lyrics routes
@@ -17,29 +19,25 @@ function createLyricsRoutes(db) {
   const router = express.Router();
 
   /**
-   * Middleware to check if Gemini API is configured
+   * Middleware to resolve Gemini API key and initialize service
+   * Uses resolveGeminiApiKey to get the key, then initializes the service
    */
-  const requireGeminiConfig = (req, res, next) => {
-    const apiKey = req.headers['x-gemini-api-key'] || process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(400).json({
-        error: 'Gemini API key is required',
-        message: 'Please provide a Gemini API key via X-Gemini-API-Key header or configure GEMINI_API_KEY environment variable.'
-      });
+  const initializeGeminiService = [
+    optionalAuth,  // Make user optional for backwards compatibility
+    resolveGeminiApiKey(db),
+    (req, res, next) => {
+      // Initialize service from resolved API key
+      try {
+        req.geminiService = getGeminiService(req.geminiApiKey);
+        next();
+      } catch (error) {
+        return res.status(500).json({
+          error: 'Failed to initialize Gemini service',
+          message: error.message
+        });
+      }
     }
-
-    // Attach the service to the request
-    try {
-      req.geminiService = getGeminiService(apiKey);
-      next();
-    } catch (error) {
-      return res.status(500).json({
-        error: 'Failed to initialize Gemini service',
-        message: error.message
-      });
-    }
-  };
+  ];
 
   /**
    * POST /api/lyrics/generate
@@ -53,7 +51,7 @@ function createLyricsRoutes(db) {
    * - researchData: string (optional)
    * - model: string (optional) - Model override
    */
-  router.post('/generate', requireGeminiConfig, async (req, res) => {
+  router.post('/generate', initializeGeminiService, async (req, res) => {
     try {
       const {
         userRequest,
@@ -132,7 +130,7 @@ function createLyricsRoutes(db) {
    * - text: string (required) - Text to analyze
    * - model: string (optional) - Model override
    */
-  router.post('/analyze-emotion', requireGeminiConfig, async (req, res) => {
+  router.post('/analyze-emotion', initializeGeminiService, async (req, res) => {
     try {
       const { text, model } = req.body;
 
@@ -176,7 +174,7 @@ function createLyricsRoutes(db) {
    * - mood: string (optional) - Mood/emotion focus
    * - model: string (optional) - Model override
    */
-  router.post('/research', requireGeminiConfig, async (req, res) => {
+  router.post('/research', initializeGeminiService, async (req, res) => {
     try {
       const { topic, mood, model } = req.body;
 

@@ -12,6 +12,8 @@ const {
   authenticateToken,
   apiLimiter
 } = require('../middleware');
+const { resolveGeminiApiKey } = require('../middleware/geminiKeyResolver');
+const { generateInvitationText } = require('../services/geminiService');
 
 // Validation helpers
 const validateInviteData = (data) => {
@@ -493,11 +495,11 @@ const createInviteRoutes = (db) => {
    * @desc    Generate AI invitation text
    * @access  Private
    */
-  router.post('/:id/ai-generate', authenticateToken, async (req, res) => {
+  router.post('/:id/ai-generate', authenticateToken, resolveGeminiApiKey(db), async (req, res) => {
     try {
       const userId = req.user.id;
       const { id } = req.params;
-      const { tone, venueDetails, culturalContext } = req.body;
+      const { tone } = req.body;
 
       // Check ownership
       const invite = db.prepare('SELECT * FROM digital_invites WHERE id = ? AND user_id = ?').get(id, userId);
@@ -509,15 +511,16 @@ const createInviteRoutes = (db) => {
         });
       }
 
-      // Import Gemini service (reuse existing)
-      const { generateInvitationText } = require('../../services/geminiService');
-
-      // Generate text (this is actually async)
-      const generatedText = await generateInvitationText({
+      // Generate text using user's API key
+      const generatedText = await generateInvitationText(req.geminiApiKey, {
+        occasionType: invite.event_type,
         tone: tone || 'Poetic',
-        coupleDetails: invite.host_name,
-        venueDetails: venueDetails || `${invite.venue}. ${invite.details}`,
-        culturalContext
+        inviteData: {
+          title: invite.host_name,
+          date: invite.event_date,
+          venue: invite.venue,
+          description: invite.details
+        }
       });
 
       // Save generated text
@@ -536,7 +539,8 @@ const createInviteRoutes = (db) => {
       console.error('Error generating AI text:', error);
       res.status(500).json({
         success: false,
-        error: 'Failed to generate invitation text'
+        error: 'Failed to generate invitation text',
+        message: error.message
       });
     }
   });

@@ -54,12 +54,15 @@ const db = require('./config/database');
 
 // Import routes
 const createAuthRoutes = require('./routes/auth');
+const createSettingsRoutes = require('./routes/settings');
+const createSecurityRoutes = require('./routes/security');
 const createSongRoutes = require('./routes/songs');
 const createPlaylistRoutes = require('./routes/playlists');
 const createVisitorRoutes = require('./routes/visitors');
 const createContactRoutes = require('./routes/contact');
 const createLyricsRoutes = require('./routes/lyrics');
 const createAlbumCoverRoutes = require('./routes/album-covers');
+const createProfileEnhancementRoutes = require('./routes/ai-profile-enhancement');
 const { router: cameraUpdatesRouter, init: initCameraRoutes, saveUpdatesToDb } = require('./routes/cameraUpdates');
 
 // Virtual Profile routes
@@ -422,6 +425,14 @@ const withOptionalAuth = optionalAuth;
 const authRoutes = createAuthRoutes(db);
 app.use('/api/auth', authRoutes);
 
+// User settings routes
+const settingsRoutes = createSettingsRoutes(db);
+app.use('/api/users', settingsRoutes);
+
+// Security and Privacy routes
+const securityRoutes = createSecurityRoutes(db);
+app.use('/api/security', securityRoutes);
+
 // Subscription routes
 const { createSubscriptionRoutes } = require('./routes/subscription');
 app.use('/api/subscription', createSubscriptionRoutes(db));
@@ -432,6 +443,9 @@ app.use('/api/songs', apiLimiter, withAuth, checkSubscription, createSongRoutes(
 app.use('/api/playlists', apiLimiter, withAuth, checkSubscription, createPlaylistRoutes(db));
 app.use('/api/visitors', apiLimiter, withOptionalAuth, createVisitorRoutes(db)); // Optional auth for tracking
 app.use('/api/contact', createContactRoutes(db)); // Contact has its own rate limiter, public access
+
+// AI Profile Enhancement routes
+app.use('/api/ai', apiLimiter, withAuth, checkSubscription, createProfileEnhancementRoutes(db));
 
 // Gemini API proxy - protects API key server-side
 const { createGeminiProxyRoutes } = require('./routes/gemini-proxy');

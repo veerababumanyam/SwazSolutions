@@ -1,7 +1,8 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
+import { MainSidebar } from './components/MainSidebar';
 import { Footer } from './components/Footer';
 import { LandingPage } from './pages/LandingPage';
 import { LyricStudio } from './pages/LyricStudio';
@@ -15,11 +16,16 @@ import { HelpPage } from './pages/HelpPage';
 import { ContactPage } from './pages/ContactPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
+import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { ProfileDashboard } from './pages/ProfileDashboard';
 import { PublicProfile } from './pages/PublicProfile';
 import { ProfileAnalytics } from './pages/ProfileAnalytics';
 import { UnifiedProfileEditor } from './pages/UnifiedProfileEditor';
 import { VCardPanel } from './pages/VCardPanel';
+import { PreferencesPage } from './pages/PreferencesPage';
+import { PrivacySecurityPage } from './pages/PrivacySecurityPage';
 // Data Recovery Service Pages
 import { DataRecoveryHub } from './pages/services/DataRecoveryHub';
 import { HardDriveRecovery } from './pages/services/HardDriveRecovery';
@@ -45,20 +51,32 @@ import { PublicRoute } from './components/PublicRoute';
 import SubscriptionManager from './components/Subscription/SubscriptionManager';
 import { preloadFonts } from './utils/fontLoader';
 
-// Inner component - MusicProvider always wraps AppRoutes to ensure context is available
-// MusicProvider handles unauthenticated state internally
-const AppContent: React.FC = () => {
+// Inner component that uses AuthContext
+const AppContentWithAuth: React.FC = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user } = useAuth();
+
   return (
     <MusicProvider>
       <SubscriptionManager />
       <ErrorBoundary name="Main Content" level="page">
         <div className="flex flex-col min-h-screen bg-background text-primary font-sans antialiased selection:bg-accent selection:text-white">
-          <Header />
-          <AppRoutes />
+          <Header isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
+          <div className="flex flex-1">
+            {user && <MainSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />}
+            <main className="flex-1 overflow-y-auto">
+              <AppRoutes />
+            </main>
+          </div>
         </div>
       </ErrorBoundary>
     </MusicProvider>
   );
+};
+
+// Wrapper for AppContent - needed because AuthProvider wraps this component
+const AppContent: React.FC = () => {
+  return <AppContentWithAuth />;
 };
 
 // Routes component extracted for reuse
@@ -84,6 +102,20 @@ const AppRoutes: React.FC = () => (
                       <PublicRoute redirectIfAuthenticated={true}>
                         <RouteErrorBoundary routeName="Register">
                           <RegisterPage />
+                        </RouteErrorBoundary>
+                      </PublicRoute>
+                    } />
+                    <Route path="/forgot-password" element={
+                      <PublicRoute redirectIfAuthenticated={false}>
+                        <RouteErrorBoundary routeName="Forgot Password">
+                          <ForgotPasswordPage />
+                        </RouteErrorBoundary>
+                      </PublicRoute>
+                    } />
+                    <Route path="/reset-password" element={
+                      <PublicRoute redirectIfAuthenticated={false}>
+                        <RouteErrorBoundary routeName="Reset Password">
+                          <ResetPasswordPage />
                         </RouteErrorBoundary>
                       </PublicRoute>
                     } />
@@ -144,6 +176,32 @@ const AppRoutes: React.FC = () => (
                         <ContactPage />
                         <Footer />
                       </RouteErrorBoundary>
+                    } />
+
+                    {/* User Settings Routes */}
+                    <Route path="/settings/account" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Account Settings">
+                          <AccountSettingsPage />
+                          <Footer />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/settings/preferences" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Preferences">
+                          <PreferencesPage />
+                          <Footer />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/settings/security" element={
+                      <ProtectedRoute>
+                        <RouteErrorBoundary routeName="Privacy & Security">
+                          <PrivacySecurityPage />
+                          <Footer />
+                        </RouteErrorBoundary>
+                      </ProtectedRoute>
                     } />
 
                     {/* Data Recovery Service Routes */}

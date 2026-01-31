@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import { getPreferences } from '../services/preferencesApi';
 
 interface User {
     id: number;
@@ -53,12 +54,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // Refresh failed - clear user state
                 setUser(null);
                 return false;
+            } else {
+                // Token refresh successful - apply user preferences
+                applyUserPreferences();
             }
         } catch (error) {
             console.error('Token refresh failed:', error);
             return false;
         } finally {
             isRefreshingRef.current = false;
+        }
+    }, []);
+
+    // Load and apply user preferences
+    const applyUserPreferences = useCallback(async () => {
+        try {
+            const preferences = await getPreferences();
+
+            // Apply theme preference
+            const theme = preferences.appearance.theme;
+            const htmlElement = document.documentElement;
+
+            if (theme === 'dark') {
+                htmlElement.classList.add('dark');
+            } else if (theme === 'light') {
+                htmlElement.classList.remove('dark');
+            } else if (theme === 'system') {
+                // Detect system preference
+                const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (isDarkMode) {
+                    htmlElement.classList.add('dark');
+                } else {
+                    htmlElement.classList.remove('dark');
+                }
+
+                // Listen for system theme changes
+                const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                const handleChange = (e: MediaQueryListEvent) => {
+                    if (e.matches) {
+                        htmlElement.classList.add('dark');
+                    } else {
+                        htmlElement.classList.remove('dark');
+                    }
+                };
+                mediaQuery.addEventListener('change', handleChange);
+                return () => mediaQuery.removeEventListener('change', handleChange);
+            }
+        } catch (error) {
+            console.error('Failed to load user preferences:', error);
+            // Continue without preferences - use defaults
         }
     }, []);
 
@@ -76,6 +120,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     setUser(null);
                 } else if (data.user) {
                     setUser(data.user);
+                    // Load and apply user preferences after authentication
+                    applyUserPreferences();
                 } else {
                     setUser(null);
                 }
@@ -99,7 +145,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } finally {
             setLoading(false);
         }
-    }, [refreshAccessToken]);
+    }, [refreshAccessToken, applyUserPreferences]);
 
     useEffect(() => {
         checkAuth();

@@ -95,6 +95,24 @@ export const authAPI = {
         // Call backend logout to clear httpOnly cookies
         return apiRequest('/auth/logout', { method: 'POST' });
     },
+
+    async forgotPassword(email: string) {
+        return apiRequest('/auth/forgot-password', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        });
+    },
+
+    async verifyResetToken(token: string) {
+        return apiRequest(`/auth/verify-reset-token/${token}`);
+    },
+
+    async resetPassword(token: string, newPassword: string) {
+        return apiRequest('/auth/reset-password', {
+            method: 'POST',
+            body: JSON.stringify({ token, newPassword }),
+        });
+    },
 };
 
 // Songs API

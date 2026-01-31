@@ -181,6 +181,18 @@ async function initializeDatabase() {
     }
   }
 
+  // Migration: Add gemini_api_key to users if it doesn't exist
+  try {
+    db.exec("SELECT gemini_api_key FROM users LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE users ADD COLUMN gemini_api_key TEXT");
+      console.log('✅ Added gemini_api_key column to users table');
+    } catch (alterError) {
+      console.error('❌ Failed to add gemini_api_key column:', alterError);
+    }
+  }
+
   // Migration: Add team_size column to agentic_ai_inquiries if it doesn't exist
   try {
     const checkTeamSize = db.prepare("SELECT team_size FROM agentic_ai_inquiries LIMIT 1");
@@ -1317,6 +1329,7 @@ async function initializeDatabase() {
       token_hash TEXT NOT NULL UNIQUE,
       device_info TEXT,
       ip_address TEXT,
+      last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
       expires_at DATETIME NOT NULL,
       revoked INTEGER DEFAULT 0,
       revoked_at DATETIME,
@@ -1329,6 +1342,45 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires ON refresh_tokens(expires_at);
   `);
   console.log('✅ Refresh tokens table created/verified');
+
+  // Password reset tokens table - for self-service password resets
+  db.run(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      ip_address TEXT,
+      user_agent TEXT,
+      email TEXT NOT NULL,
+      used INTEGER DEFAULT 0,
+      expires_at DATETIME NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      used_at DATETIME,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user ON password_reset_tokens(user_id);
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_hash ON password_reset_tokens(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires ON password_reset_tokens(expires_at);
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_used ON password_reset_tokens(used);
+  `);
+
+  console.log('✅ Password reset tokens table created/verified');
+
+  // Migration: Add last_active column to refresh_tokens if it doesn't exist
+  try {
+    const checkLastActive = db.prepare("SELECT last_active FROM refresh_tokens LIMIT 1");
+    checkLastActive.step();
+    checkLastActive.free();
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE refresh_tokens ADD COLUMN last_active DATETIME DEFAULT CURRENT_TIMESTAMP");
+      console.log('✅ Added last_active column to refresh_tokens table');
+    } catch (alterError) {
+      // Column might already exist
+      console.warn('⚠️  Could not add last_active column (may already exist)');
+    }
+  }
 
   // Visitors table
   db.run(`
@@ -1620,7 +1672,108 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS idx_pricing_order ON pricing_plans(sort_order);
   `);
 
+  // User Preferences Tables (for Preferences Page)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+
+      -- JSON fields for flexible schema
+      appearance_settings TEXT DEFAULT '{"theme":"system","fontSize":"medium","reduceMotion":false}',
+      notification_settings TEXT DEFAULT '{"enabled":true,"sound":true,"duration":3000}',
+      music_settings TEXT DEFAULT '{"autoplay":true,"crossfadeDuration":0,"volumeNormalization":false,"downloadQuality":"high"}',
+      ai_settings TEXT DEFAULT '{"defaultLanguage":"English","defaultCeremony":"modern","temperaturePreference":"balanced","autoSaveDrafts":true}',
+      privacy_settings TEXT DEFAULT '{"profileVisibility":"public","analyticsTracking":true,"activityStatus":true}',
+      general_settings TEXT DEFAULT '{"language":"en","dateFormat":"MM/DD/YYYY","timezone":"auto"}',
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_user_preferences_user ON user_preferences(user_id);
+  `);
+
+  // Security & Privacy Tables (for Privacy & Security Page)
+  db.run(`
+    -- User-facing security activity log
+    CREATE TABLE IF NOT EXISTS security_activity_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      event_type TEXT NOT NULL,
+      event_description TEXT NOT NULL,
+      ip_hash TEXT,
+      device_info TEXT,
+      success INTEGER DEFAULT 1,
+      metadata TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Privacy settings
+    CREATE TABLE IF NOT EXISTS user_privacy_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      analytics_enabled INTEGER DEFAULT 1,
+      profile_indexing INTEGER DEFAULT 1,
+      show_online_status INTEGER DEFAULT 1,
+      login_alerts INTEGER DEFAULT 1,
+      marketing_emails INTEGER DEFAULT 1,
+      data_retention_days INTEGER DEFAULT 365,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- GDPR data export requests
+    CREATE TABLE IF NOT EXISTS data_export_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      status TEXT DEFAULT 'pending',
+      file_path TEXT,
+      file_format TEXT DEFAULT 'json',
+      expires_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_security_log_user_date ON security_activity_log(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_privacy_settings_user ON user_privacy_settings(user_id);
+    CREATE INDEX IF NOT EXISTS idx_export_user ON data_export_requests(user_id);
+  `);
+
+  // Add password metadata columns to users table (Phase 1 - these may already exist)
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN password_changed_at DATETIME;`);
+  } catch (e) {
+    // Column already exists, skip
+  }
+
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN password_strength_score INTEGER;`);
+  } catch (e) {
+    // Column already exists, skip
+  }
+
+  // Initialize default privacy settings for existing users
+  db.run(`
+    INSERT OR IGNORE INTO user_privacy_settings (user_id, created_at, updated_at)
+    SELECT id, datetime('now'), datetime('now')
+    FROM users
+    WHERE id NOT IN (SELECT user_id FROM user_privacy_settings WHERE user_id IS NOT NULL);
+  `);
+
+  // Initialize default preferences for existing users
+  db.run(`
+    INSERT OR IGNORE INTO user_preferences (user_id, created_at, updated_at)
+    SELECT id, datetime('now'), datetime('now')
+    FROM users
+    WHERE id NOT IN (SELECT user_id FROM user_preferences WHERE user_id IS NOT NULL);
+  `);
+
   console.log('✅ Phase 3 landing page tables created/verified');
+  console.log('✅ Preferences and Security tables created/verified');
 
   // Save database to file
   saveDatabase();

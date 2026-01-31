@@ -276,6 +276,234 @@ async function sendCustomerConfirmation(ticketData) {
 }
 
 /**
+ * Send password reset email with reset link
+ */
+async function sendPasswordResetEmail(resetData) {
+    const transport = transporter || initializeTransporter();
+
+    if (!transport) {
+        console.warn('⚠️  Email not sent - service not configured');
+        return { sent: false, reason: 'Email service not configured' };
+    }
+
+    const { email, username, resetUrl, expiresIn, ipAddress } = resetData;
+    const subject = `🔐 Password Reset Request - Swaz Solutions`;
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1f2937; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; background: #f9fafb; }
+        .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+        .content { background: white; padding: 30px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .footer { background: #1f2937; color: #d1d5db; padding: 20px; border-radius: 0 0 12px 12px; text-align: center; font-size: 13px; }
+        .btn { display: inline-block; padding: 14px 32px; background: #dc2626; color: white !important; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.4); }
+        .btn:hover { background: #b91c1c; }
+        .security-notice { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 6px; }
+        .code-box { background: #f3f4f6; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 12px; word-break: break-all; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 28px;">🔐 Reset Your Password</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.95; font-size: 14px;">Secure password reset request</p>
+        </div>
+
+        <div class="content">
+            <p>Hello <strong>${username}</strong>,</p>
+
+            <p>We received a request to reset the password for your Swaz Solutions account associated with <strong>${email}</strong>.</p>
+
+            <p style="text-align: center;">
+                <a href="${resetUrl}" class="btn">Reset My Password</a>
+            </p>
+
+            <p style="font-size: 13px; color: #6b7280; text-align: center;">
+                Or copy and paste this link into your browser:<br>
+                <span class="code-box">${resetUrl}</span>
+            </p>
+
+            <div class="security-notice">
+                <strong>⚠️ Important Security Information:</strong>
+                <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>This link expires in <strong>${expiresIn}</strong></li>
+                    <li>The link can only be used once</li>
+                    <li>If you didn't request this reset, ignore this email - your password will remain unchanged</li>
+                    <li>Never share this link with anyone</li>
+                </ul>
+            </div>
+
+            <div style="background: #f0f9ff; padding: 15px; border-radius: 6px; margin-top: 20px; font-size: 13px;">
+                <strong>Request Details:</strong><br>
+                IP Address: <code>${ipAddress}</code><br>
+                Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
+            </div>
+
+            <p style="margin-top: 30px; font-size: 13px; color: #6b7280;">
+                If you didn't request a password reset, please secure your account immediately by:
+            </p>
+            <ol style="font-size: 13px; color: #6b7280;">
+                <li>Changing your password</li>
+                <li>Checking your account activity</li>
+                <li>Contacting support if you notice suspicious activity</li>
+            </ol>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0; font-weight: 600; font-size: 14px;">Swaz Solutions</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.8;">Professional Technology Services</p>
+            <p style="margin: 10px 0 0 0; font-size: 12px;">
+                This is an automated security email. For support, contact
+                <a href="mailto:info@swazsolutions.com" style="color: #60a5fa;">info@swazsolutions.com</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    const textContent = `
+Reset Your Password - Swaz Solutions
+
+Hello ${username},
+
+We received a request to reset the password for your account (${email}).
+
+Click this link to reset your password:
+${resetUrl}
+
+IMPORTANT SECURITY INFORMATION:
+- This link expires in ${expiresIn}
+- The link can only be used once
+- If you didn't request this reset, ignore this email
+- Never share this link with anyone
+
+Request Details:
+IP Address: ${ipAddress}
+Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
+
+If you didn't request this reset, secure your account immediately.
+
+Swaz Solutions
+Professional Technology Services
+    `;
+
+    try {
+        const info = await transport.sendMail({
+            from: `"Swaz Solutions Security" <${EMAIL_CONFIG.from}>`,
+            to: email,
+            subject: subject,
+            text: textContent,
+            html: htmlContent,
+            priority: 'high'
+        });
+
+        console.log('✅ Password reset email sent:', info.messageId);
+        return { sent: true, messageId: info.messageId };
+
+    } catch (error) {
+        console.error('❌ Password reset email failed:', error.message);
+        throw error;
+    }
+}
+
+/**
+ * Send confirmation email after successful password reset
+ */
+async function sendPasswordResetConfirmation(confirmData) {
+    const transport = transporter || initializeTransporter();
+
+    if (!transport) {
+        return { sent: false, reason: 'Email service not configured' };
+    }
+
+    const { email, username, resetTime } = confirmData;
+    const subject = `✅ Your Password Was Changed - Swaz Solutions`;
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1f2937; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; background: #f9fafb; }
+        .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; text-align: center; }
+        .content { background: white; padding: 30px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .footer { background: #1f2937; color: #d1d5db; padding: 20px; border-radius: 0 0 12px 12px; text-align: center; font-size: 13px; }
+        .success-box { background: #d1fae5; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0; }
+        .warning-box { background: #fee2e2; padding: 15px; border-radius: 6px; border-left: 4px solid #dc2626; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="margin: 0; font-size: 28px;">✅ Password Changed Successfully</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.95; font-size: 14px;">Your account is secure</p>
+        </div>
+
+        <div class="content">
+            <p>Hello <strong>${username}</strong>,</p>
+
+            <div class="success-box">
+                <strong>✅ Your password has been successfully changed</strong>
+                <p style="margin: 10px 0 0 0;">
+                    Changed at: ${new Date(resetTime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
+                </p>
+            </div>
+
+            <p>For your security, we've automatically logged you out of all devices. You can now log in with your new password.</p>
+
+            <div class="warning-box">
+                <strong>⚠️ Didn't make this change?</strong>
+                <p style="margin: 10px 0 0 0;">
+                    If you did not reset your password, your account may be compromised.
+                    Please contact our support team immediately:
+                </p>
+                <p style="margin: 10px 0 0 0;">
+                    📧 Email: <a href="mailto:info@swazsolutions.com" style="color: #dc2626;">info@swazsolutions.com</a><br>
+                    📞 Phone: <a href="tel:+919701087446" style="color: #dc2626;">+91-9701087446</a>
+                </p>
+            </div>
+
+            <h3 style="margin-top: 30px;">Security Best Practices:</h3>
+            <ul style="font-size: 14px; color: #4b5563;">
+                <li>Use a unique password for each account</li>
+                <li>Enable two-factor authentication when available</li>
+                <li>Never share your password with anyone</li>
+                <li>Use a password manager to store complex passwords</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 0; font-weight: 600; font-size: 14px;">Swaz Solutions</p>
+            <p style="margin: 10px 0 0 0; opacity: 0.8;">Protecting your digital identity</p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+
+    try {
+        const info = await transport.sendMail({
+            from: `"Swaz Solutions Security" <${EMAIL_CONFIG.from}>`,
+            to: email,
+            subject: subject,
+            html: htmlContent
+        });
+
+        console.log('✅ Password reset confirmation sent:', info.messageId);
+        return { sent: true, messageId: info.messageId };
+
+    } catch (error) {
+        console.error('❌ Password reset confirmation failed:', error.message);
+        return { sent: false, error: error.message };
+    }
+}
+
+/**
  * Send Agentic AI inquiry notification email to Swaz team
  */
 async function sendAgenticAIInquiryNotification(inquiryData) {
@@ -818,5 +1046,7 @@ module.exports = {
     sendAgenticAIInquiryNotification,
     sendAgenticAICustomerConfirmation,
     sendGeneralInquiryNotification,
-    sendGeneralInquiryCustomerConfirmation
+    sendGeneralInquiryCustomerConfirmation,
+    sendPasswordResetEmail,
+    sendPasswordResetConfirmation
 };

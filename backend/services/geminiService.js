@@ -258,6 +258,64 @@ const RETRY_CONFIG = {
 };
 
 /**
+ * Generate invitation text using AI
+ * @param {string} apiKey - Gemini API key
+ * @param {Object} params - Invitation parameters
+ * @param {string} params.occasionType - Type of occasion (Birthday, Wedding, Anniversary, etc.)
+ * @param {string} params.tone - Tone (Poetic, Formal, Casual, etc.)
+ * @param {Object} params.inviteData - Invitation details (title, date, venue, description)
+ * @returns {Promise<string>} Generated invitation text
+ */
+async function generateInvitationText(apiKey, { occasionType, tone, inviteData }) {
+  const key = apiKey || process.env.GEMINI_API_KEY;
+
+  if (!key) {
+    throw new Error('GEMINI_API_KEY is required for invitation text generation');
+  }
+
+  const genAI = new GoogleGenerativeAI(key);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-3.0-flash',
+    generationConfig: {
+      temperature: 0.8,
+      topP: 0.9,
+      maxOutputTokens: 300
+    }
+  });
+
+  const eventDate = inviteData?.date ? new Date(inviteData.date).toLocaleDateString() : 'TBD';
+  const eventVenue = inviteData?.venue || 'To be announced';
+  const eventTitle = inviteData?.title || 'Special Event';
+  const eventDescription = inviteData?.description || '';
+
+  const prompt = `Generate a ${tone.toLowerCase()} invitation text for a ${occasionType}.
+
+Event Details:
+- Event: ${eventTitle}
+- Date: ${eventDate}
+- Venue: ${eventVenue}
+${eventDescription ? `- Description: ${eventDescription}` : ''}
+
+Requirements:
+- Tone: ${tone}
+- Length: 150-250 characters
+- Include essential event details
+- Make it engaging and appropriate for ${occasionType}
+- No placeholders or template variables
+- Return ONLY the invitation text, no explanations or formatting
+
+Generate the invitation text now:`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    return text.trim().replace(/^["']|["']$/g, '');
+  } catch (error) {
+    throw new Error(`Failed to generate invitation text: ${error.message}`);
+  }
+}
+
+/**
  * GeminiService class - handles all Gemini API interactions
  */
 class GeminiService {
@@ -781,6 +839,7 @@ function getGeminiService(apiKey) {
 module.exports = {
   GeminiService,
   getGeminiService,
+  generateInvitationText,
   AGENT_TEMPERATURES,
   AGENT_TOP_P,
   SAFETY_SETTINGS,

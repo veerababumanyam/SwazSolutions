@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const {
     authenticateToken,
@@ -14,6 +15,7 @@ const {
     hashRefreshToken
 } = require('../middleware/auth');
 const { strictAuthLimiter, authLimiter } = require('../middleware/rateLimit');
+const { sendPasswordResetEmail, sendPasswordResetConfirmation } = require('../services/emailService');
 const logger = require('../utils/logger');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -539,6 +541,232 @@ function createAuthRoutes(db) {
         } catch (error) {
             console.error('Get user error:', error);
             res.status(500).json({ error: 'Failed to get user' });
+        }
+    });
+
+    // Password Reset: Request reset link
+    router.post('/forgot-password', strictAuthLimiter, async (req, res) => {
+        const { email } = req.body;
+
+        if (!email || !validator.isEmail(email)) {
+            return res.status(400).json({
+                error: 'Valid email address required'
+            });
+        }
+
+        try {
+            // Look up user by email (case-insensitive)
+            const user = db.prepare(
+                'SELECT id, username, email, google_id, password_hash FROM users WHERE LOWER(email) = LOWER(?)'
+            ).get(email);
+
+            // Check if valid local user (has password_hash)
+            if (user) {
+                if (user.google_id && !user.password_hash) {
+                    // Google OAuth user - log but don't reveal
+                    console.log(`🔐 Password reset blocked for Google user: ${email}`);
+                    return res.json({
+                        message: 'If that email exists, a password reset link has been sent.'
+                    });
+                }
+
+                // Generate secure token (64 random bytes = 128 hex chars)
+                const resetToken = crypto.randomBytes(64).toString('hex');
+                const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+                // 1-hour expiration
+                const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+                    .toISOString().replace('T', ' ').substring(0, 19);
+
+                // Store token in database
+                const ipAddress = req.ip || req.connection.remoteAddress;
+                const userAgent = req.headers['user-agent'] || 'Unknown';
+
+                db.prepare(
+                    `INSERT INTO password_reset_tokens
+                     (user_id, token_hash, ip_address, user_agent, email, expires_at)
+                     VALUES (?, ?, ?, ?, ?, ?)`
+                ).run(user.id, tokenHash, ipAddress, userAgent, email, expiresAt);
+
+                // Send email with reset link
+                const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+                await sendPasswordResetEmail({
+                    email: user.email,
+                    username: user.username,
+                    resetUrl,
+                    expiresIn: '1 hour',
+                    ipAddress
+                });
+
+                console.log(`✅ Password reset email sent to: ${email}`);
+            } else {
+                // User not found - log for monitoring but don't tell client
+                console.log(`ℹ️  Password reset requested for non-existent email: ${email}`);
+            }
+
+            // Always return same response (prevents email enumeration)
+            res.json({
+                message: 'If that email exists, a password reset link has been sent.',
+                checkEmail: true
+            });
+
+        } catch (error) {
+            console.error('Password reset request error:', error);
+            res.status(500).json({ error: 'Failed to process request' });
+        }
+    });
+
+    // Password Reset: Verify token
+    router.get('/verify-reset-token/:token', authLimiter, (req, res) => {
+        const { token } = req.params;
+
+        if (!token || token.length !== 128) {
+            return res.status(400).json({
+                valid: false,
+                error: 'Invalid token format'
+            });
+        }
+
+        try {
+            const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+            // Find token in database
+            const storedToken = db.prepare(
+                `SELECT pt.*, u.email, u.username
+                 FROM password_reset_tokens pt
+                 JOIN users u ON pt.user_id = u.id
+                 WHERE pt.token_hash = ? AND pt.used = 0`
+            ).get(tokenHash);
+
+            if (!storedToken) {
+                return res.json({
+                    valid: false,
+                    error: 'Token not found or already used'
+                });
+            }
+
+            // Check expiration
+            const expiresAt = new Date(storedToken.expires_at);
+            if (expiresAt < new Date()) {
+                return res.json({
+                    valid: false,
+                    error: 'Token has expired. Please request a new reset link.'
+                });
+            }
+
+            // Token is valid
+            res.json({
+                valid: true,
+                email: storedToken.email,
+                expiresAt: storedToken.expires_at
+            });
+
+        } catch (error) {
+            console.error('Token verification error:', error);
+            res.status(500).json({
+                valid: false,
+                error: 'Failed to verify token'
+            });
+        }
+    });
+
+    // Password Reset: Reset password with token
+    router.post('/reset-password', strictAuthLimiter, async (req, res) => {
+        const { token, newPassword } = req.body;
+
+        if (!token || !newPassword) {
+            return res.status(400).json({ error: 'Token and new password required' });
+        }
+
+        // Validate password strength
+        if (newPassword.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 characters' });
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            return res.status(400).json({
+                error: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)'
+            });
+        }
+
+        try {
+            const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+            // Find and validate token
+            const storedToken = db.prepare(
+                `SELECT * FROM password_reset_tokens WHERE token_hash = ? AND used = 0`
+            ).get(tokenHash);
+
+            if (!storedToken) {
+                return res.status(400).json({
+                    error: 'Invalid or already used reset token'
+                });
+            }
+
+            // Check expiration
+            const expiresAt = new Date(storedToken.expires_at);
+            if (expiresAt < new Date()) {
+                return res.status(400).json({
+                    error: 'Reset token has expired. Please request a new one.'
+                });
+            }
+
+            // Get user
+            const user = db.prepare('SELECT * FROM users WHERE id = ?').get(storedToken.user_id);
+
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            // Double-check user is not Google OAuth user
+            if (user.google_id && !user.password_hash) {
+                console.error(`🚨 SECURITY: Attempted password reset for Google user: ${user.email}`);
+                return res.status(403).json({
+                    error: 'This account uses Google Sign-In and cannot have a password reset'
+                });
+            }
+
+            // Hash new password
+            const passwordHash = await bcrypt.hash(newPassword, 10);
+
+            // Update user password
+            db.prepare('UPDATE users SET password_hash = ? WHERE id = ?')
+                .run(passwordHash, user.id);
+
+            // Mark token as used
+            db.prepare(
+                `UPDATE password_reset_tokens
+                 SET used = 1, used_at = datetime('now')
+                 WHERE id = ?`
+            ).run(storedToken.id);
+
+            // Revoke ALL refresh tokens (force logout on all devices)
+            db.prepare(
+                `UPDATE refresh_tokens
+                 SET revoked = 1, revoked_at = datetime('now')
+                 WHERE user_id = ? AND revoked = 0`
+            ).run(user.id);
+
+            // Send confirmation email
+            await sendPasswordResetConfirmation({
+                email: user.email,
+                username: user.username,
+                resetTime: new Date().toISOString()
+            });
+
+            console.log(`✅ Password reset successful for user: ${user.username}`);
+
+            res.json({
+                message: 'Password has been reset successfully. You can now login with your new password.',
+                success: true
+            });
+
+        } catch (error) {
+            console.error('Password reset error:', error);
+            res.status(500).json({ error: 'Failed to reset password' });
         }
     });
 
