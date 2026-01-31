@@ -56,8 +56,14 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Skip external resources (Google Fonts, CDNs, etc.) - let browser handle these directly
+    // Skip external resources (Google Fonts, CDNs, Cloudflare, etc.) - let browser handle these directly
+    // External resources should not be cached by service worker to avoid CSP issues
     if (url.hostname !== self.location.hostname) {
+        return;
+    }
+
+    // Skip requests to /music route if no pathname specified (malformed requests)
+    if (url.pathname === '/music' || url.pathname === '/music/') {
         return;
     }
 

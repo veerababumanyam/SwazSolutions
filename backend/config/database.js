@@ -1557,6 +1557,71 @@ async function initializeDatabase() {
 
   console.log('✅ Phase 4 template system tables created/verified');
 
+  // ========================================
+  // PHASE 3: LANDING PAGE TABLES
+  // ========================================
+
+  // Testimonials table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS testimonials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      author_name TEXT NOT NULL,
+      author_role TEXT,
+      author_company TEXT,
+      author_avatar TEXT,
+      rating INTEGER DEFAULT 5,
+      content TEXT NOT NULL,
+      service_type TEXT,
+      verified BOOLEAN DEFAULT 0,
+      featured BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      approved BOOLEAN DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_testimonials_approved ON testimonials(approved);
+    CREATE INDEX IF NOT EXISTS idx_testimonials_featured ON testimonials(featured);
+    CREATE INDEX IF NOT EXISTS idx_testimonials_service ON testimonials(service_type);
+  `);
+
+  // Newsletter subscriptions table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS newsletter_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      name TEXT,
+      status TEXT DEFAULT 'active',
+      source TEXT,
+      subscribed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      unsubscribed_at DATETIME,
+      honeypot TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscriptions(email);
+    CREATE INDEX IF NOT EXISTS idx_newsletter_status ON newsletter_subscriptions(status);
+  `);
+
+  // Pricing plans table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS pricing_plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      service_type TEXT NOT NULL,
+      name TEXT NOT NULL,
+      price_inr INTEGER,
+      price_display TEXT,
+      billing_cycle TEXT,
+      features TEXT,
+      is_featured BOOLEAN DEFAULT 0,
+      is_active BOOLEAN DEFAULT 1,
+      sort_order INTEGER DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pricing_service ON pricing_plans(service_type);
+    CREATE INDEX IF NOT EXISTS idx_pricing_active ON pricing_plans(is_active);
+    CREATE INDEX IF NOT EXISTS idx_pricing_order ON pricing_plans(sort_order);
+  `);
+
+  console.log('✅ Phase 3 landing page tables created/verified');
+
   // Save database to file
   saveDatabase();
   console.log('✅ Database initialized successfully');
@@ -1685,8 +1750,11 @@ const dbWrapper = {
   }
 };
 
-// Initialize database on module load
-let dbReady = initializeDatabase();
+// Initialize database on module load and wait for it to complete
+let dbReady = initializeDatabase().catch(err => {
+  console.error('❌ Fatal: Failed to initialize database:', err);
+  process.exit(1);
+});
 
 // Graceful shutdown handler - ensures database is saved before exit
 const gracefulShutdown = (signal) => {

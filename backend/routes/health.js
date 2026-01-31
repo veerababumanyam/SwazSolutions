@@ -24,7 +24,7 @@ const getMemoryUsage = () => {
 const checkDatabase = async () => {
     try {
         // Simple query to verify database is responsive
-        const result = await db.all('SELECT 1 as test');
+        const result = db.prepare('SELECT 1 as test').all();
         return result && result.length > 0;
     } catch (error) {
         console.error('Database health check failed:', error.message);
@@ -213,10 +213,10 @@ router.get('/api/health/deep', async (req, res) => {
         // Check database with more details
         try {
             const dbOk = await checkDatabase();
-            const tables = await db.all(`
+            const tables = db.prepare(`
                 SELECT name FROM sqlite_master
                 WHERE type='table' AND name NOT LIKE 'sqlite_%'
-            `);
+            `).all();
 
             diagnostics.database = {
                 status: dbOk ? 'connected' : 'error',

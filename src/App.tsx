@@ -28,9 +28,6 @@ import { RAIDRecovery } from './pages/services/RAIDRecovery';
 import { RansomwareRecovery } from './pages/services/RansomwareRecovery';
 // Modern vCard Suite - Phase 4 Components
 import { Layout } from './components/admin/Layout';
-import LinksEditor from './pages/LinksEditor';
-import AppearanceEditor from './pages/AppearanceEditor';
-import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import { InviteDashboard } from './components/invites/InviteDashboard';
 import { InviteEditor } from './components/invites/InviteEditor';
 import { GuestManagerWrapper } from './components/invites/GuestManagerWrapper';
@@ -67,22 +64,31 @@ const AppContent: React.FC = () => {
 // Routes component extracted for reuse
 const AppRoutes: React.FC = () => (
   <Routes>
+                    {/* Public Marketing Pages */}
                     <Route path="/" element={
                       <RouteErrorBoundary routeName="Landing">
                         <LandingPage />
                         <Footer />
                       </RouteErrorBoundary>
                     } />
+
+                    {/* Authentication Pages (redirect if already logged in) */}
                     <Route path="/login" element={
-                      <RouteErrorBoundary routeName="Login">
-                        <LoginPage />
-                      </RouteErrorBoundary>
+                      <PublicRoute redirectIfAuthenticated={true}>
+                        <RouteErrorBoundary routeName="Login">
+                          <LoginPage />
+                        </RouteErrorBoundary>
+                      </PublicRoute>
                     } />
                     <Route path="/register" element={
-                      <RouteErrorBoundary routeName="Register">
-                        <RegisterPage />
-                      </RouteErrorBoundary>
+                      <PublicRoute redirectIfAuthenticated={true}>
+                        <RouteErrorBoundary routeName="Register">
+                          <RegisterPage />
+                        </RouteErrorBoundary>
+                      </PublicRoute>
                     } />
+
+                    {/* Public Content Pages */}
                     <Route path="/about" element={
                       <RouteErrorBoundary routeName="About">
                         <AboutPage />
@@ -101,6 +107,8 @@ const AppRoutes: React.FC = () => (
                         <Footer />
                       </RouteErrorBoundary>
                     } />
+
+                    {/* Protected User Features */}
                     <Route path="/studio" element={
                       <ProtectedRoute>
                         <RouteErrorBoundary routeName="Lyric Studio">
@@ -170,7 +178,7 @@ const AppRoutes: React.FC = () => (
                       </RouteErrorBoundary>
                     } />
 
-                    {/* Virtual Profile Routes - Modern vCard Suite (Phase 5 - Unified Route) */}
+                    {/* Virtual Profile Routes - Modern vCard Suite */}
                     <Route path="/profile" element={
                       <ProtectedRoute>
                         <RouteErrorBoundary routeName="vCard Panel">
@@ -179,7 +187,7 @@ const AppRoutes: React.FC = () => (
                       </ProtectedRoute>
                     } />
 
-                    {/* Legacy Profile Routes - Redirect to unified /profile with query params */}
+                    {/* Profile Redirects (backward compatibility) */}
                     <Route path="/profile/edit" element={
                       <Navigate to="/profile?tab=portfolio" replace />
                     } />
@@ -190,7 +198,7 @@ const AppRoutes: React.FC = () => (
                       <Navigate to="/profile?tab=insights" replace />
                     } />
 
-                    {/* Legacy Routes - Keep for backward compatibility */}
+                    {/* Legacy Profile Routes (backward compatibility) */}
                     <Route path="/profile/dashboard" element={
                       <ProtectedRoute>
                         <RouteErrorBoundary routeName="Profile Dashboard">
@@ -205,6 +213,8 @@ const AppRoutes: React.FC = () => (
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
+
+                    {/* Public Profile Viewing */}
                     <Route path="/u/:username" element={
                       <PublicRoute>
                         <RouteErrorBoundary routeName="Public Profile">
@@ -263,7 +273,8 @@ const AppRoutes: React.FC = () => (
                         </RouteErrorBoundary>
                       </ProtectedRoute>
                     } />
-                    {/* Public Invite View - No authentication required */}
+
+                    {/* Public Invite Viewing */}
                     <Route path="/invite/:slug" element={
                       <RouteErrorBoundary routeName="Public Invite">
                         <PublicInviteViewWrapper />

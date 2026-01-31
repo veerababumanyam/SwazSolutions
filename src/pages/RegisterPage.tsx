@@ -234,6 +234,9 @@ export const RegisterPage: React.FC = () => {
                                 <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-3">
                                     {googleError}
                                 </p>
+                                <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-2">
+                                    <strong>Tip:</strong> In Cursor you may be on <code className="bg-yellow-500/20 px-1 rounded">http://localhost:3000</code> while in Chrome you use <code className="bg-yellow-500/20 px-1 rounded">http://localhost:5173</code>. Add the origin you actually use (and both if you use both).
+                                </p>
                                 <details className="text-xs">
                                     <summary className="cursor-pointer text-yellow-600 dark:text-yellow-400 hover:underline mb-2">
                                         How to fix this
@@ -241,8 +244,8 @@ export const RegisterPage: React.FC = () => {
                                     <ol className="list-decimal list-inside space-y-1 text-yellow-700 dark:text-yellow-300 ml-2">
                                         <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console Credentials</a></li>
                                         <li>Click on your OAuth 2.0 Client ID</li>
-                                        <li>Under "Authorized JavaScript origins", add: <code className="bg-yellow-500/20 px-1 rounded">{window.location.origin}</code></li>
-                                        <li>Click "SAVE" and wait 30-60 seconds</li>
+                                        <li>Under &quot;Authorized JavaScript origins&quot;, add: <code className="bg-yellow-500/20 px-1 rounded">{window.location.origin}</code> (and add <code className="bg-yellow-500/20 px-1 rounded">http://localhost:5173</code> and <code className="bg-yellow-500/20 px-1 rounded">http://localhost:3000</code> if you use both)</li>
+                                        <li>Click &quot;SAVE&quot; and wait 30-60 seconds</li>
                                         <li>Refresh this page</li>
                                     </ol>
                                 </details>

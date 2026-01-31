@@ -69,13 +69,13 @@ export const LandingPage: React.FC = () => {
                         </div>
 
                         {/* Rotating Hero Cards - STANDARDIZED */}
-                        <div className="max-w-7xl mx-auto relative min-h-[680px]">
+                        <div className="max-w-7xl mx-auto relative min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                             {/* Card 1: Data Recovery - Industry Leader */}
                             <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 0 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 -translate-x-10 z-0 pointer-events-none'}`}>
-                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                <div className="group relative glass-card rounded-3xl p-6 sm:p-8 md:p-16 overflow-hidden min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
-                                    <div className="absolute top-0 right-0 p-0 md:p-8">
-                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                    <div className="absolute top-0 right-0 p-4 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2 truncate max-w-[calc(100vw-2rem)]">
                                             <Shield className="w-4 h-4" /> Industry Leader
                                         </div>
                                     </div>
@@ -112,7 +112,7 @@ export const LandingPage: React.FC = () => {
                                             </p>
                                         </div>
                                         <div className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="glass-card p-6 rounded-2xl text-center border-accent/10 bg-surface/50 hover:border-accent/30">
                                                     <div className="text-5xl font-black text-primary mb-2 tracking-tighter">98%</div>
                                                     <div className="text-xs font-bold text-secondary uppercase tracking-wide">Success Rate</div>
@@ -152,10 +152,10 @@ export const LandingPage: React.FC = () => {
 
                             {/* Card 2: Digital Invitations - Smart Celebrations */}
                             <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 1 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
-                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                <div className="group relative glass-card rounded-3xl p-6 sm:p-8 md:p-16 overflow-hidden min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
-                                    <div className="absolute top-0 right-0 p-0 md:p-8">
-                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                    <div className="absolute top-0 right-0 p-4 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2 truncate max-w-[calc(100vw-2rem)]">
                                             <Calendar className="w-4 h-4" /> SMART CELEBRATIONS
                                         </div>
                                     </div>
@@ -227,7 +227,7 @@ export const LandingPage: React.FC = () => {
                                                 {/* Language Support Showcase */}
                                                 <div className="mb-6">
                                                     <div className="text-xs font-bold text-secondary uppercase mb-3">12 Indian Languages</div>
-                                                    <div className="grid grid-cols-3 gap-2">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-2">
                                                         {['English', 'हिंदी', 'ગુજરાતી', 'मराठी', 'తెలుగు', 'தமிழ்'].map((lang) => (
                                                             <div key={lang} className="px-3 py-2 bg-white border border-border rounded-lg text-center text-xs font-semibold text-primary">
                                                                 {lang}
@@ -249,7 +249,7 @@ export const LandingPage: React.FC = () => {
                                                 </div>
 
                                                 {/* Stats Grid */}
-                                                <div className="grid grid-cols-3 gap-4 text-center">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
                                                     <div className="bg-surface/80 p-3 rounded-xl">
                                                         <div className="text-2xl font-black text-accent">AI</div>
                                                         <div className="text-[10px] uppercase text-secondary font-bold">Generation</div>
@@ -266,7 +266,7 @@ export const LandingPage: React.FC = () => {
                                             </div>
 
                                             {/* Features Grid */}
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
                                                     <div className="p-2 bg-accent/10 rounded-lg text-accent"><BarChart3 className="w-5 h-5" /></div>
                                                     <div>
@@ -289,10 +289,10 @@ export const LandingPage: React.FC = () => {
 
                             {/* Card 5: Agentic AI Solutions - INTEGRATED FROM SEPARATE PAGE */}
                             <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 5 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
-                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                <div className="group relative glass-card rounded-3xl p-6 sm:p-8 md:p-16 overflow-hidden min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
-                                    <div className="absolute top-0 right-0 p-0 md:p-8">
-                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                    <div className="absolute top-0 right-0 p-4 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2 truncate max-w-[calc(100vw-2rem)]">
                                             <Bot className="w-4 h-4" /> AI INNOVATION
                                         </div>
                                     </div>
@@ -305,7 +305,7 @@ export const LandingPage: React.FC = () => {
                                                 <span className="text-xs font-bold text-accent uppercase tracking-wider">Enterprise Autonomous Agents</span>
                                             </div>
 
-                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight">
+                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight break-words hyphens-auto">
                                                 AI That Thinks,<br />
                                                 Decides & Acts
                                                 <span className="text-transparent bg-clip-text bg-brand-gradient text-3xl md:text-4xl block mt-2 font-bold">Autonomous Intelligence for Business</span>
@@ -371,7 +371,7 @@ export const LandingPage: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
                                                     <div className="p-2 bg-accent/10 rounded-lg text-accent"><Network className="w-5 h-5" /></div>
                                                     <div>
@@ -394,10 +394,10 @@ export const LandingPage: React.FC = () => {
 
                             {/* Card 4: Lyric Studio - GEN-AI Innovation */}
                             <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 4 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
-                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                <div className="group relative glass-card rounded-3xl p-6 sm:p-8 md:p-16 overflow-hidden min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
-                                    <div className="absolute top-0 right-0 p-0 md:p-8">
-                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                    <div className="absolute top-0 right-0 p-4 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2 truncate max-w-[calc(100vw-2rem)]">
                                             <Sparkles className="w-4 h-4" /> GEN-AI INNOVATION
                                         </div>
                                     </div>
@@ -410,7 +410,7 @@ export const LandingPage: React.FC = () => {
                                                 <span className="text-xs font-bold text-accent uppercase tracking-wider">SUNO.COM & UDIO READY</span>
                                             </div>
 
-                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight">
+                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight break-words hyphens-auto">
                                                 Write Hit Songs in<br />
                                                 {/* Solid Gradient Block for Subheadline */}
                                                 <div className="relative inline-block mt-3">
@@ -471,7 +471,7 @@ export const LandingPage: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
                                                     <div className="p-2 bg-accent/10 rounded-lg text-accent"><Globe className="w-5 h-5" /></div>
                                                     <div>
@@ -494,10 +494,10 @@ export const LandingPage: React.FC = () => {
 
                             {/* Card 3: Copyright-Free Music - STANDARDIZED */}
                             <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 3 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
-                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                <div className="group relative glass-card rounded-3xl p-6 sm:p-8 md:p-16 overflow-hidden min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
-                                    <div className="absolute top-0 right-0 p-0 md:p-8">
-                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                    <div className="absolute top-0 right-0 p-4 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2 truncate max-w-[calc(100vw-2rem)]">
                                             <Shield className="w-4 h-4" /> 100% COPYRIGHT-FREE
                                         </div>
                                     </div>
@@ -510,7 +510,7 @@ export const LandingPage: React.FC = () => {
                                                 <span className="text-xs font-bold text-accent uppercase tracking-wider">YOUTUBE • TWITCH • KICK READY</span>
                                             </div>
 
-                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight">
+                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-6 leading-tight break-words hyphens-auto">
                                                 Stream Without<br />
                                                 Fear of Strikes
                                                 {/* Brand Gradient Subheadline */}
@@ -589,7 +589,7 @@ export const LandingPage: React.FC = () => {
                                             </div>
 
                                             {/* Platform Support */}
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
                                                     <div className="p-2 bg-accent/10 rounded-lg text-accent"><Radio className="w-5 h-5" /></div>
                                                     <div>
@@ -612,7 +612,7 @@ export const LandingPage: React.FC = () => {
 
                             {/* Card 2: vCard - Digital Business Card */}
                             <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 2 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
-                                <div className="group relative glass-card rounded-3xl p-8 md:p-16 overflow-hidden min-h-[680px]">
+                                <div className="group relative glass-card rounded-3xl p-6 sm:p-8 md:p-16 overflow-hidden min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
                                     <div className="absolute top-0 right-0 p-0 md:p-8">
                                         <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">

@@ -91,6 +91,11 @@ const createInviteGalleryRoutes = require('./routes/invite-gallery');
 // Block Types routes (Phase 3)
 const blockTypesRouter = require('./routes/block-types');
 
+// Landing Page routes (Phase 3: Testimonials, Newsletter, Pricing)
+const createTestimonialsRouter = require('./routes/testimonials');
+const createNewsletterRouter = require('./routes/newsletter');
+const createPricingRouter = require('./routes/pricing');
+
 const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -157,26 +162,26 @@ io.use((socket, next) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Rate limiters are imported from ./middleware/rateLimit.js
 // - apiLimiter: 100 requests per minute (general API)
 // - authLimiter: 30 requests per 15 minutes (auth operations)
 // - strictAuthLimiter: 5 requests per 15 minutes (login/register - applied in auth routes)
 
-// Database ready flag
-let isDatabaseReady = false;
-db.ready.then(() => {
-    isDatabaseReady = true;
-    console.log('✅ Database ready');
-}).catch(err => {
-    console.error('❌ Database initialization failed:', err);
-    process.exit(1);
-});
+// Database is now waited for in the server startup IIFE below
+// This ensures it's fully initialized before accepting any requests
 
 // Socket.io Logic with Authentication and Room Authorization
 io.on('connection', (socket) => {
     console.log(`✅ User connected: ${socket.username} (${socket.id})`);
+
+    // Validate that user is authenticated before setting up room logic
+    if (!socket.userId || !socket.username) {
+        console.error(`❌ Socket.io: Missing authentication data for socket ${socket.id}`);
+        socket.disconnect();
+        return;
+    }
 
     // User's personal room (for music player control)
     const userRoom = `user:${socket.userId}`;
@@ -188,7 +193,7 @@ io.on('connection', (socket) => {
     // Join room event - only allow users to join their own room
     socket.on('join_room', (room) => {
         // Verify user owns this room
-        if (room !== userRoom && room !== `user:${socket.userId}`) {
+        if (room !== userRoom) {
             console.warn(`⚠️  Unauthorized: ${socket.username} tried to join room: ${room}`);
             socket.emit('error', { message: 'Cannot join other users\' rooms' });
             return;
@@ -255,10 +260,11 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://accounts.google.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
             imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+            mediaSrc: ["'self'", "https://1b62424aa3b6d960f5c0d2588eb576f5.r2.cloudflarestorage.com", "data:"],
             connectSrc: ["'self'", "https://accounts.google.com", "https://oauth2.googleapis.com", "https://fonts.googleapis.com"],
             frameSrc: ["'self'", "https://accounts.google.com", "https://accounts.google.com/gsi/"],
             childSrc: ["'self'", "https://accounts.google.com"],
@@ -466,6 +472,12 @@ app.use('/api/profiles', apiLimiter, blockTypesRouter); // Public contact form +
 const templatesRouter = require('./routes/templates');
 app.use('/api/templates', apiLimiter, templatesRouter); // Public browse, Auth required for apply/create/manage
 
+// Landing Page API routes (Phase 3)
+// Public endpoints for testimonials, pricing, and newsletter
+app.use('/api/testimonials', apiLimiter, createTestimonialsRouter(db)); // Public - fetch testimonials
+app.use('/api/pricing', apiLimiter, createPricingRouter(db)); // Public - fetch pricing plans
+app.use('/api/newsletter', createNewsletterRouter(db)); // Public - subscribe to newsletter
+
 // Digital Invites API routes
 app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteRoutes(db)); // Auth required - invitations CRUD
 app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteGuestsRoutes(db)); // Auth required - guest management
@@ -547,6 +559,7 @@ function getLocalIP() {
 let scanIntervalId = null;
 let scanRetryTimeoutId = null;
 let isScanning = false;
+let isDatabaseReady = false;
 let cameraScraperIntervalId = null;
 let subscriptionExpirationIntervalId = null;
 
@@ -573,6 +586,17 @@ const cleanupScheduledTasks = () => {
 // Start server with port conflict detection
 (async () => {
     const AUTO_KILL = process.env.AUTO_KILL_PORT_CONFLICT === 'true';
+
+    // Wait for database to be ready before starting server
+    try {
+        console.log('⏳ Waiting for database initialization...');
+        await db.ready;
+        isDatabaseReady = true;
+        console.log('✅ Database initialized successfully');
+    } catch (err) {
+        console.error('❌ Database initialization failed:', err);
+        process.exit(1);
+    }
 
     // Pre-flight port availability check
     const portAvailable = await handlePortConflict(PORT, AUTO_KILL);
@@ -621,171 +645,171 @@ const cleanupScheduledTasks = () => {
         console.log(`🌐 CORS: Whitelisted origins: ${allowedOrigins.join(', ')}`);
         console.log('');
 
-    // Schedule music scan (every 24 hours) with safety boundaries and retry logic
-    const SCAN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY_MS = 5000; // 5 seconds between retries
-    const { scanMusicDirectory } = require('./services/musicScanner');
+        // Schedule music scan (every 24 hours) with safety boundaries and retry logic
+        const SCAN_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY_MS = 5000; // 5 seconds between retries
+        const { scanMusicDirectory } = require('./services/musicScanner');
 
-    async function runSafeScan(retryCount = 0) {
-        // Prevent concurrent scans
-        if (isScanning) {
-            console.log('⏭️  Scan already in progress, skipping...');
-            return;
-        }
-
-        // Clear any pending retry timeout
-        if (scanRetryTimeoutId) {
-            clearTimeout(scanRetryTimeoutId);
-            scanRetryTimeoutId = null;
-        }
-
-        isScanning = true;
-        console.log(`🔄 Starting scheduled music scan (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})...`);
-
-        try {
-            // musicDir parameter is deprecated - scanner now uses R2 directly
-            // Kept for backward compatibility
-            const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../data/MusicFiles');
-
-            // Run the R2 scan
-            const result = await scanMusicDirectory(db, musicDir);
-            console.log('✅ Scheduled R2 scan complete:', result);
-
-        } catch (error) {
-            console.error(`❌ Scheduled scan failed (Attempt ${retryCount + 1}):`, error.message);
-
-            // Retry logic
-            if (retryCount < MAX_RETRIES) {
-                console.log(`⏳ Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
-                scanRetryTimeoutId = setTimeout(() => {
-                    scanRetryTimeoutId = null;
-                    runSafeScan(retryCount + 1).catch(err => {
-                        console.error('❌ Critical error during retry:', err);
-                    });
-                }, RETRY_DELAY_MS);
-            } else {
-                console.error('❌ Max retries reached. Giving up until next schedule.');
-            }
-        } finally {
-            isScanning = false;
-        }
-    }
-
-    console.log('⏰ Scheduling music scan (Every 24 hours)...');
-
-    // Run initial scan on startup (after a short delay to ensure DB is ready)
-    setTimeout(() => {
-        runSafeScan().catch(err => {
-            console.error('❌ Critical error during initial scan:', err);
-        });
-    }, 5000); // 5 second delay
-
-    // Start the interval for periodic scans
-    scanIntervalId = setInterval(() => {
-        // Wrap in top-level try-catch to guarantee server stability
-        try {
-            runSafeScan().catch(err => {
-                console.error('❌ Critical error initiating scheduled scan:', err);
-            });
-        } catch (criticalError) {
-            console.error('❌ Critical error initiating scheduled scan:', criticalError);
-        }
-    }, SCAN_INTERVAL_MS);
-
-    // Camera Updates AI Agent - Daily scraping
-    console.log('📸 Initializing Camera Updates AI Agent...');
-    const { scrapeAllBrands } = require('./services/cameraUpdatesScraper');
-
-    async function runCameraScraper() {
-        try {
-            console.log('🔄 Starting camera updates scraping...');
-            const updates = await scrapeAllBrands();
-
-            if (updates && updates.length > 0) {
-                const result = saveUpdatesToDb(updates);
-                if (result.inserted > 0 || result.updated > 0) {
-                    console.log(`✅ Camera updates saved: ${result.inserted} new, ${result.updated} updated, ${result.skipped} unchanged (${updates.length} total)`);
-                } else {
-                    console.log(`ℹ️  All ${result.skipped} updates are current, no changes needed`);
-                }
-            } else {
-                const existingCount = db.prepare('SELECT COUNT(*) as count FROM camera_updates').get().count;
-                console.log(`ℹ️  No new updates from scraper, keeping ${existingCount} existing updates active`);
-            }
-        } catch (error) {
-            console.error('❌ Camera scraper error:', error.message);
-            console.error(error.stack);
-            const existingCount = db.prepare('SELECT COUNT(*) as count FROM camera_updates').get().count;
-            console.log(`ℹ️  Scraper failed, preserving ${existingCount} existing updates`);
-        }
-    }
-
-    // Wait a bit for database to be fully ready, then run
-    setTimeout(() => {
-        runCameraScraper().catch(err => {
-            console.error('❌ Initial camera scraper failed:', err);
-        });
-    }, 2000);
-
-    // Schedule daily updates (every 24 hours)
-    const CAMERA_SCRAPE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
-    cameraScraperIntervalId = setInterval(runCameraScraper, CAMERA_SCRAPE_INTERVAL);
-    console.log('⏰ Camera updates scheduled (Daily)');
-
-    // vCard Template System Initialization (Phase 4)
-    console.log('🎨 Initializing vCard Template System...');
-    const { SYSTEM_TEMPLATES, seedSystemTemplates } = require('./data/template-definitions');
-    const { generateThumbnailsForAll } = require('./services/templateThumbnailService');
-
-    async function initializeTemplateSystem() {
-        try {
-            // Check if templates already exist
-            const existingTemplatesStmt = db.prepare('SELECT COUNT(*) as count FROM vcard_templates WHERE is_system = 1');
-            const result = existingTemplatesStmt.get();
-            const existingCount = result?.count || 0;
-
-            if (existingCount === SYSTEM_TEMPLATES.length) {
-                console.log(`✅ All ${existingCount} system templates already seeded`);
+        async function runSafeScan(retryCount = 0) {
+            // Prevent concurrent scans
+            if (isScanning) {
+                console.log('⏭️  Scan already in progress, skipping...');
                 return;
             }
 
-            if (existingCount > 0 && existingCount < SYSTEM_TEMPLATES.length) {
-                console.log(`⚠️  Found ${existingCount} templates, expected ${SYSTEM_TEMPLATES.length}. Reseeding...`);
+            // Clear any pending retry timeout
+            if (scanRetryTimeoutId) {
+                clearTimeout(scanRetryTimeoutId);
+                scanRetryTimeoutId = null;
             }
 
-            // Seed templates
-            console.log(`📥 Seeding ${SYSTEM_TEMPLATES.length} system templates...`);
-            const seedResults = await seedSystemTemplates(db);
+            isScanning = true;
+            console.log(`🔄 Starting scheduled music scan (Attempt ${retryCount + 1}/${MAX_RETRIES + 1})...`);
 
-            if (seedResults.successful > 0) {
-                console.log(`✅ Template seeding: ${seedResults.successful} successful, ${seedResults.failed} failed`);
+            try {
+                // musicDir parameter is deprecated - scanner now uses R2 directly
+                // Kept for backward compatibility
+                const musicDir = process.env.MUSIC_DIR || path.join(__dirname, '../data/MusicFiles');
 
-                // Generate thumbnails for newly seeded templates
-                console.log('🖼️  Generating template thumbnails...');
-                const thumbnailResults = await generateThumbnailsForAll(db, SYSTEM_TEMPLATES);
-                console.log(`✅ Thumbnail generation: ${thumbnailResults.successful} successful, ${thumbnailResults.failed} failed`);
+                // Run the R2 scan
+                const result = await scanMusicDirectory(db, musicDir);
+                console.log('✅ Scheduled R2 scan complete:', result);
+
+            } catch (error) {
+                console.error(`❌ Scheduled scan failed (Attempt ${retryCount + 1}):`, error.message);
+
+                // Retry logic
+                if (retryCount < MAX_RETRIES) {
+                    console.log(`⏳ Retrying in ${RETRY_DELAY_MS / 1000} seconds...`);
+                    scanRetryTimeoutId = setTimeout(() => {
+                        scanRetryTimeoutId = null;
+                        runSafeScan(retryCount + 1).catch(err => {
+                            console.error('❌ Critical error during retry:', err);
+                        });
+                    }, RETRY_DELAY_MS);
+                } else {
+                    console.error('❌ Max retries reached. Giving up until next schedule.');
+                }
+            } finally {
+                isScanning = false;
             }
-        } catch (error) {
-            console.error('❌ Template system initialization error:', error.message);
-            console.error(error.stack);
         }
-    }
 
-    // Initialize templates after a short delay
-    setTimeout(() => {
-        initializeTemplateSystem().catch(err => {
-            console.error('❌ Critical error during template initialization:', err);
-        });
-    }, 4000);
+        console.log('⏰ Scheduling music scan (Every 24 hours)...');
 
-    // Subscription Expiration Check - Run every hour
-    console.log('💳 Initializing Subscription Expiration Check...');
+        // Run initial scan on startup (after a short delay to ensure DB is ready)
+        setTimeout(() => {
+            runSafeScan().catch(err => {
+                console.error('❌ Critical error during initial scan:', err);
+            });
+        }, 5000); // 5 second delay
 
-    async function checkExpiredSubscriptions() {
-        try {
-            const now = new Date().toISOString();
-            const result = db.prepare(`
+        // Start the interval for periodic scans
+        scanIntervalId = setInterval(() => {
+            // Wrap in top-level try-catch to guarantee server stability
+            try {
+                runSafeScan().catch(err => {
+                    console.error('❌ Critical error initiating scheduled scan:', err);
+                });
+            } catch (criticalError) {
+                console.error('❌ Critical error initiating scheduled scan:', criticalError);
+            }
+        }, SCAN_INTERVAL_MS);
+
+        // Camera Updates AI Agent - Daily scraping
+        console.log('📸 Initializing Camera Updates AI Agent...');
+        const { scrapeAllBrands } = require('./services/cameraUpdatesScraper');
+
+        async function runCameraScraper() {
+            try {
+                console.log('🔄 Starting camera updates scraping...');
+                const updates = await scrapeAllBrands();
+
+                if (updates && updates.length > 0) {
+                    const result = saveUpdatesToDb(updates);
+                    if (result.inserted > 0 || result.updated > 0) {
+                        console.log(`✅ Camera updates saved: ${result.inserted} new, ${result.updated} updated, ${result.skipped} unchanged (${updates.length} total)`);
+                    } else {
+                        console.log(`ℹ️  All ${result.skipped} updates are current, no changes needed`);
+                    }
+                } else {
+                    const existingCount = db.prepare('SELECT COUNT(*) as count FROM camera_updates').get().count;
+                    console.log(`ℹ️  No new updates from scraper, keeping ${existingCount} existing updates active`);
+                }
+            } catch (error) {
+                console.error('❌ Camera scraper error:', error.message);
+                console.error(error.stack);
+                const existingCount = db.prepare('SELECT COUNT(*) as count FROM camera_updates').get().count;
+                console.log(`ℹ️  Scraper failed, preserving ${existingCount} existing updates`);
+            }
+        }
+
+        // Wait a bit for database to be fully ready, then run
+        setTimeout(() => {
+            runCameraScraper().catch(err => {
+                console.error('❌ Initial camera scraper failed:', err);
+            });
+        }, 2000);
+
+        // Schedule daily updates (every 24 hours)
+        const CAMERA_SCRAPE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+        cameraScraperIntervalId = setInterval(runCameraScraper, CAMERA_SCRAPE_INTERVAL);
+        console.log('⏰ Camera updates scheduled (Daily)');
+
+        // vCard Template System Initialization (Phase 4)
+        console.log('🎨 Initializing vCard Template System...');
+        const { SYSTEM_TEMPLATES, seedSystemTemplates } = require('./data/template-definitions');
+        const { generateThumbnailsForAll } = require('./services/templateThumbnailService');
+
+        async function initializeTemplateSystem() {
+            try {
+                // Check if templates already exist
+                const existingTemplatesStmt = db.prepare('SELECT COUNT(*) as count FROM vcard_templates WHERE is_system = 1');
+                const result = existingTemplatesStmt.get();
+                const existingCount = result?.count || 0;
+
+                if (existingCount === SYSTEM_TEMPLATES.length) {
+                    console.log(`✅ All ${existingCount} system templates already seeded`);
+                    return;
+                }
+
+                if (existingCount > 0 && existingCount < SYSTEM_TEMPLATES.length) {
+                    console.log(`⚠️  Found ${existingCount} templates, expected ${SYSTEM_TEMPLATES.length}. Reseeding...`);
+                }
+
+                // Seed templates
+                console.log(`📥 Seeding ${SYSTEM_TEMPLATES.length} system templates...`);
+                const seedResults = await seedSystemTemplates(db);
+
+                if (seedResults.successful > 0) {
+                    console.log(`✅ Template seeding: ${seedResults.successful} successful, ${seedResults.failed} failed`);
+
+                    // Generate thumbnails for newly seeded templates
+                    console.log('🖼️  Generating template thumbnails...');
+                    const thumbnailResults = await generateThumbnailsForAll(db, SYSTEM_TEMPLATES);
+                    console.log(`✅ Thumbnail generation: ${thumbnailResults.successful} successful, ${thumbnailResults.failed} failed`);
+                }
+            } catch (error) {
+                console.error('❌ Template system initialization error:', error.message);
+                console.error(error.stack);
+            }
+        }
+
+        // Initialize templates after a short delay
+        setTimeout(() => {
+            initializeTemplateSystem().catch(err => {
+                console.error('❌ Critical error during template initialization:', err);
+            });
+        }, 4000);
+
+        // Subscription Expiration Check - Run every hour
+        console.log('💳 Initializing Subscription Expiration Check...');
+
+        async function checkExpiredSubscriptions() {
+            try {
+                const now = new Date().toISOString();
+                const result = db.prepare(`
                 UPDATE users 
                 SET subscription_status = 'expired'
                 WHERE subscription_status IN ('free', 'active', 'paid')
@@ -793,29 +817,29 @@ const cleanupScheduledTasks = () => {
                   AND subscription_status != 'expired'
             `).run(now);
 
-            if (result.changes > 0) {
-                console.log(`✅ Updated ${result.changes} expired subscription(s) to 'expired' status`);
+                if (result.changes > 0) {
+                    console.log(`✅ Updated ${result.changes} expired subscription(s) to 'expired' status`);
+                }
+            } catch (error) {
+                console.error('❌ Error checking expired subscriptions:', error.message);
+                console.error(error.stack);
             }
-        } catch (error) {
-            console.error('❌ Error checking expired subscriptions:', error.message);
-            console.error(error.stack);
         }
-    }
 
-    // Run immediately on startup, then every hour
-    setTimeout(() => {
-        checkExpiredSubscriptions().catch(err => {
-            console.error('❌ Initial subscription expiration check failed:', err);
-        });
-    }, 3000);
+        // Run immediately on startup, then every hour
+        setTimeout(() => {
+            checkExpiredSubscriptions().catch(err => {
+                console.error('❌ Initial subscription expiration check failed:', err);
+            });
+        }, 3000);
 
-    const SUBSCRIPTION_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
-    subscriptionExpirationIntervalId = setInterval(() => {
-        checkExpiredSubscriptions().catch(err => {
-            console.error('❌ Subscription expiration check error:', err);
-        });
-    }, SUBSCRIPTION_CHECK_INTERVAL);
-    console.log('⏰ Subscription expiration check scheduled (Hourly)');
+        const SUBSCRIPTION_CHECK_INTERVAL = 60 * 60 * 1000; // 1 hour
+        subscriptionExpirationIntervalId = setInterval(() => {
+            checkExpiredSubscriptions().catch(err => {
+                console.error('❌ Subscription expiration check error:', err);
+            });
+        }, SUBSCRIPTION_CHECK_INTERVAL);
+        console.log('⏰ Subscription expiration check scheduled (Hourly)');
     });
 
     // Handle server errors

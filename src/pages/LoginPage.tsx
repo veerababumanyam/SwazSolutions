@@ -28,11 +28,24 @@ export const LoginPage: React.FC = () => {
 
     const from = location.state?.from?.pathname || '/music';
 
+    // #region agent log
+    const DEBUG_LOG = (location: string, message: string, data: Record<string, unknown>) => {
+        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ location, message, data, timestamp: Date.now(), sessionId: 'debug-session', hypothesisId: data.hypothesisId as string }) }).catch(() => {});
+    };
+    // #endregion
+
     // Memoized callback to handle Google response
     const handleGoogleCallback = useCallback(async (response: any) => {
+        // #region agent log
+        DEBUG_LOG('LoginPage.tsx:handleGoogleCallback', 'Google callback invoked', { hypothesisId: 'C', hasResponse: !!response, credentialLength: response?.credential?.length ?? 0 });
+        // #endregion
         setIsLoading(true);
         try {
-            const res = await fetch('/api/auth/google', {
+            const apiUrl = '/api/auth/google';
+            // #region agent log
+            DEBUG_LOG('LoginPage.tsx:handleGoogleCallback', 'Before fetch', { hypothesisId: 'D', apiUrl, credentialLength: response?.credential?.length ?? 0 });
+            // #endregion
+            const res = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -42,6 +55,9 @@ export const LoginPage: React.FC = () => {
 
             const data = await res.json();
 
+            // #region agent log
+            DEBUG_LOG('LoginPage.tsx:handleGoogleCallback', 'After fetch', { hypothesisId: 'D', ok: res.ok, status: res.status, hasError: !!data.error });
+            // #endregion
             if (res.ok) {
                 // Backend sets httpOnly cookies - no token storage needed
                 login(data.user);
@@ -51,6 +67,9 @@ export const LoginPage: React.FC = () => {
                 showToast(data.error || 'Google login failed', 'error');
             }
         } catch (error) {
+            // #region agent log
+            DEBUG_LOG('LoginPage.tsx:handleGoogleCallback', 'Fetch error', { hypothesisId: 'D', errorMessage: error instanceof Error ? error.message : String(error) });
+            // #endregion
             showToast('An error occurred during Google login', 'error');
         } finally {
             setIsLoading(false);
@@ -67,6 +86,9 @@ export const LoginPage: React.FC = () => {
     }, [handleGoogleCallback]);
 
     useEffect(() => {
+        // #region agent log
+        DEBUG_LOG('LoginPage.tsx:useEffect', 'Page mount', { hypothesisId: 'A', origin: window.location.origin, href: window.location.href, userAgent: navigator.userAgent.substring(0, 80) });
+        // #endregion
         // Suppress Google OAuth console errors
         const originalError = console.error;
         const errorFilter = (message: any, ...args: any[]) => {
@@ -75,6 +97,9 @@ export const LoginPage: React.FC = () => {
                 message.includes('The given origin is not allowed') ||
                 message.includes('credential_button_library')
             )) {
+                // #region agent log
+                DEBUG_LOG('LoginPage.tsx:errorFilter', 'GSI error intercepted', { hypothesisId: 'A', message: message.substring(0, 120), origin: window.location.origin });
+                // #endregion
                 // Set user-facing error message
                 if (message.includes('The given origin is not allowed')) {
                     const origin = window.location.origin;
@@ -90,6 +115,9 @@ export const LoginPage: React.FC = () => {
         const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
 
         const initializeGoogleSignIn = () => {
+            // #region agent log
+            DEBUG_LOG('LoginPage.tsx:initializeGoogleSignIn', 'Init check', { hypothesisId: 'B', hasGoogle: !!window.google, hasRef: !!googleButtonRef.current, initialized: initializedRef.current });
+            // #endregion
             if (window.google && googleButtonRef.current && !initializedRef.current) {
                 try {
                     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -116,8 +144,13 @@ export const LoginPage: React.FC = () => {
                     );
                     initializedRef.current = true;
                     setGoogleLoaded(true);
+                    // #region agent log
+                    DEBUG_LOG('LoginPage.tsx:initializeGoogleSignIn', 'GSI initialized', { hypothesisId: 'B', googleLoaded: true });
+                    // #endregion
                 } catch (error) {
-                    // Silently handle initialization errors
+                    // #region agent log
+                    DEBUG_LOG('LoginPage.tsx:initializeGoogleSignIn', 'GSI init error', { hypothesisId: 'B', errorMessage: error instanceof Error ? error.message : String(error) });
+                    // #endregion
                     setGoogleLoaded(false);
                 }
             }
@@ -136,8 +169,18 @@ export const LoginPage: React.FC = () => {
             script.src = "https://accounts.google.com/gsi/client";
             script.async = true;
             script.defer = true;
-            script.onload = initializeGoogleSignIn;
-            script.onerror = () => console.error('Failed to load Google Sign-In script');
+            script.onload = () => {
+                // #region agent log
+                DEBUG_LOG('LoginPage.tsx:script.onload', 'GSI script loaded', { hypothesisId: 'B' });
+                // #endregion
+                initializeGoogleSignIn();
+            };
+            script.onerror = () => {
+                // #region agent log
+                DEBUG_LOG('LoginPage.tsx:script.onerror', 'GSI script failed to load', { hypothesisId: 'B' });
+                // #endregion
+                console.error('Failed to load Google Sign-In script');
+            };
             document.head.appendChild(script);
         }
 
@@ -216,6 +259,9 @@ export const LoginPage: React.FC = () => {
                                 <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-3">
                                     {googleError}
                                 </p>
+                                <p className="text-xs text-yellow-700 dark:text-yellow-300 mb-2">
+                                    <strong>Tip:</strong> In Cursor you may be on <code className="bg-yellow-500/20 px-1 rounded">http://localhost:3000</code> while in Chrome you use <code className="bg-yellow-500/20 px-1 rounded">http://localhost:5173</code>. Add the origin you actually use (and both if you use both).
+                                </p>
                                 <details className="text-xs">
                                     <summary className="cursor-pointer text-yellow-600 dark:text-yellow-400 hover:underline mb-2">
                                         How to fix this
@@ -223,8 +269,8 @@ export const LoginPage: React.FC = () => {
                                     <ol className="list-decimal list-inside space-y-1 text-yellow-700 dark:text-yellow-300 ml-2">
                                         <li>Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="underline">Google Cloud Console Credentials</a></li>
                                         <li>Click on your OAuth 2.0 Client ID</li>
-                                        <li>Under "Authorized JavaScript origins", add: <code className="bg-yellow-500/20 px-1 rounded">{window.location.origin}</code></li>
-                                        <li>Click "SAVE" and wait 30-60 seconds</li>
+                                        <li>Under &quot;Authorized JavaScript origins&quot;, add: <code className="bg-yellow-500/20 px-1 rounded">{window.location.origin}</code> (and add <code className="bg-yellow-500/20 px-1 rounded">http://localhost:5173</code> and <code className="bg-yellow-500/20 px-1 rounded">http://localhost:3000</code> if you use both)</li>
+                                        <li>Click &quot;SAVE&quot; and wait 30-60 seconds</li>
                                         <li>Refresh this page</li>
                                     </ol>
                                 </details>

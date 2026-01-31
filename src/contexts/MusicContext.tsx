@@ -251,10 +251,6 @@ const MusicProviderComponent: React.FC<{ children: ReactNode }> = ({ children })
 
     // --- Library Management ---
     const refreshLibrary = async () => {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/6fb2892c-1108-4dd2-a04b-3b1b4843d9e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MusicContext.tsx:250',message:'refreshLibrary called',data:{authLoading,isAuthenticated},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H3'})}).catch(()=>{});
-        // #endregion
-
         // Wait for auth to finish loading before making requests
         if (authLoading) {
             setIsScanning(false);

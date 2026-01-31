@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PublicRouteProps {
   children: React.ReactNode;
@@ -25,16 +26,23 @@ interface PublicRouteProps {
 export const PublicRoute: React.FC<PublicRouteProps> = ({
   children,
   redirectIfAuthenticated = false,
-  redirectTo = '/profile/dashboard'
+  redirectTo = '/profile'  // Changed from /profile/dashboard to unified panel
 }) => {
-  // Check if user is authenticated (placeholder - will use AuthContext)
-  const isAuthenticated = false; // TODO: Use useAuth() hook from AuthContext
+  const { user, loading } = useAuth();
 
-  // If route should redirect authenticated users (e.g., login page)
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-transparent"></div>
+      </div>
+    );
+  }
+
+  const isAuthenticated = !!user;
+
   if (redirectIfAuthenticated && isAuthenticated) {
     return <Navigate to={redirectTo} replace />;
   }
 
-  // Allow access regardless of authentication status
   return <>{children}</>;
 };
