@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
+const { v4: uuidv4 } = require('uuid');
 const { OAuth2Client } = require('google-auth-library');
 const {
     authenticateToken,
@@ -92,11 +93,46 @@ function createAuthRoutes(db) {
                  VALUES (?, ?, ?, 0, datetime('now'), datetime('now'))`
             ).run(userId, username, displayName || username);
 
-            console.log(`✅ Auto-created profile for user ${username} (ID: ${userId})`);
+            console.log(`✅ Auto-created vCard profile for user ${username} (ID: ${userId})`);
             return { id: result.lastInsertRowid };
         } catch (error) {
             // If profile creation fails (e.g., username conflict), log but don't fail auth
-            console.error(`⚠️ Failed to auto-create profile for user ${username}:`, error.message);
+            console.error(`⚠️ Failed to auto-create vCard profile for user ${username}:`, error.message);
+            return null;
+        }
+    };
+
+    const ensureInvitationExists = (userId, username) => {
+        try {
+            // Check if invitation already exists
+            const existing = db.prepare('SELECT id FROM digital_invites WHERE user_id = ?').get(userId);
+            if (existing) {
+                return existing;
+            }
+
+            // Create a basic invitation with minimal info (user can customize later)
+            const invitationId = uuidv4();
+
+            const result = db.prepare(
+                `INSERT INTO digital_invites (
+                    id, user_id, event_type, host_name, primary_lang,
+                    multi_event_enabled, sections_json, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+            ).run(
+                invitationId,
+                userId,
+                'custom',  // Default event type
+                username,  // Use username as host name
+                'en',      // Default language
+                0,         // Single event (not multi-event)
+                JSON.stringify([]) // Empty sections initially
+            );
+
+            console.log(`✅ Auto-created invitation profile for user ${username} (ID: ${invitationId})`);
+            return { id: invitationId };
+        } catch (error) {
+            // If invitation creation fails, log but don't fail auth
+            console.error(`⚠️ Failed to auto-create invitation for user ${username}:`, error.message);
             return null;
         }
     };
@@ -160,8 +196,11 @@ function createAuthRoutes(db) {
             // Generate access and refresh tokens
             const { accessToken, refreshToken } = generateTokens(user, req, res);
 
-            // Auto-create a basic profile for the new user
+            // Auto-create a basic vCard profile for the new user
             ensureProfileExists(user.id, username, username);
+
+            // Auto-create a basic invitation profile for the new user
+            ensureInvitationExists(user.id, username);
 
             res.status(201).json({
                 message: 'User registered successfully',
