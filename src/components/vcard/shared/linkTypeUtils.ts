@@ -1,6 +1,10 @@
 /**
  * Link Type Utilities - Shared helpers for vCard components
  * Extracted from LinksEditor.tsx
+ *
+ * @remarks
+ * VIDEO_UPLOAD type has been deprecated in favor of VIDEO_EMBED (YouTube/Vimeo only).
+ * The type is kept in the enum for backward compatibility with existing data.
  */
 
 import { LinkType } from '@/types/modernProfile.types';
@@ -17,10 +21,15 @@ export const getLinkTypeIcon = (type: LinkType): string => {
     [LinkType.HEADER]: '📝',
     [LinkType.GALLERY]: '🖼️',
     [LinkType.VIDEO_EMBED]: '🎬',
+    [LinkType.CONTACT_FORM]: '📋',
+    [LinkType.MAP_LOCATION]: '📍',
+    [LinkType.FILE_DOWNLOAD]: '📥',
+    [LinkType.CUSTOM_LINK]: '⭐',
+    // Deprecated types - kept for backward compatibility
     [LinkType.VIDEO_UPLOAD]: '📹',
     [LinkType.BOOKING]: '📅',
   };
-  return icons[type];
+  return icons[type] || '🔗';
 };
 
 /**
@@ -34,11 +43,16 @@ export const getLinkTypeLabel = (type: LinkType): string => {
     [LinkType.CLASSIC]: 'Link',
     [LinkType.HEADER]: 'Header',
     [LinkType.GALLERY]: 'Gallery',
-    [LinkType.VIDEO_EMBED]: 'Video Embed',
+    [LinkType.VIDEO_EMBED]: 'YouTube / Vimeo',
+    [LinkType.CONTACT_FORM]: 'Contact Form',
+    [LinkType.MAP_LOCATION]: 'Map',
+    [LinkType.FILE_DOWNLOAD]: 'File Download',
+    [LinkType.CUSTOM_LINK]: 'Custom Link',
+    // Deprecated types - kept for backward compatibility
     [LinkType.VIDEO_UPLOAD]: 'Video Upload',
     [LinkType.BOOKING]: 'Booking',
   };
-  return labels[type];
+  return labels[type] || 'Link';
 };
 
 /**
@@ -53,8 +67,28 @@ export const getLinkTypeDescription = (type: LinkType): string => {
     [LinkType.HEADER]: 'Section divider',
     [LinkType.GALLERY]: 'Image showcase',
     [LinkType.VIDEO_EMBED]: 'YouTube/Vimeo embed',
-    [LinkType.VIDEO_UPLOAD]: 'Upload video file',
+    [LinkType.CONTACT_FORM]: 'Visitor contact form',
+    [LinkType.MAP_LOCATION]: 'Interactive map',
+    [LinkType.FILE_DOWNLOAD]: 'Downloadable file',
+    [LinkType.CUSTOM_LINK]: 'Custom styled link',
+    // Deprecated types - kept for backward compatibility
+    [LinkType.VIDEO_UPLOAD]: 'Uploaded video file',
     [LinkType.BOOKING]: 'Calendar integration',
   };
-  return descriptions[type];
+  return descriptions[type] || 'Link';
 };
+
+/**
+ * Link types available for creating new blocks in the UI.
+ * Excludes deprecated VIDEO_UPLOAD and BOOKING types.
+ */
+export const AVAILABLE_LINK_TYPES: LinkType[] = [
+  LinkType.CLASSIC,
+  LinkType.HEADER,
+  LinkType.GALLERY,
+  LinkType.VIDEO_EMBED,
+  LinkType.CONTACT_FORM,
+  LinkType.MAP_LOCATION,
+  LinkType.FILE_DOWNLOAD,
+  LinkType.CUSTOM_LINK,
+];

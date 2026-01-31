@@ -25,12 +25,13 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   const navItems = [
-    { path: '/profile/edit', icon: Layers, label: 'Portfolio' },
-    { path: '/profile/appearance', icon: Palette, label: 'Aesthetics' },
-    { path: '/profile/analytics', icon: BarChart2, label: 'Insights' },
+    { path: '/profile?tab=portfolio', icon: Layers, label: 'Portfolio' },
+    { path: '/profile?tab=aesthetics', icon: Palette, label: 'Aesthetics' },
+    { path: '/profile?tab=insights', icon: BarChart2, label: 'Insights' },
   ];
 
-  const showPreviewToggle = location.pathname === '/profile/edit' || location.pathname === '/profile/appearance';
+  const currentTab = new URLSearchParams(location.search).get('tab') || 'portfolio';
+  const showPreviewToggle = currentTab === 'portfolio' || currentTab === 'aesthetics';
 
   return (
     <div className="flex flex-col h-screen w-full bg-[#f2f2f7] dark:bg-black relative overflow-hidden font-sans transition-colors duration-500">
@@ -59,7 +60,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
          {/* Navigation Tabs */}
          <nav className="flex items-center gap-1 p-1 bg-gray-100/50 dark:bg-white/5 rounded-full border border-gray-200 dark:border-white/5">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
+              const tabName = new URLSearchParams(item.path.split('?')[1]).get('tab');
+              const isActive = currentTab === tabName;
               return (
                 <Link
                   key={item.path}
@@ -164,7 +166,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <nav className="lg:hidden fixed bottom-0 inset-x-0 h-[84px] bg-white/90 dark:bg-[#1c1c1e]/90 border-t border-gray-200 dark:border-white/5 z-50 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl">
         <div className="flex items-center justify-around h-full px-2">
           {navItems.map((item) => {
-             const isActive = location.pathname === item.path;
+             const tabName = new URLSearchParams(item.path.split('?')[1]).get('tab');
+             const isActive = currentTab === tabName;
              return (
                <Link
                  key={item.path}

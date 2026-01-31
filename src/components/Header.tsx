@@ -103,8 +103,8 @@ export const Header: React.FC = () => {
                                 </button>
 
                                 <Link
-                                    to="/profile/dashboard"
-                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics')
+                                    to="/profile"
+                                    className={`group relative px-3 md:px-4 py-2 rounded-xl transition-all duration-300 font-semibold text-sm flex items-center gap-2 ${isActive('/profile') || isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics')
                                         ? 'bg-brand-gradient text-white shadow-lg shadow-accent/30'
                                         : 'text-secondary hover:text-primary hover:bg-surface hover:shadow-md'
                                         }`}
@@ -288,9 +288,9 @@ export const Header: React.FC = () => {
                                 </button>
 
                                 <Link
-                                    to="/profile/dashboard"
+                                    to="/profile"
                                     onClick={() => handleMobileNavClick()}
-                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
+                                    className={`flex items-center gap-4 p-4 rounded-2xl text-lg font-bold transition-all ${isActive('/profile') || isActive('/profile/dashboard') || isActive('/profile/edit') || isActive('/profile/analytics') ? 'bg-accent/10 text-accent border border-accent/20' : 'text-secondary hover:bg-surface border border-transparent'}`}
                                 >
                                     <IdCard className="w-6 h-6" /> vCard
                                 </Link>

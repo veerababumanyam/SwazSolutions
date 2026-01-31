@@ -1,7 +1,12 @@
 /**
  * VideoRenderer Component
- * Public view for VIDEO_UPLOAD type
+ * Public view for video content (used by VIDEO_EMBED and deprecated VIDEO_UPLOAD types)
  * Features: HTML5 video player, fallback for unsupported formats, responsive design
+ *
+ * @remarks
+ * VIDEO_UPLOAD type is deprecated. This component is kept for backward compatibility
+ * to render existing uploaded video blocks. New video blocks should use VIDEO_EMBED
+ * (YouTube/Vimeo) instead.
  */
 
 import React, { useState, useRef } from 'react';

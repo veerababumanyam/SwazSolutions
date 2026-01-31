@@ -22,8 +22,9 @@ interface AddLinkMenuProps {
 }
 
 /**
- * Predefined link type options
- * Maps LinkType enum to user-friendly labels and descriptions
+ * Predefined link type options for creating new blocks.
+ * VIDEO_UPLOAD and BOOKING are deprecated and not shown in the UI.
+ * Maps LinkType enum to user-friendly labels and descriptions.
  */
 const LINK_TYPE_OPTIONS: LinkTypeOption[] = [
   {
@@ -46,22 +47,36 @@ const LINK_TYPE_OPTIONS: LinkTypeOption[] = [
   },
   {
     type: LinkType.VIDEO_EMBED,
-    label: 'Video Embed',
+    label: 'YouTube / Vimeo',
     icon: '🎬',
-    description: 'YouTube/Vimeo embed',
+    description: 'Embed video from URL',
   },
   {
-    type: LinkType.VIDEO_UPLOAD,
-    label: 'Video Upload',
-    icon: '📹',
-    description: 'Upload video file',
+    type: LinkType.CONTACT_FORM,
+    label: 'Contact Form',
+    icon: '📋',
+    description: 'Visitor inquiry form',
   },
   {
-    type: LinkType.BOOKING,
-    label: 'Booking',
-    icon: '📅',
-    description: 'Calendar integration',
+    type: LinkType.MAP_LOCATION,
+    label: 'Map',
+    icon: '📍',
+    description: 'Show your location',
   },
+  {
+    type: LinkType.FILE_DOWNLOAD,
+    label: 'File Download',
+    icon: '📥',
+    description: 'Share downloadable files',
+  },
+  {
+    type: LinkType.CUSTOM_LINK,
+    label: 'Custom Link',
+    icon: '⭐',
+    description: 'Custom styled link',
+  },
+  // VIDEO_UPLOAD removed - use VIDEO_EMBED (YouTube/Vimeo) instead
+  // BOOKING removed - deprecated feature
 ];
 
 /**

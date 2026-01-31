@@ -1,12 +1,33 @@
 /**
  * LinkItemEditor Component
- * Universal editor for all 6 link types: CLASSIC, GALLERY, VIDEO_EMBED, HEADER, BOOKING, VIDEO_UPLOAD
- * Displays appropriate form fields based on LinkType
+ * Universal router for all link block types with specialized editors
+ * Routes to appropriate block-specific editors based on LinkType
+ *
+ * Block Types:
+ * - CLASSIC: Standard URL link
+ * - HEADER: Section header for grouping
+ * - GALLERY: Image gallery
+ * - VIDEO_EMBED: Embedded video from external source
+ * - CONTACT_FORM: Visitor contact form
+ * - MAP_LOCATION: Interactive map
+ * - FILE_DOWNLOAD: File download link
+ * - CUSTOM_LINK: Custom icon/logo with link
  */
 
 import React, { useState, useEffect } from 'react';
-import { LinkItem, LinkType } from '@/types/modernProfile.types';
+import { LinkItem, LinkType, LinkMetadata, ContactFormConfig, MapLocationConfig, FileDownloadConfig, CustomLinkConfig } from '@/types/modernProfile.types';
 import { useProfile } from '@/contexts/ProfileContext';
+
+// Import all block-specific editors
+import { ClassicLinkEditor } from './ClassicLinkEditor';
+import { HeaderEditor } from './HeaderEditor';
+import { VideoEmbedEditor } from './VideoEmbedEditor';
+import { ContactFormEditor } from './ContactFormEditor';
+import { MapLocationEditor } from './MapLocationEditor';
+import { FileDownloadEditor } from './FileDownloadEditor';
+import { CustomLinkEditor } from './CustomLinkEditor';
+import { GalleryEditor } from './GalleryEditor';
+// VideoUploadEditor removed - VIDEO_UPLOAD type deprecated in favor of VIDEO_EMBED
 
 interface LinkItemEditorProps {
   linkId?: string; // If provided, editing existing link; otherwise creating new
@@ -14,6 +35,8 @@ interface LinkItemEditorProps {
   onClose: () => void;
   onSave?: () => void;
 }
+
+type EditorViewType = 'type-select' | 'editor-routed';
 
 export const LinkItemEditor: React.FC<LinkItemEditorProps> = ({
   linkId,
@@ -26,80 +49,95 @@ export const LinkItemEditor: React.FC<LinkItemEditorProps> = ({
   const existingLink = linkId ? links.find(l => l.id === linkId) : null;
 
   const [type, setType] = useState<LinkType>(existingLink?.type || initialType);
-  const [title, setTitle] = useState(existingLink?.title || '');
-  const [url, setUrl] = useState(existingLink?.url || '');
-  const [layout, setLayout] = useState<'grid' | 'carousel' | 'list'>(existingLink?.layout || 'carousel');
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<EditorViewType>(
+    existingLink ? 'editor-routed' : 'type-select'
+  );
 
   const isEditing = !!existingLink;
 
-  // Validation
-  const isValid = () => {
-    if (!title.trim()) return false;
+  /**
+   * Router to render the appropriate editor based on LinkType
+   * Each editor is responsible for its own state management and validation
+   */
+  const renderBlockEditor = (): React.ReactNode => {
+    if (!linkId && !isEditing) {
+      // For new links, create the link first
+      if (!isEditing) {
+        onClose();
+        return null;
+      }
+    }
+
+    const props = {
+      linkId: linkId || '',
+      title: existingLink?.title,
+      url: existingLink?.url,
+      onClose
+    };
 
     switch (type) {
       case LinkType.CLASSIC:
-      case LinkType.VIDEO_EMBED:
-      case LinkType.BOOKING:
-        return !!url.trim();
-      case LinkType.VIDEO_UPLOAD:
-        return isEditing || !!file; // Existing video or new file required
+        return <ClassicLinkEditor {...props} />;
+
       case LinkType.HEADER:
+        return <HeaderEditor linkId={linkId || ''} title={props.title} onClose={onClose} />;
+
       case LinkType.GALLERY:
-        return true; // Only title required
+        return (
+          <GalleryEditor
+            linkId={linkId || ''}
+            images={existingLink?.galleryImages || []}
+            onClose={onClose}
+          />
+        );
+
+      case LinkType.VIDEO_EMBED:
+        return <VideoEmbedEditor {...props} />;
+
+      // VIDEO_UPLOAD case removed - deprecated in favor of VIDEO_EMBED (YouTube/Vimeo only)
+      // Existing VIDEO_UPLOAD blocks in database will fall through to default (ClassicLinkEditor)
+
+      case LinkType.CONTACT_FORM:
+        return (
+          <ContactFormEditor
+            linkId={linkId || ''}
+            title={props.title}
+            onClose={onClose}
+          />
+        );
+
+      case LinkType.MAP_LOCATION:
+        return (
+          <MapLocationEditor
+            linkId={linkId || ''}
+            title={props.title}
+            onClose={onClose}
+          />
+        );
+
+      case LinkType.FILE_DOWNLOAD:
+        return (
+          <FileDownloadEditor
+            linkId={linkId || ''}
+            onClose={onClose}
+          />
+        );
+
+      case LinkType.CUSTOM_LINK:
+        return (
+          <CustomLinkEditor
+            linkId={linkId || ''}
+            config={existingLink?.metadata?.type === 'custom_link' ? existingLink.metadata.config : undefined}
+            onClose={onClose}
+          />
+        );
+
+      case LinkType.BOOKING:
+        // Booking kept for backward compatibility but hidden from UI
+        return <ClassicLinkEditor {...props} />;
+
       default:
-        return false;
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!isValid()) {
-      setError('Please fill in all required fields');
-      return;
-    }
-
-    try {
-      setUploading(true);
-
-      if (isEditing && linkId) {
-        // Update existing link
-        const updates: Partial<LinkItem> = {
-          title,
-          ...(type !== LinkType.HEADER && { url }),
-          ...(type === LinkType.GALLERY && { layout })
-        };
-
-        await updateLink(linkId, updates);
-      } else {
-        // Create new link
-        await addLink(type);
-
-        // Get the newly created link (first in array after optimistic update)
-        const newLink = links[0];
-
-        if (newLink) {
-          const updates: Partial<LinkItem> = {
-            title,
-            ...(type !== LinkType.HEADER && { url }),
-            ...(type === LinkType.GALLERY && { layout })
-          };
-
-          await updateLink(newLink.id, updates);
-        }
-      }
-
-      onSave?.();
-      onClose();
-    } catch (err) {
-      console.error('Error saving link:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save link');
-    } finally {
-      setUploading(false);
+        return <ClassicLinkEditor {...props} />;
     }
   };
 
@@ -107,10 +145,14 @@ export const LinkItemEditor: React.FC<LinkItemEditorProps> = ({
     const labels: Record<LinkType, string> = {
       [LinkType.CLASSIC]: 'Classic Link',
       [LinkType.GALLERY]: 'Image Gallery',
-      [LinkType.VIDEO_EMBED]: 'Embedded Video',
-      [LinkType.VIDEO_UPLOAD]: 'Upload Video',
+      [LinkType.VIDEO_EMBED]: 'YouTube / Vimeo',
       [LinkType.HEADER]: 'Section Header',
-      [LinkType.BOOKING]: 'Booking Link'
+      [LinkType.BOOKING]: 'Booking Link',
+      [LinkType.CONTACT_FORM]: 'Contact Form',
+      [LinkType.MAP_LOCATION]: 'Map & Location',
+      [LinkType.FILE_DOWNLOAD]: 'File Download',
+      [LinkType.CUSTOM_LINK]: 'Custom Link',
+      [LinkType.VIDEO_UPLOAD]: 'Video Upload' // Deprecated - kept for backward compatibility
     };
     return labels[linkType];
   };
@@ -119,30 +161,41 @@ export const LinkItemEditor: React.FC<LinkItemEditorProps> = ({
     const descriptions: Record<LinkType, string> = {
       [LinkType.CLASSIC]: 'A standard clickable link button',
       [LinkType.GALLERY]: 'Showcase multiple images in a gallery',
-      [LinkType.VIDEO_EMBED]: 'Embed videos from YouTube, Vimeo, etc.',
-      [LinkType.VIDEO_UPLOAD]: 'Upload and host your own video',
+      [LinkType.VIDEO_EMBED]: 'Embed videos from YouTube or Vimeo',
       [LinkType.HEADER]: 'Organize links with section headings',
-      [LinkType.BOOKING]: 'Link to booking/scheduling service'
+      [LinkType.BOOKING]: 'Link to booking/scheduling service',
+      [LinkType.CONTACT_FORM]: 'Embeddable contact form for visitor inquiries',
+      [LinkType.MAP_LOCATION]: 'Show your location on an interactive map',
+      [LinkType.FILE_DOWNLOAD]: 'Let visitors download a file',
+      [LinkType.CUSTOM_LINK]: 'Link with custom icon and styling',
+      [LinkType.VIDEO_UPLOAD]: 'Upload video file' // Deprecated - kept for backward compatibility
     };
     return descriptions[linkType];
   };
 
+  // If we have an existing link, route directly to the editor
+  if (isEditing && linkId) {
+    return renderBlockEditor();
+  }
+
+  // For new links, show the type selector first
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              {isEditing ? 'Edit Link' : 'Add New Link'}
+              Add New Link Block
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {getLinkTypeDescription(type)}
+              Choose a block type to get started
             </p>
           </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            aria-label="Close editor"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -150,184 +203,50 @@ export const LinkItemEditor: React.FC<LinkItemEditorProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Link Type Selector (only for new links) */}
-          {!isEditing && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Link Type
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {Object.values(LinkType).map(linkType => (
-                  <button
-                    key={linkType}
-                    type="button"
-                    onClick={() => setType(linkType)}
-                    className={`p-4 rounded-xl border-2 transition-all text-left ${
-                      type === linkType
-                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                    }`}
-                  >
-                    <div className="font-semibold text-gray-900 dark:text-white text-sm">
-                      {getLinkTypeLabel(linkType)}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      {getLinkTypeDescription(linkType)}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+        {/* Block Type Selector Grid */}
+        <div className="p-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {Object.values(LinkType)
+              .filter(t => t !== LinkType.BOOKING && t !== LinkType.VIDEO_UPLOAD) // Hide deprecated types
+              .map(linkType => (
+                <button
+                  key={linkType}
+                  onClick={async () => {
+                    try {
+                      // Create new link of this type
+                      await addLink(linkType);
 
-          {/* Title Field (required for all types) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder={
-                type === LinkType.HEADER
-                  ? 'SECTION HEADING'
-                  : type === LinkType.GALLERY
-                  ? 'Gallery Name'
-                  : 'Link Title'
-              }
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              required
-            />
-          </div>
+                      // Get the newly created link (first in array)
+                      const newLink = links[0];
 
-          {/* URL Field (for CLASSIC, VIDEO_EMBED, BOOKING) */}
-          {(type === LinkType.CLASSIC || type === LinkType.VIDEO_EMBED || type === LinkType.BOOKING) && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                URL <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder={
-                  type === LinkType.VIDEO_EMBED
-                    ? 'https://youtube.com/watch?v=...'
-                    : type === LinkType.BOOKING
-                    ? 'https://calendly.com/...'
-                    : 'https://example.com'
-                }
-                className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                required
-              />
-              {type === LinkType.VIDEO_EMBED && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                  Supported: YouTube, Vimeo, TikTok, Instagram
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Layout Field (for GALLERY) */}
-          {type === LinkType.GALLERY && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Layout Style
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {(['grid', 'carousel', 'list'] as const).map(layoutOption => (
-                  <button
-                    key={layoutOption}
-                    type="button"
-                    onClick={() => setLayout(layoutOption)}
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      layout === layoutOption
-                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                      {layoutOption}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* File Upload (for VIDEO_UPLOAD) */}
-          {type === LinkType.VIDEO_UPLOAD && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Video File {!isEditing && <span className="text-red-500">*</span>}
-              </label>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6 text-center">
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  className="hidden"
-                  id="video-upload"
-                />
-                <label htmlFor="video-upload" className="cursor-pointer">
-                  <div className="text-gray-500 dark:text-gray-400">
-                    {file ? (
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{file.name}</p>
-                        <p className="text-sm mt-1">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <svg className="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <p className="font-medium">Click to upload video</p>
-                        <p className="text-sm mt-1">MP4, MOV, AVI (max 100MB)</p>
-                      </div>
-                    )}
+                      if (newLink) {
+                        // Route to the editor for this type
+                        setType(linkType);
+                        setViewMode('editor-routed');
+                      }
+                    } catch (err) {
+                      console.error('Error creating link:', err);
+                    }
+                  }}
+                  className="p-5 rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-400 transition-all text-left hover:shadow-md dark:hover:bg-gray-700/50"
+                >
+                  <div className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">
+                    {getLinkTypeLabel(linkType)}
                   </div>
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-6 py-3 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!isValid() || uploading}
-              className="flex-1 px-6 py-3 rounded-xl bg-purple-500 text-white font-medium hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {uploading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Saving...
-                </span>
-              ) : (
-                <span>{isEditing ? 'Update Link' : 'Add Link'}</span>
-              )}
-            </button>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
+                    {getLinkTypeDescription(linkType)}
+                  </div>
+                </button>
+              ))}
           </div>
-        </form>
+
+          {/* Info Section */}
+          <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+            <p className="text-sm text-blue-900 dark:text-blue-300">
+              <span className="font-semibold">Tip:</span> Each block type has its own specialized editor with tailored options for that content type. After selecting a type, you'll be guided through configuration.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

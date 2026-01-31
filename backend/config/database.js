@@ -1387,6 +1387,176 @@ async function initializeDatabase() {
 
   console.log('✅ Digital invites and subscription indexes created/verified');
 
+  // ========================================
+  // PHASE 3: NEW BLOCK TYPES TABLES
+  // ========================================
+
+  // Contact form submissions table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS contact_form_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      link_id INTEGER NOT NULL,
+      profile_id INTEGER NOT NULL,
+      name TEXT,
+      email TEXT NOT NULL,
+      phone TEXT,
+      subject TEXT,
+      message TEXT NOT NULL,
+      ip_hash TEXT,
+      user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      read_at DATETIME,
+
+      FOREIGN KEY (link_id) REFERENCES link_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_contact_form_submissions_link ON contact_form_submissions(link_id);
+    CREATE INDEX IF NOT EXISTS idx_contact_form_submissions_profile ON contact_form_submissions(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_contact_form_submissions_created ON contact_form_submissions(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_contact_form_submissions_email ON contact_form_submissions(email);
+  `);
+
+  // File downloads tracking table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS file_downloads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      link_id INTEGER NOT NULL,
+      profile_id INTEGER NOT NULL,
+      downloaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      ip_hash TEXT,
+      user_agent TEXT,
+
+      FOREIGN KEY (link_id) REFERENCES link_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_file_downloads_link ON file_downloads(link_id);
+    CREATE INDEX IF NOT EXISTS idx_file_downloads_profile ON file_downloads(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_file_downloads_date ON file_downloads(downloaded_at DESC);
+  `);
+
+  // Uploaded files storage table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS file_uploads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      link_id INTEGER NOT NULL,
+      profile_id INTEGER NOT NULL,
+      file_url TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      file_size INTEGER,
+      mime_type TEXT,
+      password_hash TEXT,
+      expires_at DATETIME,
+      download_count INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+      FOREIGN KEY (link_id) REFERENCES link_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_file_uploads_link ON file_uploads(link_id);
+    CREATE INDEX IF NOT EXISTS idx_file_uploads_profile ON file_uploads(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_file_uploads_created ON file_uploads(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_file_uploads_expires ON file_uploads(expires_at);
+  `);
+
+  // Map location analytics table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS map_location_views (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      link_id INTEGER NOT NULL,
+      profile_id INTEGER NOT NULL,
+      viewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      ip_hash TEXT,
+      device_type TEXT,
+
+      FOREIGN KEY (link_id) REFERENCES link_items(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_map_location_views_link ON map_location_views(link_id);
+    CREATE INDEX IF NOT EXISTS idx_map_location_views_profile ON map_location_views(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_map_location_views_date ON map_location_views(viewed_at DESC);
+  `);
+
+  // Migration: Add styling columns to link_items if they don't exist
+  try {
+    db.exec("SELECT backgroundColor FROM link_items LIMIT 1");
+  } catch (e) {
+    try {
+      db.run("ALTER TABLE link_items ADD COLUMN metadata TEXT");
+      db.run("ALTER TABLE link_items ADD COLUMN backgroundColor TEXT");
+      db.run("ALTER TABLE link_items ADD COLUMN textColor TEXT");
+      db.run("ALTER TABLE link_items ADD COLUMN borderRadius INTEGER");
+      console.log('✅ Added styling columns to link_items table');
+    } catch (alterError) {
+      console.log('⚠️ Styling columns may already exist on link_items');
+    }
+  }
+
+  console.log('✅ Phase 3 block types tables created/verified');
+
+  // ========================================
+  // PHASE 4: TEMPLATE SYSTEM TABLES
+  // ========================================
+
+  // vCard templates table (system and user-created)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS vcard_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT NOT NULL,
+      thumbnail TEXT,
+
+      -- Core configuration (stored as JSON)
+      theme_config TEXT NOT NULL,
+      blocks_config TEXT NOT NULL,
+      social_profiles_config TEXT,
+
+      -- Metadata
+      is_system INTEGER DEFAULT 0,
+      is_ai_generated INTEGER DEFAULT 0,
+      tags TEXT,
+      popularity INTEGER DEFAULT 0,
+
+      -- Ownership
+      created_by INTEGER,
+      is_public INTEGER DEFAULT 0,
+
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+      FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_vcard_templates_category ON vcard_templates(category);
+    CREATE INDEX IF NOT EXISTS idx_vcard_templates_is_system ON vcard_templates(is_system);
+    CREATE INDEX IF NOT EXISTS idx_vcard_templates_tags ON vcard_templates(tags);
+    CREATE INDEX IF NOT EXISTS idx_vcard_templates_created_by ON vcard_templates(created_by);
+  `);
+
+  // Template usage tracking
+  db.run(`
+    CREATE TABLE IF NOT EXISTS template_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      template_id INTEGER NOT NULL,
+      profile_id INTEGER NOT NULL,
+      applied_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      apply_mode TEXT,
+
+      FOREIGN KEY (template_id) REFERENCES vcard_templates(id) ON DELETE CASCADE,
+      FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_template_usage_template ON template_usage(template_id);
+    CREATE INDEX IF NOT EXISTS idx_template_usage_profile ON template_usage(profile_id);
+    CREATE INDEX IF NOT EXISTS idx_template_usage_applied ON template_usage(applied_at DESC);
+  `);
+
+  console.log('✅ Phase 4 template system tables created/verified');
+
   // Save database to file
   saveDatabase();
   console.log('✅ Database initialized successfully');

@@ -32,10 +32,15 @@ const getLinkTypeIcon = (type: LinkType): string => {
     [LinkType.HEADER]: '📝',
     [LinkType.GALLERY]: '🖼️',
     [LinkType.VIDEO_EMBED]: '🎬',
+    [LinkType.CONTACT_FORM]: '📋',
+    [LinkType.MAP_LOCATION]: '📍',
+    [LinkType.FILE_DOWNLOAD]: '📥',
+    [LinkType.CUSTOM_LINK]: '⭐',
+    // Deprecated types - kept for backward compatibility with existing data
     [LinkType.VIDEO_UPLOAD]: '📹',
     [LinkType.BOOKING]: '📅',
   };
-  return icons[type];
+  return icons[type] || '🔗';
 };
 
 interface SortableLinkItemProps {
@@ -185,13 +190,17 @@ const LinksEditor: React.FC = () => {
     }
   };
 
+  // Available link types for creating new blocks
+  // VIDEO_UPLOAD and BOOKING are deprecated and hidden from UI
   const linkTypes = [
     { type: LinkType.CLASSIC, label: 'Link', icon: '🔗', description: 'Standard clickable link' },
     { type: LinkType.HEADER, label: 'Header', icon: '📝', description: 'Section divider' },
     { type: LinkType.GALLERY, label: 'Gallery', icon: '🖼️', description: 'Image showcase' },
-    { type: LinkType.VIDEO_EMBED, label: 'Video Embed', icon: '🎬', description: 'YouTube/Vimeo embed' },
-    { type: LinkType.VIDEO_UPLOAD, label: 'Video Upload', icon: '📹', description: 'Upload video file' },
-    { type: LinkType.BOOKING, label: 'Booking', icon: '📅', description: 'Calendar integration' },
+    { type: LinkType.VIDEO_EMBED, label: 'YouTube / Vimeo', icon: '🎬', description: 'Embed video from URL' },
+    { type: LinkType.CONTACT_FORM, label: 'Contact Form', icon: '📋', description: 'Visitor inquiry form' },
+    { type: LinkType.MAP_LOCATION, label: 'Map', icon: '📍', description: 'Show your location' },
+    { type: LinkType.FILE_DOWNLOAD, label: 'File Download', icon: '📥', description: 'Share downloadable files' },
+    { type: LinkType.CUSTOM_LINK, label: 'Custom Link', icon: '⭐', description: 'Custom styled link' },
   ];
 
   return (

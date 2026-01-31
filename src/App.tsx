@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { LandingPage } from './pages/LandingPage';
@@ -19,6 +19,7 @@ import { ProfileDashboard } from './pages/ProfileDashboard';
 import { PublicProfile } from './pages/PublicProfile';
 import { ProfileAnalytics } from './pages/ProfileAnalytics';
 import { UnifiedProfileEditor } from './pages/UnifiedProfileEditor';
+import { VCardPanel } from './pages/VCardPanel';
 // Data Recovery Service Pages
 import { DataRecoveryHub } from './pages/services/DataRecoveryHub';
 import { HardDriveRecovery } from './pages/services/HardDriveRecovery';
@@ -169,34 +170,26 @@ const AppRoutes: React.FC = () => (
                       </RouteErrorBoundary>
                     } />
 
-                    {/* Virtual Profile Routes - Modern vCard Suite (Phase 4) */}
-                    <Route path="/profile/edit" element={
+                    {/* Virtual Profile Routes - Modern vCard Suite (Phase 5 - Unified Route) */}
+                    <Route path="/profile" element={
                       <ProtectedRoute>
-                        <RouteErrorBoundary routeName="Portfolio Editor">
-                          <Layout>
-                            <LinksEditor />
-                          </Layout>
+                        <RouteErrorBoundary routeName="vCard Panel">
+                          <VCardPanel />
                         </RouteErrorBoundary>
                       </ProtectedRoute>
+                    } />
+
+                    {/* Legacy Profile Routes - Redirect to unified /profile with query params */}
+                    <Route path="/profile/edit" element={
+                      <Navigate to="/profile?tab=portfolio" replace />
                     } />
                     <Route path="/profile/appearance" element={
-                      <ProtectedRoute>
-                        <RouteErrorBoundary routeName="Appearance Editor">
-                          <Layout>
-                            <AppearanceEditor />
-                          </Layout>
-                        </RouteErrorBoundary>
-                      </ProtectedRoute>
+                      <Navigate to="/profile?tab=aesthetics" replace />
                     } />
                     <Route path="/profile/analytics" element={
-                      <ProtectedRoute>
-                        <RouteErrorBoundary routeName="Analytics Dashboard">
-                          <Layout>
-                            <AnalyticsDashboard />
-                          </Layout>
-                        </RouteErrorBoundary>
-                      </ProtectedRoute>
+                      <Navigate to="/profile?tab=insights" replace />
                     } />
+
                     {/* Legacy Routes - Keep for backward compatibility */}
                     <Route path="/profile/dashboard" element={
                       <ProtectedRoute>

@@ -27,10 +27,15 @@ const getLinkTypeIcon = (type: LinkType): string => {
     [LinkType.HEADER]: '📝',
     [LinkType.GALLERY]: '🖼️',
     [LinkType.VIDEO_EMBED]: '🎬',
+    [LinkType.CONTACT_FORM]: '📋',
+    [LinkType.MAP_LOCATION]: '📍',
+    [LinkType.FILE_DOWNLOAD]: '📥',
+    [LinkType.CUSTOM_LINK]: '⭐',
+    // Deprecated types - kept for backward compatibility with existing data
     [LinkType.VIDEO_UPLOAD]: '📹',
     [LinkType.BOOKING]: '📅',
   };
-  return icons[type];
+  return icons[type] || '🔗';
 };
 
 /**

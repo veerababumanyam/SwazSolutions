@@ -125,6 +125,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     // Link mutations
     const addLink = useCallback(async (type: LinkItem['type']) => {
+        // Block creation of deprecated VIDEO_UPLOAD type
+        if (type === LinkType.VIDEO_UPLOAD) {
+            throw new Error('Video upload is no longer supported. Please use YouTube/Vimeo embeds instead.');
+        }
+
         const newLink: LinkItem = {
             id: `link_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             type,
@@ -134,8 +139,14 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({ children })
                 ? 'New Gallery'
                 : type === LinkType.VIDEO_EMBED
                 ? 'New Video'
-                : type === LinkType.VIDEO_UPLOAD
-                ? 'Upload Video'
+                : type === LinkType.CONTACT_FORM
+                ? 'Contact Us'
+                : type === LinkType.MAP_LOCATION
+                ? 'Our Location'
+                : type === LinkType.FILE_DOWNLOAD
+                ? 'Download File'
+                : type === LinkType.CUSTOM_LINK
+                ? 'Custom Link'
                 : 'New Link',
             url: type === LinkType.HEADER ? undefined : '',
             isActive: true,

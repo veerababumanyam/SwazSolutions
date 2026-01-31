@@ -1,7 +1,20 @@
 /**
  * LinkItemRenderer Component
  * Renders different LinkType values for public profile view
- * Supports: CLASSIC, GALLERY, VIDEO_EMBED, HEADER, BOOKING, VIDEO_UPLOAD
+ *
+ * Supported types:
+ * - CLASSIC: Standard clickable link
+ * - HEADER: Section divider
+ * - GALLERY: Image showcase
+ * - VIDEO_EMBED: YouTube/Vimeo embed
+ * - CONTACT_FORM: Visitor contact form
+ * - MAP_LOCATION: Interactive map
+ * - FILE_DOWNLOAD: Downloadable file
+ * - CUSTOM_LINK: Custom styled link
+ *
+ * Deprecated types (kept for backward compatibility with existing data):
+ * - VIDEO_UPLOAD: Uploaded video file (use VIDEO_EMBED instead)
+ * - BOOKING: Calendar integration
  */
 
 import React from 'react';

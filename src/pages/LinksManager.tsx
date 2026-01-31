@@ -37,7 +37,7 @@ export const LinksManager: React.FC = () => {
             You need to create a profile before you can manage your links.
           </p>
           <button
-            onClick={() => navigate('/profile/edit')}
+            onClick={() => navigate('/profile?tab=portfolio')}
             className="px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-full font-medium transition-colors"
           >
             Create Profile
@@ -132,7 +132,7 @@ export const LinksManager: React.FC = () => {
 
               {/* Profile Settings */}
               <button
-                onClick={() => navigate('/profile/edit')}
+                onClick={() => navigate('/profile?tab=portfolio')}
                 className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -208,7 +208,7 @@ export const ProfileDashboard: React.FC = () => {
             You don't have a profile yet. Create one to share your contact info and social links.
           </p>
           <button
-            onClick={() => navigate('/profile/edit')}
+            onClick={() => navigate('/profile?tab=portfolio')}
             className="inline-block px-6 py-3 btn btn-primary rounded-lg transition"
           >
             Create Profile
@@ -373,7 +373,7 @@ export const ProfileDashboard: React.FC = () => {
               <h3 className="text-lg font-semibold mb-4 text-primary">Quick Actions</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
-                  onClick={() => navigate('/profile/edit')}
+                  onClick={() => navigate('/profile?tab=portfolio')}
                   className="w-full px-4 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition flex items-center justify-center gap-2"
                 >
                   <Edit className="w-5 h-5" />

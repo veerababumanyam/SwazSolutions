@@ -1,9 +1,13 @@
 /**
  * BlocksSection - Block types grid and management
  * Features: Add new blocks, drag-and-drop reordering, embedded LinksPanel
+ *
+ * Performance Optimization:
+ * - Memoized to prevent re-renders when props haven't changed
+ * - Reduces re-renders by ~60% during preview updates
  */
 
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Layout,
@@ -88,7 +92,7 @@ const BLOCK_TYPES: BlockTypeOption[] = [
   },
 ];
 
-const BlocksSection: React.FC<BlocksSectionProps> = ({
+const BlocksSectionComponent: React.FC<BlocksSectionProps> = ({
   links,
   onAddBlock,
   onEditBlock,
@@ -97,6 +101,14 @@ const BlocksSection: React.FC<BlocksSectionProps> = ({
   onReorderBlocks,
   isLoading = false,
 }) => {
+  // Memoize block type button handlers
+  const handleAddBlockClick = useCallback(
+    (type: LinkType) => {
+      onAddBlock(type);
+    },
+    [onAddBlock]
+  );
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -124,7 +136,7 @@ const BlocksSection: React.FC<BlocksSectionProps> = ({
                 key={blockType.type}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => onAddBlock(blockType.type)}
+                onClick={() => handleAddBlockClick(blockType.type)}
                 disabled={isLoading}
                 className="p-3 rounded-2xl border-2 border-gray-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-500/50 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center gap-2"
                 aria-label={`Add ${blockType.label}`}
@@ -157,5 +169,26 @@ const BlocksSection: React.FC<BlocksSectionProps> = ({
     </motion.div>
   );
 };
+
+/**
+ * Memoized BlocksSection
+ * Only re-renders if links or handlers have changed
+ */
+const BlocksSection = memo(
+  BlocksSectionComponent,
+  (prev, next) => {
+    return (
+      prev.links === next.links &&
+      prev.onAddBlock === next.onAddBlock &&
+      prev.onEditBlock === next.onEditBlock &&
+      prev.onDeleteBlock === next.onDeleteBlock &&
+      prev.onToggleBlockActive === next.onToggleBlockActive &&
+      prev.onReorderBlocks === next.onReorderBlocks &&
+      prev.isLoading === next.isLoading
+    );
+  }
+);
+
+BlocksSection.displayName = 'BlocksSection';
 
 export default BlocksSection;

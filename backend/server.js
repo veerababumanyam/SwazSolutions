@@ -88,6 +88,9 @@ const createInviteCheckInRoutes = require('./routes/invite-checkin');
 const createInviteSharingRoutes = require('./routes/invite-sharing');
 const createInviteGalleryRoutes = require('./routes/invite-gallery');
 
+// Block Types routes (Phase 3)
+const blockTypesRouter = require('./routes/block-types');
+
 const http = require('http');
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
@@ -391,6 +394,14 @@ if (!fs.existsSync(uploadsDir)) {
 app.use('/uploads', express.static(uploadsDir));
 console.log(`📤 Serving uploads from: ${uploadsDir}`);
 
+// Serve template thumbnails
+const thumbnailsDir = path.join(__dirname, '../public/thumbnails');
+if (!fs.existsSync(thumbnailsDir)) {
+    fs.mkdirSync(thumbnailsDir, { recursive: true });
+}
+app.use('/thumbnails', express.static(thumbnailsDir));
+console.log(`🎨 Serving template thumbnails from: ${thumbnailsDir}`);
+
 // Initialize camera updates routes with database
 initCameraRoutes(db);
 
@@ -445,6 +456,15 @@ app.use('/api/fonts', fontsRouter); // Font options public
 app.use('/api/qr-codes', apiLimiter, withAuth, qrCodesRouter); // Auth required - QR generation
 app.use('/api/analytics', apiLimiter, withAuth, analyticsRouter); // Auth required - analytics
 app.use('/api/uploads', apiLimiter, withAuth, uploadsRouter); // Auth required - file uploads
+
+// Block Types API routes (Phase 3: Contact Form, File Download, Map Location)
+// Mixed public/auth routes - form submissions are public, management requires auth
+app.use('/api/profiles', apiLimiter, blockTypesRouter); // Public contact form + file/map views, Auth required for management
+
+// vCard Templates API routes (Phase 4)
+// Mixed public/auth routes - browsing templates is public, applying/creating requires auth
+const templatesRouter = require('./routes/templates');
+app.use('/api/templates', apiLimiter, templatesRouter); // Public browse, Auth required for apply/create/manage
 
 // Digital Invites API routes
 app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteRoutes(db)); // Auth required - invitations CRUD
@@ -717,6 +737,52 @@ const cleanupScheduledTasks = () => {
     const CAMERA_SCRAPE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
     cameraScraperIntervalId = setInterval(runCameraScraper, CAMERA_SCRAPE_INTERVAL);
     console.log('⏰ Camera updates scheduled (Daily)');
+
+    // vCard Template System Initialization (Phase 4)
+    console.log('🎨 Initializing vCard Template System...');
+    const { SYSTEM_TEMPLATES, seedSystemTemplates } = require('./data/template-definitions');
+    const { generateThumbnailsForAll } = require('./services/templateThumbnailService');
+
+    async function initializeTemplateSystem() {
+        try {
+            // Check if templates already exist
+            const existingTemplatesStmt = db.prepare('SELECT COUNT(*) as count FROM vcard_templates WHERE is_system = 1');
+            const result = existingTemplatesStmt.get();
+            const existingCount = result?.count || 0;
+
+            if (existingCount === SYSTEM_TEMPLATES.length) {
+                console.log(`✅ All ${existingCount} system templates already seeded`);
+                return;
+            }
+
+            if (existingCount > 0 && existingCount < SYSTEM_TEMPLATES.length) {
+                console.log(`⚠️  Found ${existingCount} templates, expected ${SYSTEM_TEMPLATES.length}. Reseeding...`);
+            }
+
+            // Seed templates
+            console.log(`📥 Seeding ${SYSTEM_TEMPLATES.length} system templates...`);
+            const seedResults = await seedSystemTemplates(db);
+
+            if (seedResults.successful > 0) {
+                console.log(`✅ Template seeding: ${seedResults.successful} successful, ${seedResults.failed} failed`);
+
+                // Generate thumbnails for newly seeded templates
+                console.log('🖼️  Generating template thumbnails...');
+                const thumbnailResults = await generateThumbnailsForAll(db, SYSTEM_TEMPLATES);
+                console.log(`✅ Thumbnail generation: ${thumbnailResults.successful} successful, ${thumbnailResults.failed} failed`);
+            }
+        } catch (error) {
+            console.error('❌ Template system initialization error:', error.message);
+            console.error(error.stack);
+        }
+    }
+
+    // Initialize templates after a short delay
+    setTimeout(() => {
+        initializeTemplateSystem().catch(err => {
+            console.error('❌ Critical error during template initialization:', err);
+        });
+    }, 4000);
 
     // Subscription Expiration Check - Run every hour
     console.log('💳 Initializing Subscription Expiration Check...');
