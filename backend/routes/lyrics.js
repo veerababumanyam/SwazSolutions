@@ -212,7 +212,7 @@ function createLyricsRoutes(db) {
    * - rhymeScheme: string (optional) - Expected rhyme scheme
    * - model: string (optional) - Model override
    */
-  router.post('/review', requireGeminiConfig, async (req, res) => {
+  router.post('/review', initializeGeminiService, async (req, res) => {
     try {
       const { lyrics, languageProfile, rhymeScheme, model } = req.body;
 
@@ -261,7 +261,7 @@ function createLyricsRoutes(db) {
    * - history: array (optional) - Chat history [{role: 'user'|'model', content: string}]
    * - model: string (optional) - Model override
    */
-  router.post('/chat', requireGeminiConfig, async (req, res) => {
+  router.post('/chat', initializeGeminiService, async (req, res) => {
     try {
       const { message, history, model } = req.body;
 
@@ -296,7 +296,7 @@ function createLyricsRoutes(db) {
    * GET /api/lyrics/test
    * Test Gemini API connection
    */
-  router.get('/test', requireGeminiConfig, async (req, res) => {
+  router.get('/test', initializeGeminiService, async (req, res) => {
     try {
       console.log('[Lyrics API] Testing Gemini API connection...');
 
