@@ -477,14 +477,9 @@ app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteSha
 app.use('/api/invites', apiLimiter, withAuth, checkSubscription, createInviteGalleryRoutes(db)); // Auth required - gallery
 
 // Health check (always public, with rate limiting)
-app.get('/api/health', apiLimiter, (req, res) => {
-    res.json({
-        status: 'ok',
-        uptime: process.uptime(),
-        timestamp: new Date().toISOString(),
-        database: 'connected'
-    });
-});
+// Comprehensive Health Check Endpoint
+const healthRouter = require('./routes/health');
+app.use('/', healthRouter);
 
 // Apply SEO middleware BEFORE static serving
 // Detects crawlers and serves pre-rendered HTML with schema

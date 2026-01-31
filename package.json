@@ -19,6 +19,7 @@
     "lint:fix": "eslint . --fix",
     "lint:backend": "eslint backend/**/*.js --max-warnings 0",
     "check:backend": "node scripts/check-backend-syntax.cjs",
+    "verify-deployment": "node scripts/verify-deployment.js",
     "prepare": "node -e \"require('child_process').spawn('node', ['.husky/install.js'], {stdio: 'inherit'})\" || true"
   },
   "dependencies": {
