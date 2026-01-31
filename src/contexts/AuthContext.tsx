@@ -49,14 +49,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             if (response.ok) {
                 const data = await response.json();
                 setUser(data.user);
+                // Token refresh successful - apply user preferences
+                applyUserPreferences();
                 return true;
             } else {
                 // Refresh failed - clear user state
                 setUser(null);
                 return false;
-            } else {
-                // Token refresh successful - apply user preferences
-                applyUserPreferences();
             }
         } catch (error) {
             console.error('Token refresh failed:', error);

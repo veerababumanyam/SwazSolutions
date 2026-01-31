@@ -5,6 +5,19 @@
  * instead of calling the SDK directly from the frontend
  */
 
+/**
+ * Get the user's Gemini API key from localStorage
+ * (set when user configures it in Account Settings)
+ */
+export const getApiKey = (): string | null => {
+  try {
+    return localStorage.getItem('swaz_gemini_api_key');
+  } catch (error) {
+    console.warn('Failed to retrieve API key from localStorage:', error);
+    return null;
+  }
+};
+
 export interface EnhanceHeadlineParams {
   currentHeadline: string;
   profileType?: string;
