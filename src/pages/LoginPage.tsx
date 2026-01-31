@@ -231,7 +231,7 @@ export const LoginPage: React.FC = () => {
                 <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-accent/40 rounded-full animate-pulse" style={{ animationDelay: '700ms' }}></div>
             </div>
 
-            <div className="w-full max-w-md relative z-10">
+            <div className="w-full max-w-md relative z-10" data-testid="login-page" data-cursor-label="Login page container">
                 {/* Main Card */}
                 <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-3xl p-8 md:p-10 shadow-2xl animate-fade-in">
                     {/* Logo & Header */}
@@ -249,7 +249,7 @@ export const LoginPage: React.FC = () => {
                     </div>
 
                     {/* Google Sign In - Primary CTA - Always Highlighted */}
-                    <div className="mb-8">
+                    <div className="mb-8" data-testid="google-signin-section" data-cursor-label="Google Sign-In section">
                         {/* Error message for Google OAuth configuration issues */}
                         {googleError && (
                             <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
@@ -289,17 +289,20 @@ export const LoginPage: React.FC = () => {
                             ></div>
                             
                             {/* Button container */}
-                            <div className="relative bg-surface rounded-xl p-3 shadow-xl transition-all duration-300 group-hover:shadow-2xl border border-border/50 min-h-[56px] overflow-hidden">
+                            <div className="relative bg-surface rounded-xl p-3 shadow-xl transition-all duration-300 group-hover:shadow-2xl border border-border/50 min-h-[56px] overflow-hidden" data-testid="google-button-container" data-cursor-label="Google button (Continue with Google)">
                                 {/* Google's rendered button */}
                                 <div 
                                     ref={googleButtonRef} 
                                     className="w-full max-w-full flex justify-center items-center [&>div]:w-full [&>div]:max-w-full [&>div>div]:w-full [&>div>div]:max-w-full [&>div>div>div]:justify-center [&>div>div>div]:max-w-full"
+                                    data-cursor-label="Google OAuth button"
                                 ></div>
                                 
                                 {/* Fallback custom button if Google button doesn't load */}
                                 {!googleLoaded && (
                                     <button
                                         type="button"
+                                        data-testid="google-button-fallback"
+                                        data-cursor-label="Continue with Google (fallback)"
                                         onClick={() => {
                                             // Trigger Google Sign-In if available
                                             if (window.google?.accounts?.id) {
@@ -341,10 +344,10 @@ export const LoginPage: React.FC = () => {
                     </div>
 
                     {/* Login Form */}
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-5" data-testid="login-form" data-cursor-label="Login form (email/password)">
                         {/* Username Field */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-primary">
+                            <label className="block text-sm font-semibold text-primary" htmlFor="login-username-input">
                                 Username or Email
                             </label>
                             <div className={`relative rounded-xl transition-all duration-300 ${
@@ -359,6 +362,7 @@ export const LoginPage: React.FC = () => {
                                     }`} />
                                 </div>
                                 <input
+                                    id="login-username-input"
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
@@ -368,13 +372,15 @@ export const LoginPage: React.FC = () => {
                                     placeholder="Enter your username"
                                     required
                                     autoComplete="username"
+                                    data-testid="login-username"
+                                    data-cursor-label="Username or email input"
                                 />
                             </div>
                         </div>
 
                         {/* Password Field */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-primary">
+                            <label className="block text-sm font-semibold text-primary" htmlFor="login-password-input">
                                 Password
                             </label>
                             <div className={`relative rounded-xl transition-all duration-300 ${
@@ -389,6 +395,7 @@ export const LoginPage: React.FC = () => {
                                     }`} />
                                 </div>
                                 <input
+                                    id="login-password-input"
                                     type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -398,6 +405,8 @@ export const LoginPage: React.FC = () => {
                                     placeholder="Enter your password"
                                     required
                                     autoComplete="current-password"
+                                    data-testid="login-password"
+                                    data-cursor-label="Password input"
                                 />
                                 <button
                                     type="button"
@@ -414,6 +423,8 @@ export const LoginPage: React.FC = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
+                            data-testid="login-submit"
+                            data-cursor-label="Sign In button"
                             className="w-full bg-brand-gradient hover:opacity-90 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center gap-2 text-base mt-8"
                             style={{ boxShadow: '0 10px 25px -5px rgba(220, 38, 38, 0.3)' }}
                         >
@@ -429,7 +440,7 @@ export const LoginPage: React.FC = () => {
                     </form>
 
                     {/* Sign Up Link */}
-                    <div className="mt-8 text-center">
+                    <div className="mt-8 text-center" data-testid="login-signup-link" data-cursor-label="Link to Register page">
                         <p className="text-secondary">
                             Don't have an account?{' '}
                             <Link 

@@ -5,6 +5,11 @@ import { ArrowRight, Shield, Clock, HardDrive, Cpu, Zap, Database, Sparkles, Glo
 import { Schema, localBusinessSchema, dataRecoveryFAQSchema } from '../components/Schema';
 import { UnifiedContactForm } from '../components/UnifiedContactForm';
 import { LazyImage } from '../components/LazyImage';
+import { TestimonialsSection } from '../components/landing/TestimonialsSection';
+import { FAQSection } from '../components/landing/FAQSection';
+import { TrustBadgesSection } from '../components/landing/TrustBadgesSection';
+import { PricingSection } from '../components/landing/PricingSection';
+import { NewsletterSignup } from '../components/landing/NewsletterSignup';
 
 export const LandingPage: React.FC = () => {
     const [activeHero, setActiveHero] = useState(0);
@@ -614,8 +619,8 @@ export const LandingPage: React.FC = () => {
                             <div className={`absolute inset-0 transition-all duration-1000 ease-in-out ${activeHero === 2 ? 'opacity-100 translate-x-0 z-10' : 'opacity-0 translate-x-10 z-0 pointer-events-none'}`}>
                                 <div className="group relative glass-card rounded-3xl p-6 sm:p-8 md:p-16 overflow-hidden min-h-[480px] sm:min-h-[560px] md:min-h-[640px] lg:min-h-[680px]">
                                     {/* Top-Right Badge - STANDARDIZED */}
-                                    <div className="absolute top-0 right-0 p-0 md:p-8">
-                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2">
+                                    <div className="absolute top-0 right-0 p-4 md:p-8">
+                                        <div className="bg-accent text-white px-6 py-2 rounded-bl-2xl font-bold text-sm shadow-lg uppercase tracking-wide flex items-center gap-2 truncate max-w-[calc(100vw-2rem)]">
                                             <Users className="w-4 h-4" /> PROFESSIONAL NETWORKING
                                         </div>
                                     </div>
@@ -628,7 +633,7 @@ export const LandingPage: React.FC = () => {
                                                 <span className="text-xs font-bold text-accent uppercase tracking-wider">DIGITAL VISITING CARD</span>
                                             </div>
 
-                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-4 leading-tight">
+                                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-primary mb-4 leading-tight break-words hyphens-auto">
                                                 Your Digital<br />
                                                 Visiting Card
                                                 {/* Brand Gradient Subheadline */}
@@ -703,11 +708,11 @@ export const LandingPage: React.FC = () => {
                                                 {/* Theme Color Swatches */}
                                                 <div className="mb-6">
                                                     <div className="text-xs font-bold text-secondary uppercase mb-3">12+ Professional Themes</div>
-                                                    <div className="grid grid-cols-6 gap-2">
+                                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-2">
                                                         {['#667EEA', '#F56565', '#48BB78', '#ED8936', '#9F7AEA', '#38B2AC', '#ECC94B', '#ED64A6', '#4299E1', '#FC8181', '#68D391', '#F6AD55'].map((color, i) => (
                                                             <div
                                                                 key={i}
-                                                                className="w-8 h-8 rounded-lg border-2 border-white shadow-md hover:scale-110 transition-transform cursor-pointer"
+                                                                className="w-10 h-10 sm:w-8 sm:h-8 rounded-lg border-2 border-white shadow-md hover:scale-110 transition-transform cursor-pointer touch-action-manipulation"
                                                                 style={{ backgroundColor: color }}
                                                                 title={`Theme ${i + 1}`}
                                                             ></div>
@@ -715,7 +720,7 @@ export const LandingPage: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-3 gap-4 text-center">
+                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
                                                     <div className="bg-surface/80 p-3 rounded-xl">
                                                         <div className="text-2xl font-black text-accent">QR</div>
                                                         <div className="text-[10px] uppercase text-secondary font-bold">Scannable</div>
@@ -732,7 +737,7 @@ export const LandingPage: React.FC = () => {
                                             </div>
 
                                             {/* Features Grid */}
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
                                                 <div className="bg-surface p-4 rounded-xl shadow-sm border border-accent/10 flex items-center gap-3">
                                                     <div className="p-2 bg-accent/10 rounded-lg text-accent"><QrCode className="w-5 h-5" /></div>
                                                     <div>
@@ -760,13 +765,16 @@ export const LandingPage: React.FC = () => {
                                 <button
                                     key={idx}
                                     onClick={() => setActiveHero(idx)}
-                                    className={`h-2 rounded-full transition-all duration-300 ${activeHero === idx ? 'w-8 bg-accent' : 'w-2 bg-border'}`}
+                                    className={`h-3 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center p-2 transition-all duration-300 ${activeHero === idx ? 'w-10 bg-accent' : 'w-3 bg-border'}`}
                                     aria-label={`Go to slide ${idx + 1}`}
                                 />
                             ))}
                         </div>
                     </div>
                 </section>
+
+                {/* Trust Badges Section - After Hero */}
+                <TrustBadgesSection />
 
                 {/* FEATURE SECTIONS - Modern Apple/Vercel Style */}
 
@@ -1157,7 +1165,7 @@ export const LandingPage: React.FC = () => {
                                             ))}
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-4">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
                                             {[
                                                 { value: '100%', label: 'Safe' },
                                                 { value: '0', label: 'Claims' },
@@ -1368,7 +1376,7 @@ export const LandingPage: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-3">
                                             {[
                                                 { value: 'AI', label: 'Powered' },
                                                 { value: '12+', label: 'Languages' },
@@ -1471,7 +1479,7 @@ export const LandingPage: React.FC = () => {
                                             <QrCode className="w-32 h-32 text-black" />
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-3">
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-3">
                                             {[
                                                 { value: '12+', label: 'Themes' },
                                                 { value: '100%', label: 'Free' },
@@ -1536,6 +1544,17 @@ export const LandingPage: React.FC = () => {
                     </div>
                 </section>
 
+                {/* Testimonials Section - After all features */}
+                <TestimonialsSection />
+
+                {/* Pricing Section */}
+                <PricingSection />
+
+                {/* FAQ Section */}
+                <FAQSection />
+
+                {/* Newsletter Signup - Before Contact Form */}
+                <NewsletterSignup />
 
                 {/* Contact Form - Unified with Toggle */}
                 <section id="contact" className="py-20 bg-surface">

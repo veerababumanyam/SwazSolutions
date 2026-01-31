@@ -206,7 +206,7 @@ export const RegisterPage: React.FC = () => {
                 <div className="absolute bottom-1/3 left-1/3 w-2 h-2 bg-accent/40 rounded-full animate-pulse" style={{ animationDelay: '700ms' }}></div>
             </div>
 
-            <div className="w-full max-w-md relative z-10">
+            <div className="w-full max-w-md relative z-10" data-testid="register-page" data-cursor-label="Register page container">
                 {/* Main Card */}
                 <div className="bg-surface/95 backdrop-blur-xl border border-border rounded-3xl p-8 md:p-10 shadow-2xl animate-fade-in">
                     {/* Logo & Header */}
@@ -224,7 +224,7 @@ export const RegisterPage: React.FC = () => {
                     </div>
 
                     {/* Google Sign Up - Primary CTA - Always Highlighted */}
-                    <div className="mb-8">
+                    <div className="mb-8" data-testid="google-signup-section" data-cursor-label="Google Sign-Up section">
                         {/* Error message for Google OAuth configuration issues */}
                         {googleError && (
                             <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl">
@@ -264,17 +264,20 @@ export const RegisterPage: React.FC = () => {
                             ></div>
                             
                             {/* Button container */}
-                            <div className="relative bg-surface rounded-xl p-3 shadow-xl transition-all duration-300 group-hover:shadow-2xl border border-border/50 min-h-[56px] overflow-hidden">
+                            <div className="relative bg-surface rounded-xl p-3 shadow-xl transition-all duration-300 group-hover:shadow-2xl border border-border/50 min-h-[56px] overflow-hidden" data-testid="google-button-container" data-cursor-label="Google button (Sign up with Google)">
                                 {/* Google's rendered button */}
                                 <div 
                                     ref={googleButtonRef} 
                                     className="w-full max-w-full flex justify-center items-center [&>div]:w-full [&>div]:max-w-full [&>div>div]:w-full [&>div>div]:max-w-full [&>div>div>div]:justify-center [&>div>div>div]:max-w-full"
+                                    data-cursor-label="Google OAuth button"
                                 ></div>
                                 
                                 {/* Fallback custom button if Google button doesn't load */}
                                 {!googleLoaded && (
                                     <button
                                         type="button"
+                                        data-testid="google-button-fallback"
+                                        data-cursor-label="Sign up with Google (fallback)"
                                         onClick={() => {
                                             if (window.google?.accounts?.id) {
                                                 window.google.accounts.id.prompt();
@@ -315,10 +318,10 @@ export const RegisterPage: React.FC = () => {
                     </div>
 
                     {/* Registration Form */}
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4" data-testid="register-form" data-cursor-label="Registration form">
                         {/* Username Field */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-primary">
+                            <label className="block text-sm font-semibold text-primary" htmlFor="register-username-input">
                                 Username
                             </label>
                             <div className={`relative rounded-xl transition-all duration-300 ${
@@ -333,6 +336,7 @@ export const RegisterPage: React.FC = () => {
                                     }`} />
                                 </div>
                                 <input
+                                    id="register-username-input"
                                     type="text"
                                     name="username"
                                     value={formData.username}
@@ -345,13 +349,15 @@ export const RegisterPage: React.FC = () => {
                                     minLength={3}
                                     maxLength={20}
                                     autoComplete="username"
+                                    data-testid="register-username"
+                                    data-cursor-label="Username input"
                                 />
                             </div>
                         </div>
 
                         {/* Email Field */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-primary">
+                            <label className="block text-sm font-semibold text-primary" htmlFor="register-email-input">
                                 Email <span className="text-muted font-normal">(Optional)</span>
                             </label>
                             <div className={`relative rounded-xl transition-all duration-300 ${
@@ -366,6 +372,7 @@ export const RegisterPage: React.FC = () => {
                                     }`} />
                                 </div>
                                 <input
+                                    id="register-email-input"
                                     type="email"
                                     name="email"
                                     value={formData.email}
@@ -375,13 +382,15 @@ export const RegisterPage: React.FC = () => {
                                     className="w-full bg-surface text-primary placeholder:text-muted rounded-xl py-3.5 pl-12 pr-4 outline-none transition-colors text-base border-0"
                                     placeholder="Enter your email"
                                     autoComplete="email"
+                                    data-testid="register-email"
+                                    data-cursor-label="Email input"
                                 />
                             </div>
                         </div>
 
                         {/* Password Field */}
                         <div className="space-y-2">
-                            <label className="block text-sm font-semibold text-primary">
+                            <label className="block text-sm font-semibold text-primary" htmlFor="register-password-input">
                                 Password
                             </label>
                             <div className={`relative rounded-xl transition-all duration-300 ${
@@ -396,6 +405,7 @@ export const RegisterPage: React.FC = () => {
                                     }`} />
                                 </div>
                                 <input
+                                    id="register-password-input"
                                     type={showPassword ? 'text' : 'password'}
                                     name="password"
                                     value={formData.password}
@@ -407,6 +417,8 @@ export const RegisterPage: React.FC = () => {
                                     required
                                     minLength={8}
                                     autoComplete="new-password"
+                                    data-testid="register-password"
+                                    data-cursor-label="Password input"
                                 />
                                 <button
                                     type="button"
@@ -466,6 +478,8 @@ export const RegisterPage: React.FC = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
+                            data-testid="register-submit"
+                            data-cursor-label="Create Account button"
                             className="w-full bg-brand-gradient hover:opacity-90 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex items-center justify-center gap-2 text-base mt-6"
                             style={{ boxShadow: '0 10px 25px -5px rgba(220, 38, 38, 0.3)' }}
                         >
@@ -481,7 +495,7 @@ export const RegisterPage: React.FC = () => {
                     </form>
 
                     {/* Sign In Link */}
-                    <div className="mt-6 text-center">
+                    <div className="mt-6 text-center" data-testid="register-login-link" data-cursor-label="Link to Login page">
                         <p className="text-secondary">
                             Already have an account?{' '}
                             <Link 
