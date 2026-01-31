@@ -9,10 +9,9 @@ import { Theme, VCardTemplate } from '@/types/modernProfile.types';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useToast } from '@/contexts/ToastContext';
 import {
-  ThemeGallery,
   TypographyEditor,
 } from './shared';
-import GlobalCustomizer from './appearance/GlobalCustomizer';
+import { ThemeGallery, GlobalCustomizer } from './appearance';
 import { TemplateGallery } from '../templates/TemplateGallery';
 import { TemplatePreviewModal } from '../templates/TemplatePreviewModal';
 import { TemplateApplyModal } from '../templates/TemplateApplyModal';

@@ -17,7 +17,7 @@ interface InsightsTabProps {
  * Falls back to placeholder if component not found
  */
 const ProfileAnalytics = lazy(() =>
-  import('@/components/ProfileAnalytics').catch(() => ({
+  import('@/pages/ProfileAnalytics').catch(() => ({
     default: () => (
       <div className="text-center py-12 text-gray-500 dark:text-gray-400">
         <p className="text-sm">ProfileAnalytics component not found</p>
